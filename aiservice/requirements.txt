@@ -1,5 +1,7 @@
+# AI Service Dependencies
 flask==2.3.3
 flask-cors==4.0.0
+sentence-transformers>=2.2.0
 torch==2.2.0
 transformers==4.35.0
 accelerate==0.24.1
@@ -12,11 +14,3 @@ numpy==1.24.3
 scipy==1.11.3
 requests==2.31.0
 llama-cpp-python==0.3.16
-
-# OCR Dependencies
-pytesseract>=0.3.10
-opencv-python>=4.8.0
-pdf2image>=1.16.0
-Pillow>=10.0.0
-paddleocr>=2.7.0
-paddlepaddle>=2.5.0

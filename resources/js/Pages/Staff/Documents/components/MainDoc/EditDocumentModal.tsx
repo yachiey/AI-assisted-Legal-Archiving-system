@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, FolderOpen, AlertCircle } from 'lucide-react';
 import { Document } from '../../types/types';
 import { router } from '@inertiajs/react';
+import { folderService } from '../../services/folderService';
 
 interface EditDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   document: Document;
   onDocumentUpdated: () => void;
-  folders: Array<{ folder_id: number; folder_name: string }>;
+  folders?: Array<{ folder_id: number; folder_name: string }>;
 }
 
 const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
@@ -16,7 +17,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   onClose,
   document,
   onDocumentUpdated,
-  folders
+  folders: initialFolders = []
 }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -27,6 +28,22 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [folderList, setFolderList] = useState<Array<{ folder_id: number; folder_name: string }>>(initialFolders);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadFolders();
+    }
+  }, [isOpen]);
+
+  const loadFolders = async () => {
+    try {
+      const allFolders = await folderService.getAllFolders();
+      setFolderList(allFolders);
+    } catch (err) {
+      console.error("Failed to load folders", err);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && document) {
@@ -178,7 +195,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
               >
                 <option value="">No folder</option>
-                {folders.map(folder => (
+                {folderList.map(folder => (
                   <option key={folder.folder_id} value={folder.folder_id}>
                     {folder.folder_name}
                   </option>

@@ -15,6 +15,7 @@ class Document extends Model
         'title',
         'description',
         'file_path',
+        'file_hash',
         'created_by',
         'status',
         'folder_id',

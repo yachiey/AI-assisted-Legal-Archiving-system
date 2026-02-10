@@ -20,9 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RedirectBasedOnRole::class,
         ]);
 
-        // Only exempt login from CSRF (all other routes are protected)
+        // Exempt specific routes from CSRF (all other routes are protected)
         $middleware->validateCsrfTokens(except: [
             'api/login',
+            'contact',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

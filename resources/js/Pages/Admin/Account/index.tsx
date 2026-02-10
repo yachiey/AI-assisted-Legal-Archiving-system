@@ -158,103 +158,101 @@ const AccountManagement = () => {
 
     return (
         <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
-            <div className="max-w-7xl mx-auto">
-                <AccountHeader
-                    totalUsers={users.length}
-                    activeUsers={users.filter(u => u.status?.toLowerCase() === 'active').length}
-                    onAddUserClick={() => setIsAddUserOpen(true)}
-                />
+            <AccountHeader
+                totalUsers={users.length}
+                activeUsers={users.filter(u => u.status?.toLowerCase() === 'active').length}
+                onAddUserClick={() => setIsAddUserOpen(true)}
+            />
 
-                {/* Toast Notification */}
-                {toast && (
-                    <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 animate-fade-in ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-                        }`}>
-                        {toast.message}
-                    </div>
-                )}
-
-                {/* Search and Filter */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    <input
-                        type="text"
-                        placeholder="Search by name or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                    <select
-                        value={selectedRole}
-                        onChange={(e) => setSelectedRole(e.target.value)}
-                        className="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-                    >
-                        <option value="all">All Roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="staff">Staff</option>
-                    </select>
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 animate-fade-in ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+                    }`}>
+                    {toast.message}
                 </div>
+            )}
 
-                {/* Users Table */}
-                <AccountTable
-                    users={filteredUsers}
-                    loading={loading}
-                    onEdit={(user) => {
-                        setSelectedUser(user);
-                        setIsEditUserOpen(true);
-                    }}
-                    onDelete={(user) => {
-                        setSelectedUser(user);
-                        setIsDeleteOpen(true);
-                    }}
-                    onDeactivate={handleDeactivateUser}
-                    onViewUploads={handleViewUploads}
+            {/* Search and Filter */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
-
-                {/* Modals */}
-                {isAddUserOpen && (
-                    <AddUserModal
-                        isOpen={isAddUserOpen}
-                        onClose={() => setIsAddUserOpen(false)}
-                        onSubmit={handleAddUser}
-                    />
-                )}
-
-                {isEditUserOpen && selectedUser && (
-                    <EditUserModal
-                        isOpen={isEditUserOpen}
-                        user={selectedUser}
-                        onClose={() => {
-                            setIsEditUserOpen(false);
-                            setSelectedUser(null);
-                        }}
-                        onSubmit={handleEditUser}
-                    />
-                )}
-
-                {isDeleteOpen && selectedUser && (
-                    <DeleteConfirmModal
-                        isOpen={isDeleteOpen}
-                        user={selectedUser}
-                        onClose={() => {
-                            setIsDeleteOpen(false);
-                            setSelectedUser(null);
-                        }}
-                        onConfirm={handleDeleteUser}
-                    />
-                )}
-
-                {isDocumentsModalOpen && selectedUser && (
-                    <UserDocumentsModal
-                        isOpen={isDocumentsModalOpen}
-                        onClose={() => {
-                            setIsDocumentsModalOpen(false);
-                            setSelectedUser(null);
-                        }}
-                        documents={userDocuments}
-                        user={selectedUser}
-                        loading={documentsLoading}
-                    />
-                )}
+                <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                >
+                    <option value="all">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="staff">Staff</option>
+                </select>
             </div>
+
+            {/* Users Table */}
+            <AccountTable
+                users={filteredUsers}
+                loading={loading}
+                onEdit={(user) => {
+                    setSelectedUser(user);
+                    setIsEditUserOpen(true);
+                }}
+                onDelete={(user) => {
+                    setSelectedUser(user);
+                    setIsDeleteOpen(true);
+                }}
+                onDeactivate={handleDeactivateUser}
+                onViewUploads={handleViewUploads}
+            />
+
+            {/* Modals */}
+            {isAddUserOpen && (
+                <AddUserModal
+                    isOpen={isAddUserOpen}
+                    onClose={() => setIsAddUserOpen(false)}
+                    onSubmit={handleAddUser}
+                />
+            )}
+
+            {isEditUserOpen && selectedUser && (
+                <EditUserModal
+                    isOpen={isEditUserOpen}
+                    user={selectedUser}
+                    onClose={() => {
+                        setIsEditUserOpen(false);
+                        setSelectedUser(null);
+                    }}
+                    onSubmit={handleEditUser}
+                />
+            )}
+
+            {isDeleteOpen && selectedUser && (
+                <DeleteConfirmModal
+                    isOpen={isDeleteOpen}
+                    user={selectedUser}
+                    onClose={() => {
+                        setIsDeleteOpen(false);
+                        setSelectedUser(null);
+                    }}
+                    onConfirm={handleDeleteUser}
+                />
+            )}
+
+            {isDocumentsModalOpen && selectedUser && (
+                <UserDocumentsModal
+                    isOpen={isDocumentsModalOpen}
+                    onClose={() => {
+                        setIsDocumentsModalOpen(false);
+                        setSelectedUser(null);
+                    }}
+                    documents={userDocuments}
+                    user={selectedUser}
+                    loading={documentsLoading}
+                />
+            )}
         </div>
     );
 };

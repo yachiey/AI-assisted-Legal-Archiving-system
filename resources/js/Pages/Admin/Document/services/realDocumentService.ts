@@ -2,7 +2,7 @@
 import { Document, DocumentFilters } from '../types/types';
 
 // API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
 
 class RealDocumentService {
   private apiUrl = API_BASE_URL;
@@ -113,15 +113,15 @@ class RealDocumentService {
   // Get all documents with optional filtering
   async getAllDocuments(folderId?: number, filters?: DocumentFilters, searchTerm?: string): Promise<Document[]> {
     const params = new URLSearchParams();
-    
+
     if (folderId !== undefined && folderId !== null) {
       params.append('folder_id', folderId.toString());
     }
-    
+
     if (searchTerm) {
       params.append('search', searchTerm);
     }
-    
+
     if (filters) {
       if (filters.folder_id) {
         params.append('folder_id', filters.folder_id.toString());
@@ -133,7 +133,7 @@ class RealDocumentService {
         params.append('status', filters.status);
       }
     }
-    
+
     const endpoint = params.toString() ? `/documents?${params.toString()}` : '/documents';
     return await this.apiCall<Document[]>(endpoint);
   }
@@ -221,58 +221,12 @@ class RealDocumentService {
     this.cache.clear();
   }
 
-  // Archive a document
-  async archiveDocument(documentId: number): Promise<void> {
-    await this.apiCall<void>(`/documents/${documentId}/archive`, {
-      method: 'PUT',
-    }, false);
-    this.clearCache(); // Clear cache after archiving
-  }
-
-  // Restore an archived document
-  async restoreDocument(documentId: number): Promise<void> {
-    await this.apiCall<void>(`/documents/${documentId}/restore`, {
-      method: 'PUT',
-    }, false);
-    this.clearCache(); // Clear cache after restoring
-  }
-
-  // Get archived documents
-  async getArchivedDocuments(folderId?: number): Promise<Document[]> {
-    const params = new URLSearchParams({ status: 'archived' });
-
-    if (folderId !== undefined && folderId !== null) {
-      params.append('folder_id', folderId.toString());
-    }
-
-    const endpoint = `/documents?${params.toString()}`;
-    return await this.apiCall<Document[]>(endpoint);
-  }
-
   // Delete document (permanently)
   async deleteDocument(documentId: number): Promise<void> {
     await this.apiCall<void>(`/documents/${documentId}`, {
       method: 'DELETE',
     }, false);
     this.clearCache(); // Clear cache after deletion
-  }
-
-  // Bulk archive documents
-  async bulkArchiveDocuments(documentIds: number[]): Promise<void> {
-    await this.apiCall<void>('/documents/bulk-archive', {
-      method: 'POST',
-      body: JSON.stringify({ document_ids: documentIds }),
-    }, false);
-    this.clearCache(); // Clear cache after bulk archiving
-  }
-
-  // Bulk restore documents
-  async bulkRestoreDocuments(documentIds: number[]): Promise<void> {
-    await this.apiCall<void>('/documents/bulk-restore', {
-      method: 'POST',
-      body: JSON.stringify({ document_ids: documentIds }),
-    }, false);
-    this.clearCache(); // Clear cache after bulk restoring
   }
 
   // Bulk delete documents

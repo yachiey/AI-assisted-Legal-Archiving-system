@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import AdminLayout from "../../../../Layouts/AdminLayout";
-import { usePage } from '@inertiajs/react';
+import { usePage, router } from '@inertiajs/react';
 import axios from "axios";
 import ActivityLogsHeader from "./components/ActivityLogsHeader";
 import ActivityLogsCard from "./components/ActivityLogsCard";
@@ -12,17 +12,30 @@ interface Activity {
     time: string;
 }
 
+interface User {
+    id: number;
+    name: string;
+    role: string;
+}
+
 interface ActivityLogsProps {
     activities: Activity[];
+    users: User[];
+    filters: {
+        user_id: string;
+    };
     [key: string]: any;
 }
 
 const ActivityLogs = () => {
     const { props } = usePage<ActivityLogsProps>();
     const activities = props.activities || [];
+    const users = props.users || [];
+    const initialUserId = props.filters?.user_id || 'all';
 
     const [currentPage, setCurrentPage] = useState(1);
     const [selectedFilter, setSelectedFilter] = useState<string>('all');
+    const [selectedUser, setSelectedUser] = useState<string>(initialUserId);
     const [selectedDate, setSelectedDate] = useState<string>('');
     const dateInputRef = useRef<HTMLInputElement>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -32,7 +45,7 @@ const ActivityLogs = () => {
     // Get unique activity types for filter
     const activityTypes = ['all', ...Array.from(new Set(activities.map(a => a.action)))];
 
-    // Filter activities based on selected filter
+    // Filter activities based on selected filter (Type filter is client-side)
     const filteredActivities = selectedFilter === 'all'
         ? activities
         : activities.filter(a => a.action === selectedFilter);
@@ -40,6 +53,19 @@ const ActivityLogs = () => {
     const handleFilterChange = (filter: string) => {
         setSelectedFilter(filter);
         setCurrentPage(1); // Reset to first page when filter changes
+    };
+
+    const handleUserFilterChange = (userId: string) => {
+        setSelectedUser(userId);
+
+        // Reload page with new user filter (Server-side filtering)
+        router.get('/admin/activity-logs', {
+            user_id: userId
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['activities', 'filters']
+        });
     };
 
     const handlePrevPage = () => {
@@ -59,26 +85,77 @@ const ActivityLogs = () => {
         setSelectedDate(date);
     };
 
-    const handleExportActivityLogs = async (date?: string) => {
+    const handleExportActivityLogs = async (startDate: string, endDate: string, format: 'pdf' | 'csv' | 'excel', userId?: string) => {
         setIsExporting(true);
+        // Use userId from modal if present, otherwise fall back to page filter if it is not 'all', otherwise undefined
+        const exportUserId = userId !== 'all' && userId ? userId : (selectedUser !== 'all' ? selectedUser : undefined);
+
         try {
-            const exportDate = date || selectedDate;
+            if (format === 'pdf') {
+                // Open report in new window
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/admin/reports/export-activity-logs';
+                form.target = '_blank';
 
-            const response = await axios.post('/admin/reports/export-activity-logs', {
-                date: exportDate
-            }, {
-                responseType: 'blob'
-            });
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                }
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            const dateSuffix = exportDate ? `-${exportDate}` : '';
-            link.href = url;
-            link.setAttribute('download', `activity-logs${dateSuffix}-${new Date().toISOString().split('T')[0]}.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+                const startDateInput = document.createElement('input');
+                startDateInput.type = 'hidden';
+                startDateInput.name = 'startDate';
+                startDateInput.value = startDate;
+                form.appendChild(startDateInput);
+
+                const endDateInput = document.createElement('input');
+                endDateInput.type = 'hidden';
+                endDateInput.name = 'endDate';
+                endDateInput.value = endDate;
+                form.appendChild(endDateInput);
+
+                const formatInput = document.createElement('input');
+                formatInput.type = 'hidden';
+                formatInput.name = 'format';
+                formatInput.value = 'pdf';
+                form.appendChild(formatInput);
+
+                if (exportUserId) {
+                    const userIdInput = document.createElement('input');
+                    userIdInput.type = 'hidden';
+                    userIdInput.name = 'userId';
+                    userIdInput.value = exportUserId;
+                    form.appendChild(userIdInput);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            } else {
+                const response = await axios.post('/admin/reports/export-activity-logs', {
+                    startDate,
+                    endDate,
+                    userId: exportUserId,
+                    format: 'excel'
+                }, {
+                    responseType: 'blob'
+                });
+
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                const userSuffix = exportUserId ? `-user-${exportUserId}` : '';
+                link.href = url;
+                link.setAttribute('download', `activity-logs-${startDate}-to-${endDate}${userSuffix}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+            }
         } catch (error) {
             console.error("Error exporting activity logs:", error);
             alert("Failed to export activity logs. Please try again.");
@@ -88,7 +165,7 @@ const ActivityLogs = () => {
     };
 
     return (
-        <>
+        <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
             <ActivityLogsHeader
                 dateInputRef={dateInputRef}
                 selectedDate={selectedDate}
@@ -98,21 +175,22 @@ const ActivityLogs = () => {
             />
 
             <div className="px-6 py-6">
-                <div className="max-w-7xl mx-auto">
-                    <ActivityLogsCard
-                        activities={filteredActivities}
-                        currentPage={currentPage}
-                        itemsPerPage={itemsPerPage}
-                        selectedFilter={selectedFilter}
-                        activityTypes={activityTypes}
-                        onFilterChange={handleFilterChange}
-                        onPrevPage={handlePrevPage}
-                        onNextPage={handleNextPage}
-                        onGoToPage={handleGoToPage}
-                    />
-                </div>
+                <ActivityLogsCard
+                    activities={filteredActivities}
+                    currentPage={currentPage}
+                    itemsPerPage={itemsPerPage}
+                    selectedFilter={selectedFilter}
+                    selectedUser={selectedUser}
+                    activityTypes={activityTypes}
+                    users={users}
+                    onFilterChange={handleFilterChange}
+                    onUserFilterChange={handleUserFilterChange}
+                    onPrevPage={handlePrevPage}
+                    onNextPage={handleNextPage}
+                    onGoToPage={handleGoToPage}
+                />
             </div>
-        </>
+        </div>
     );
 };
 

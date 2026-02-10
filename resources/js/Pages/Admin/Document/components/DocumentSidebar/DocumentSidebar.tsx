@@ -9,6 +9,7 @@ interface DocumentSidebarProps {
     onFolderSelect: (folder: FolderType | null) => void;
     collapsed?: boolean;
     onToggleCollapse?: (collapsed: boolean) => void;
+    refreshTrigger?: number;
 }
 
 interface FolderTreeNode extends FolderType {
@@ -25,7 +26,7 @@ const FolderTreeItem: React.FC<{
     onToggleExpand: (folderId: number) => void;
     loadingFolders: Set<number>;
 }> = ({ folder, level, currentFolder, onFolderSelect, onToggleExpand, loadingFolders }) => {
-    const hasChildren = (folder.children && folder.children.length > 0) || folder.folder_type !== 'regular';
+    const hasChildren = true;
     const isActive = currentFolder?.folder_id === folder.folder_id;
     const isLoading = loadingFolders.has(folder.folder_id);
 
@@ -46,16 +47,12 @@ const FolderTreeItem: React.FC<{
                     paddingLeft: `${level * 16 + 12}px`,
                 }}
             >
-                {hasChildren ? (
-                    isLoading ? (
-                        <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-gray-400" />
-                    ) : folder.isExpanded ? (
-                        <ChevronDown className="w-4 h-4 flex-shrink-0 text-gray-400" />
-                    ) : (
-                        <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
-                    )
+                {isLoading ? (
+                    <Loader className="w-4 h-4 animate-spin flex-shrink-0 text-gray-400" />
+                ) : folder.isExpanded ? (
+                    <ChevronDown className="w-4 h-4 flex-shrink-0 text-gray-400" />
                 ) : (
-                    <div className="w-4 h-4 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-400" />
                 )}
 
                 {folder.isExpanded ? (
@@ -92,6 +89,7 @@ const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
     onFolderSelect,
     collapsed = false,
     onToggleCollapse,
+    refreshTrigger = 0,
 }) => {
     const [folderTree, setFolderTree] = useState<FolderTreeNode[]>([]);
     const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
@@ -118,7 +116,7 @@ const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
         };
 
         loadRootFolders();
-    }, []);
+    }, [refreshTrigger]);
 
     const expandFolder = async (folderId: number) => {
         const newExpanded = new Set(expandedFolders);
@@ -175,7 +173,7 @@ const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
 
     if (collapsed) {
         return (
-            <div className="fixed top-0 left-0 h-screen w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-2 shadow-sm z-30">
+            <div className="h-full w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-2 shadow-sm">
                 <button
                     onClick={() => onToggleCollapse?.(false)}
                     className="p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200"
@@ -188,7 +186,7 @@ const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
     }
 
     return (
-        <div className="fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 flex flex-col overflow-hidden shadow-sm z-30">
+        <div className="h-full w-72 bg-white border-r border-gray-200 flex flex-col overflow-hidden shadow-sm">
             {/* Header */}
             <div className="px-4 py-4 border-b border-gray-100">
                 <div className="flex items-center justify-between mb-4">

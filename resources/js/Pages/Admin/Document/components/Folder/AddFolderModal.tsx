@@ -1,6 +1,6 @@
-import axios from "axios";
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import { folderService } from "../../services/folderService";
 
 interface AddFolderModalProps {
   isOpen: boolean;
@@ -24,19 +24,12 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
     setError("");
 
     try {
-      const token = localStorage.getItem("auth_token");
-      const response = await axios.post(
-        "http://127.0.0.1:8000/api/folders",
-        {
-          folder_name: folderName,
-          folder_path: `/uploads/${folderName}`, // backend will set actual path
-          folder_type: "default",
-          parent_folder_id: parentFolderId, // Use parent folder ID
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await folderService.createFolder({
+        folder_name: folderName,
+        folder_path: `/uploads/${folderName}`, // backend will set actual path
+        folder_type: "regular",
+        parent_folder_id: parentFolderId, // Use parent folder ID
+      });
 
       // Clear form and close modal
       setFolderName("");
@@ -44,7 +37,7 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
 
       // Call onCreate callback to refresh parent component
       if (onCreate) {
-        onCreate(response.data.folder.folder_name);
+        onCreate(response.folder_name);
       }
     } catch (err: any) {
       console.error(err);

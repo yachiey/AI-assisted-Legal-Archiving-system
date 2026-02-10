@@ -21,6 +21,14 @@ interface UploadProgress {
     errorMessage?: string;
 }
 
+interface DuplicateDocument {
+    doc_id: number;
+    title: string;
+    folder_name: string;
+    folder_id: number | null;
+    fileName: string;
+}
+
 // Session storage key for document queue
 const DOCUMENT_QUEUE_KEY = 'document_upload_queue';
 
@@ -40,6 +48,7 @@ export const useMultiFileUpload = ({
     const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [duplicateDocument, setDuplicateDocument] = useState<DuplicateDocument | null>(null);
     const [progress, setProgress] = useState<UploadProgress>({
         current: 0,
         total: 0,
@@ -142,11 +151,20 @@ export const useMultiFileUpload = ({
             body: formData,
         });
 
+        const responseData = await response.json();
+
+        // Handle duplicate document (409 Conflict)
+        if (response.status === 409 && responseData.duplicate) {
+            setDuplicateDocument({
+                ...responseData.existing_document,
+                fileName: file.name,
+            });
+            return null;
+        }
+
         if (!response.ok) {
             throw new Error(`Upload failed for ${file.name}`);
         }
-
-        const responseData = await response.json();
 
         if (responseData.success && responseData.document?.id) {
             return responseData.document.id;
@@ -195,10 +213,13 @@ export const useMultiFileUpload = ({
                 onUploadProgress?.(i + 1, totalFiles, file.name);
 
                 try {
-                    const docId = await uploadSingleFile(file);
-                    if (docId) {
-                        documentIds.push(docId);
+                    const result = await uploadSingleFile(file);
+                    if (result === null) {
+                        // Duplicate detected or upload returned no ID - stop
+                        setIsUploading(false);
+                        return;
                     }
+                    documentIds.push(result);
                 } catch (fileError) {
                     console.error(`Failed to upload ${file.name}:`, fileError);
                     // Continue with other files even if one fails
@@ -246,6 +267,13 @@ export const useMultiFileUpload = ({
     };
 
     /**
+     * Dismiss the duplicate document notification
+     */
+    const dismissDuplicate = () => {
+        setDuplicateDocument(null);
+    };
+
+    /**
      * Cancel the upload process
      */
     const handleCancelUpload = () => {
@@ -266,6 +294,7 @@ export const useMultiFileUpload = ({
         isDragging,
         isUploading,
         progress,
+        duplicateDocument,
         fileInputRef,
         fileCount: uploadedFiles.length,
         totalSize: uploadedFiles.reduce((acc, f) => acc + f.size, 0),
@@ -274,7 +303,8 @@ export const useMultiFileUpload = ({
         removeFile,
         clearFiles,
         handleConfirmUpload,
-        handleCancelUpload
+        handleCancelUpload,
+        dismissDuplicate
     };
 };
 

@@ -89,10 +89,21 @@ const UploadDocumentViewer: React.FC<UploadDocumentViewerProps> = ({
   const handleDownload = () => {
     if (!docId) return;
 
-    const link = document.createElement('a');
-    link.href = `/api/documents/${docId}/download`;
-    link.download = fileName;
-    link.click();
+    // Use already loaded blob URL if available (best for binary files like PDF)
+    if (fileContent && (mimeType === 'application/pdf' || mimeType?.startsWith('image/'))) {
+      const link = document.createElement('a');
+      link.href = fileContent;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Fallback for text files or if content not yet loaded
+      const link = document.createElement('a');
+      link.href = `/api/documents/${docId}/download`;
+      link.download = fileName;
+      link.click();
+    }
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 10, 200));

@@ -4,9 +4,11 @@ import { FileLink } from './FileLink';
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  onViewDocument?: (docId: number) => void;
+  onNavigate?: (doc: any) => void;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onViewDocument, onNavigate }) => {
   const isUser = message.type === 'user';
 
   return (
@@ -15,8 +17,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {/* Message bubble - Staff theme colors */}
         <div
           className={`rounded-2xl px-5 py-3 shadow-sm ${isUser
-              ? 'bg-gradient-to-br from-[#228B22] to-[#1a6b1a] text-white'
-              : 'bg-white border border-gray-200 text-gray-900'
+            ? 'bg-gradient-to-br from-[#228B22] to-[#1a6b1a] text-white'
+            : 'bg-white border border-gray-200 text-gray-900'
             }`}
         >
 
@@ -30,8 +32,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 📎 Referenced Documents:
               </p>
               {message.documents.map((doc) => (
-                <FileLink key={doc.doc_id} document={doc} />
+                <FileLink key={doc.doc_id} document={doc} onViewDocument={onViewDocument} onNavigate={onNavigate} />
               ))}
+              {message.more_documents_count && message.more_documents_count > 0 && (
+                <p className={`text-xs italic mt-1 ${isUser ? 'text-white/70' : 'text-gray-500'}`}>
+                  ...and {message.more_documents_count} more documents.
+                </p>
+              )}
             </div>
           )}
 

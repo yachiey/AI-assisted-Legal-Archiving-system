@@ -28,20 +28,21 @@ class GroqService
     {
         // Extract HTTP client options (don't send to API)
         $timeout = $options['timeout'] ?? 30;
-        unset($options['timeout']);
+        $activeApiKey = $options['apiKey'] ?? $this->apiKey; // Use custom key if provided, else default
+        unset($options['timeout'], $options['apiKey']);
 
         // Build API payload
         $payload = array_merge([
             'model' => $this->model,
             'messages' => $messages,
             'temperature' => 0.7,
-            'max_tokens' => 32048,
+            'max_tokens' => 8192,
         ], $options);
 
         try {
             $response = Http::timeout($timeout)
                 ->withHeaders([
-                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Authorization' => 'Bearer ' . $activeApiKey,
                     'Content-Type' => 'application/json',
                 ])
                 ->post($this->apiUrl, $payload);
@@ -90,6 +91,7 @@ class GroqService
         $prompt .= "INSTRUCTIONS:\n";
         $prompt .= "- Analyze the document titles and content previews\n";
         $prompt .= "- Identify which documents match the user's query\n";
+        $prompt .= "- If the query contains a specific person's name, ONLY include documents that belong to or mention that person. Do NOT include documents for other people, even if the document type matches.\n";
         $prompt .= "- Return ONLY the document IDs as a comma-separated list\n";
         $prompt .= "- If no documents match, return 'NONE'\n";
         $prompt .= "- Do NOT include any explanation, just the IDs\n\n";
@@ -155,15 +157,30 @@ class GroqService
         $prompt = 'You are a helpful AI assistant for a legal document management system. You provide clear, accurate, and professional responses.';
 
         if (!empty($documentContext)) {
-            $prompt .= "\n\nCRITICAL INSTRUCTIONS:\n" .
-                      "- Answer based ONLY on the document content provided\n" .
-                      "- Quote specific text from the documents\n" .
+            $prompt .= "\n\nCRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:\n" .
+                      "- Answer based ONLY on the data provided in the context below\n" .
+                      "- NEVER INVENT or MAKE UP information that is not in the context\n" .
+                      "- NEVER create fake subfolders, documents, or hierarchies\n" .
+                      "- If context shows a FOLDER LIST, output ONLY the exact folders shown - do NOT suggest or create new subfolders\n" .
+                      "- Quote specific text from the documents when available\n" .
                       "- State ONLY document titles when discussing documents\n" .
                       "- If asked 'what folder?', respond ONLY with the folder name from 'Folder:' field\n" .
-                      "- NEVER create multi-level folder paths\n" .
-                      "- NEVER use phrases like 'located in', 'found in'\n" .
+                      "- NEVER create multi-level folder paths that don't exist\n" .
+                      "- NEVER use phrases like 'you could organize' or 'a possible hierarchy'\n" .
                       "- NEVER mention folders unless explicitly asked\n" .
-                      "- NEVER invent information not in the provided context";
+                      "- When the context shows '=== FOLDER LIST ===' or '=== FOLDER SUMMARY ===' you MUST respond with ONLY the exact data shown\n" .
+                      "- When user says 'open', 'view', or 'display' a document, respond with: 'To view the document, click the 👁 (eye) button on the document reference card above.' DO NOT simulate a document viewer.\n" .
+                      "- Correct obvious OCR errors (e.g., 'IOLIVER' -> 'OLIVER') silently - just output the clean name\n" .
+                      "- Do NOT quote duplicate or messy text verbatim\n" .
+                      "- FORBIDDEN: Creating suggestions, recommendations, or 'possible' structures that don't exist in the database\n" .
+                      "\nRESPONSE FORMATTING RULES:\n" .
+                      "- CHECK FOR DUPLICATES: Treat documents with the same person's name and same subject (e.g., 'Affidavit of No Violation') as ONE record, even if filenames differ.\n" .
+                      "- DO NOT repeat document lists if they refer to the same person and same subject.\n" .
+                      "- ANSWER ONLY what is asked in 1-2 sentences. Be extremely concise.\n" .
+                      "- If multiple documents refer to the SAME person, state: 'Found multiple documents for [Name] relating to [Subject].' and stop. Do not list them individually unless contents differ significantly.\n" .
+                      "- ONLY say there are 'multiple people' if the names actually differ.\n" .
+                      "- Distinguish between 'Identity Count' (people) and 'Document Count' (files).\n" .
+                      "- Use neutral, factual language.";
         }
 
         return $prompt;
@@ -203,7 +220,7 @@ class GroqService
 
         $options = [
             'temperature' => 0.3,
-            'max_tokens' => 32048
+            'max_tokens' => 8192
         ];
 
         try {

@@ -214,8 +214,20 @@ class DocumentStorageService
             }
         }
 
-        // Store the file in the appropriate folder
-        return $file->store($folderPath, 'documents');
+        // Sanitize filename to be safe
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        $safeName = $this->sanitizeFileName($originalName);
+        $fileName = $safeName . '.' . $extension;
+
+        // Check for collisions
+        if (Storage::disk('documents')->exists($folderPath ? $folderPath . '/' . $fileName : $fileName)) {
+             $fileName = $safeName . '_' . time() . '.' . $extension;
+        }
+
+        // Store the file in the appropriate folder with explicit name
+        // This avoids the random hash filenames like "WiYbRb..."
+        return $file->storeAs($folderPath, $fileName, 'documents');
     }
 
     /**

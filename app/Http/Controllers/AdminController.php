@@ -18,14 +18,21 @@ class AdminController extends Controller
         // Get authenticated user - middleware ensures user is authenticated
         $user = $request->user('sanctum') ?? $request->user();
 
-        // Get document statistics - count active documents
-        $totalDocuments = Document::where('status', 'active')->count();
+        // Get folder and period filters
+        $folderFilter = $request->get('folder', 'all');
+        $periodFilter = $request->get('period', 'month');
+        $staffPage = $request->get('staff_page', 1);
 
-        // Get active users (users with active status)
-        $activeUsers = \App\Models\User::where('status', 'active')->count();
+        // Get total folders
+        $totalFolders = Folder::count();
 
-        // Get total users
-        $totalUsers = \App\Models\User::count();
+        // Get total users (staff only, excluding admins)
+        $totalUsers = \App\Models\User::where('role', '!=', 'admin')->count();
+
+        // Get documents uploaded today
+        $uploadedToday = Document::where('status', 'active')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
 
         // Get monthly upload statistics (last 12 months)
         $monthlyUploads = $this->getMonthlyUploadData();
@@ -50,23 +57,6 @@ class AdminController extends Controller
                 ];
             });
 
-        // Get recent downloads (from last 24 hours)
-        $recentDownloads = \App\Models\ActivityLog::with(['document', 'user'])
-            ->where('activity_type', 'download')
-            ->where('activity_time', '>=', now()->subDay())
-            ->orderBy('activity_time', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($log) {
-                $activityTime = \Carbon\Carbon::parse($log->activity_time);
-                return [
-                    'id' => $log->log_id,
-                    'title' => $log->document ? $log->document->title : 'Unknown Document',
-                    'timestamp' => $activityTime->format('g:i A'),
-                    'date' => $activityTime->format('M d, Y'),
-                    'downloaded_by' => $log->user ? $log->user->firstname . ' ' . $log->user->lastname : 'Unknown',
-                ];
-            });
 
         // Get recent activities (from last 24 hours)
         $activities = \App\Models\ActivityLog::with(['document', 'user'])
@@ -92,6 +82,67 @@ class AdminController extends Controller
                 ];
             });
 
+        // --- Integrated Report Data ---
+        $totalDocsCountQuery = Document::where('status', 'active');
+        
+        // Apply period filter - REMOVED to show all-time counts
+        // if ($periodFilter === 'week') {
+        //     $totalDocsCountQuery->where('created_at', '>=', now()->subDays(7));
+        // } elseif ($periodFilter === 'month') {
+        //     $totalDocsCountQuery->where('created_at', '>=', now()->startOfMonth());
+        // } elseif ($periodFilter === 'year') {
+        //     $totalDocsCountQuery->where('created_at', '>=', now()->startOfYear());
+        // }
+        
+        $totalDocsCount = (clone $totalDocsCountQuery)->count();
+        $perPage = 5;
+        
+        $foldersQuery = Folder::query();
+        if ($folderFilter !== 'all') {
+            $foldersQuery->where('folder_id', $folderFilter);
+        }
+
+        $allFoldersData = $foldersQuery->get()
+            ->map(function ($folder) use ($totalDocsCountQuery, $totalDocsCount) {
+                $count = (clone $totalDocsCountQuery)
+                    ->where('folder_id', $folder->folder_id)
+                    ->count();
+
+                $percentage = $totalDocsCount > 0 ? ($count / $totalDocsCount) * 100 : 0;
+
+                return [
+                    'category' => $folder->folder_name,
+                    'count' => $count,
+                    'percentage' => round($percentage, 1)
+                ];
+            })
+            ->sortByDesc('count')
+            ->values();
+
+        $page = $request->get('page', 1);
+        $total = $allFoldersData->count();
+        $documentsByFolder = $allFoldersData->forPage($page, $perPage)->values()->toArray();
+
+        $pagination = [
+            'current_page' => (int)$page,
+            'per_page' => (int)$perPage,
+            'total' => $total,
+            'last_page' => (int)ceil($total / $perPage),
+            'from' => (($page - 1) * $perPage) + 1,
+            'to' => min($page * $perPage, $total),
+        ];
+
+        // Get staff leaderboard with pagination
+        $staffLeaderboardData = $this->getStaffLeaderboard($staffPage);
+        $staffPagination = [
+            'current_page' => $staffLeaderboardData->currentPage(),
+            'per_page' => $staffLeaderboardData->perPage(),
+            'total' => $staffLeaderboardData->total(),
+            'last_page' => $staffLeaderboardData->lastPage(),
+            'from' => $staffLeaderboardData->firstItem(),
+            'to' => $staffLeaderboardData->lastItem(),
+        ];
+
         return Inertia::render('Admin/Dashboard/index', [
             'user' => $user ? [
                 'user_id' => $user->user_id,
@@ -101,16 +152,47 @@ class AdminController extends Controller
                 'email' => $user->email,
             ] : null,
             'stats' => [
-                'totalDocuments' => $totalDocuments,
-                'activeUsers' => $activeUsers,
+                'totalDocuments' => $totalDocsCount,
+                'totalFolders' => $totalFolders,
                 'totalUsers' => $totalUsers,
+                'uploadedToday' => $uploadedToday,
             ],
             'monthlyUploads' => $monthlyUploads,
             'documentAnalytics' => $documentAnalytics,
             'recentFiles' => $recentFiles,
-            'recentDownloads' => $recentDownloads,
             'activities' => $activities,
+            'documentsByCategory' => $documentsByFolder,
+            'staffLeaderboard' => $staffLeaderboardData->items(),
+            'staffPagination' => $staffPagination,
+            'pagination' => $pagination,
+            'selectedCategory' => $folderFilter,
+            'selectedPeriod' => $periodFilter,
         ]);
+    }
+
+    /**
+     * Get staff members ranked by their upload activity
+     */
+    /**
+     * Get staff members ranked by their upload activity
+     */
+    private function getStaffLeaderboard($page = 1, $perPage = 5)
+    {
+        return \App\Models\User::where('role', 'staff')
+            ->withCount(['documents' => function($query) {
+                $query->where('status', 'active');
+            }])
+            ->orderBy('documents_count', 'desc')
+            ->paginate($perPage, ['*'], 'staff_page', $page)
+            ->through(function($user) {
+                return [
+                    'name' => $user->firstname . ' ' . $user->lastname,
+                    'count' => $user->documents_count,
+                    'first_letter' => strtoupper(substr($user->firstname, 0, 1)),
+                    'profile_picture' => $user->profile_picture,
+                    'role' => 'Staff Member'
+                ];
+            });
     }
 
     /**
@@ -233,5 +315,52 @@ class AdminController extends Controller
                 'updated_at' => $user->updated_at->toISOString(),
             ],
         ]);
+    }
+
+    /**
+     * Get notifications for the current admin user
+     */
+    public function getNotifications(Request $request)
+    {
+        $user = $request->user();
+        $notifications = \App\Models\Notification::where('user_id', $user->user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'notifications' => $notifications
+        ]);
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markNotificationRead($id)
+    {
+        try {
+            $notification = \App\Models\Notification::where('id', $id)
+                ->where('user_id', auth()->id())
+                ->firstOrFail();
+
+            $notification->update(['is_read' => true]);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false], 404);
+        }
+    }
+
+    /**
+     * Mark all notifications as read
+     */
+    public function markAllNotificationsRead()
+    {
+        \App\Models\Notification::where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['success' => true]);
     }
 }

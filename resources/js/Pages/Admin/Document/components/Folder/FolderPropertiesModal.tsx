@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { X, Folder as FolderIcon, FolderOpen, Calendar, User, HardDrive, Hash, FileText } from 'lucide-react';
+import { X, Folder as FolderIcon, FolderOpen, Calendar, User, HardDrive, FileText } from 'lucide-react';
 import { Folder } from '../../types/types';
 
 interface FolderPropertiesModalProps {
@@ -135,12 +135,6 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
               value={formatDate(folder.updated_at)}
             />
 
-            {/* Folder ID */}
-            <PropertyRow
-              icon={<Hash className="w-4 h-4" />}
-              label="Folder ID"
-              value={`#${folder.folder_id}`}
-            />
           </div>
         </div>
 

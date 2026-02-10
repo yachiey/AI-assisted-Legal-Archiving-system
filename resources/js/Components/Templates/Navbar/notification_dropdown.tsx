@@ -61,8 +61,8 @@ const NotificationDropdown: React.FC = () => {
         <div className="relative">
             <button
                 className={`relative p-2 rounded-xl transition-all ml-2 ${isOpen
-                        ? "text-green-800"
-                        : "text-green-700 hover:text-green-600"
+                    ? "text-green-800"
+                    : "text-green-700 hover:text-green-600"
                     }`}
                 style={{
                     background: 'rgba(255, 255, 255, 0.4)',

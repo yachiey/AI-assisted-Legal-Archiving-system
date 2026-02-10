@@ -19,6 +19,8 @@ class AIAssistantController extends Controller
     private $aiBridgeUrl;
     private $aiServiceType;
     private GroqService $groqService;
+    private $stopWords;
+    private $folderAliases;
 
     public function __construct(GroqService $groqService)
     {
@@ -26,6 +28,20 @@ class AIAssistantController extends Controller
         $this->aiBridgeUrl = env('AI_BRIDGE_URL', 'http://localhost:5003');
         $this->aiServiceType = env('AI_SERVICE_TYPE', 'local');
         $this->groqService = $groqService;
+
+        $this->folderAliases = [
+            'MOA' => ['Mode of Agreement', 'Memorandum of Agreement'],
+        ];
+        
+        $this->stopWords = [
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 
+            'will', 'would', 'could', 'should', 'can', 'may', 'might', 'this', 'that', 'these', 'those', 
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 
+            'how', 'get', 'me', 'give', 'show', 'find', 'document', 'documents', 'file', 'files', 'about',
+            'tell', 'ask', 'say', 'look', 'search', 'find', 'please', 'thanks', 'thank', 'hi', 'hello', 'hey',
+            'many', 'count', 'list', 'total', 'all', 'every', 'check', 'view', 'see', 'folder', 'folders'
+        ];
     }
 
     public function sendMessage(Request $request)
@@ -94,33 +110,72 @@ class AIAssistantController extends Controller
                 }
             }
 
-            // Check if user is asking about document location/search or specific content
-            $searchResults = $this->searchDocumentsByQuery($request->message, $userId);
 
-            // Perform metadata search (fast SQL search on title/description)
-            $metadataResults = $this->searchDocumentsMetadata($request->message, $userId);
 
-            // Perform semantic search if query contains names or specific search terms
-            $semanticResults = $this->performSemanticSearch($request->message, $userId);
+            $documentContext = ''; // Initialize context
+
+            // DOCUMENT SCOPING: If the user explicitly selected documents, use ONLY those.
+            // Skip all other document discovery (metadata search, semantic search, conversation carryover).
+            $hasExplicitDocuments = !empty($request->document_ids);
+
+            if ($hasExplicitDocuments) {
+                Log::info('Explicit document selection detected — skipping search/carryover', [
+                    'document_ids' => $request->document_ids
+                ]);
+            }
+
+            $detectedFolder = null;
+            $folderConstraintId = null;
+            $dateParams = [];
+            $metadataResults = [];
+            $semanticResults = [];
+
+            if (!$hasExplicitDocuments) {
+                // Detect folder context globally for the request
+                $detectedFolder = $this->detectFolder($request->message);
+                $folderConstraintId = $detectedFolder['id'] ?? null;
+                if ($folderConstraintId) {
+                    Log::info('Global folder constraint detected', ['folder_id' => $folderConstraintId, 'name' => $detectedFolder['name']]);
+                }
+                
+                // Extract date parameters (years) first
+                $dateParams = $this->extractDateParams($request->message);
+
+                // Perform metadata search (fast SQL search on title/description)
+                $metadataResults = $this->searchDocumentsMetadata($request->message, $userId, $dateParams);
+
+                // Perform semantic search if query contains names or specific search terms
+                $semanticResults = $this->performSemanticSearch($request->message, $userId);
+            }
 
             // Collect all relevant document IDs
             $allDocumentIds = $request->document_ids ?? [];
             
-            // Add IDs from search results
-            if (!empty($searchResults['documents'])) {
-                foreach ($searchResults['documents'] as $doc) {
-                    $allDocumentIds[] = $doc['doc_id'];
-                }
-            }
-            if (!empty($metadataResults['documents'])) {
+            // Add IDs from search results (only when no explicit documents are selected)
+            if (!$hasExplicitDocuments && !empty($metadataResults['documents'])) {
                 foreach ($metadataResults['documents'] as $doc) {
                     $allDocumentIds[] = $doc['doc_id'];
                 }
             }
 
-            // NEW: Carry over documents from the previous message in this conversation
+            // NEW: Get Analytics Stats if requested
+            $analyticsContext = $this->getAnalyticsStats($request->message, $userId);
+            if (!empty($analyticsContext)) {
+                $documentContext .= "\n\n" . $analyticsContext;
+                Log::info('Analytics stats added to context');
+            }
+
+            // NEW: List all folders/categories context if requested
+            $folderListContext = $this->getAllFoldersContext($request->message);
+            if (!empty($folderListContext)) {
+                $documentContext .= "\n\n" . $folderListContext;
+                Log::info('Folder list context added');
+            }
+
+            // Carry over documents from the previous message in this conversation
             // This allows the user to say "compare it" referring to documents found in the previous turn
-            if ($conversationId) {
+            // BUT NOT when the user has explicitly selected documents (those override everything)
+            if (!$hasExplicitDocuments && $conversationId) {
                 $lastHistory = AIHistory::where('conversation_id', $conversationId)
                     ->where('user_id', $userId)
                     ->orderBy('created_at', 'desc')
@@ -138,11 +193,26 @@ class AIAssistantController extends Controller
                 }
             }
 
+            // VALIDATION: If user asks to compare but no documents are selected or found
+            if (empty($allDocumentIds) && preg_match('/\b(compare|comparison|diff|versus|vs|contrast)\b/i', $request->message)) {
+                // Create conversation if needed so we can return a session_id
+                return response()->json([
+                    'id' => time(),
+                    'content' => 'I\'d be happy to compare documents for you! However, no documents are currently selected. Please use the 📎 attachment icon to select the documents you want me to compare, then ask again.',
+                    'session_id' => $conversationId,
+                    'type' => 'ai',
+                    'timestamp' => now()->toISOString(),
+                    'documents' => [],
+                    'more_documents_count' => 0,
+                    'auto_open_doc_id' => null,
+                ]);
+            }
+
             $allDocumentIds = array_unique($allDocumentIds);
 
             // Retrieve document context if we have any relevant documents
             // Use higher limits for Groq API
-            $documentContext = '';
+            // $documentContext initialized above
             $useGroqLimits = $this->aiServiceType === 'groq';
             
             if (count($allDocumentIds) > 0) {
@@ -151,7 +221,10 @@ class AIAssistantController extends Controller
                     'ids' => array_values($allDocumentIds)
                 ]);
                 
-                $documentContext = $this->retrieveDocumentContext($allDocumentIds, $userId, $useGroqLimits);
+                $retrievedDocs = $this->retrieveDocumentContext($allDocumentIds, $userId, $useGroqLimits);
+                if (!empty($retrievedDocs)) {
+                    $documentContext .= "\n\n" . $retrievedDocs;
+                }
 
                 Log::info('Document context retrieved', [
                     'document_count' => count($allDocumentIds),
@@ -160,24 +233,18 @@ class AIAssistantController extends Controller
                 ]);
             }
 
-            // Add search results to document context if found
-            if (!empty($searchResults)) {
-                $documentContext .= "\n\n" . $searchResults['context'];
-                Log::info('Document search results added to context', [
-                    'documents_found' => $searchResults['count']
-                ]);
-            }
 
-            // Add metadata search results to document context if found
-            if (!empty($metadataResults)) {
+
+            // Add metadata search results to document context if found (only when no explicit docs)
+            if (!$hasExplicitDocuments && !empty($metadataResults) && !empty($metadataResults['context'])) {
                 $documentContext .= "\n\n" . $metadataResults['context'];
                 Log::info('Metadata search results added to context', [
-                    'documents_found' => $metadataResults['count']
+                    'documents_found' => $metadataResults['count'] ?? 0
                 ]);
             }
 
-            // Add semantic search results to document context if found
-            if (!empty($semanticResults) && !empty($semanticResults['results'])) {
+            // Add semantic search results to document context if found (only when no explicit docs)
+            if (!$hasExplicitDocuments && !empty($semanticResults) && !empty($semanticResults['results'])) {
                 $documentContext .= "\n\n" . $semanticResults['context'];
                 Log::info('Semantic search results added to context', [
                     'chunks_found' => count($semanticResults['results'])
@@ -223,34 +290,53 @@ class AIAssistantController extends Controller
             ]);
 
             // Get document metadata for response if documents were provided OR found via search
-            $documentReferences = [];
+            $allRefs = collect([]);
+
+            // 1. Manually attached documents
             if ($request->document_ids && count($request->document_ids) > 0) {
                 $documents = Document::whereIn('doc_id', $request->document_ids)
                     ->with('folder:folder_id,folder_name')
                     ->get(['doc_id', 'title', 'folder_id']);
 
-                $documentReferences = $documents->map(function($doc) {
+                $manualRefs = $documents->map(function($doc) {
                     return [
                         'doc_id' => $doc->doc_id,
                         'title' => $doc->title,
                         'folder_id' => $doc->folder_id,
                         'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
                     ];
-                })->toArray();
-            } elseif (!empty($searchResults) && !empty($searchResults['documents'])) {
-                // Add search results as document references
-                $documentReferences = $searchResults['documents'];
-            } elseif (!empty($metadataResults) && !empty($metadataResults['documents'])) {
-                // Add metadata search results as document references
-                $documentReferences = $metadataResults['documents'];
-            } elseif (!empty($semanticResults) && !empty($semanticResults['documents'])) {
-                // Add semantic search results as document references
+                });
+                $allRefs = $allRefs->merge($manualRefs);
+            }
+            
+
+            
+            // 3. Metadata Search Results (only when no explicit document selection)
+            if (!$hasExplicitDocuments && !empty($metadataResults) && !empty($metadataResults['documents'])) {
+                $allRefs = $allRefs->merge($metadataResults['documents']);
+            }
+            
+            // 4. Semantic Search Results (only when no explicit document selection)
+            if (!$hasExplicitDocuments && !empty($semanticResults) && !empty($semanticResults['documents'])) {
+                $semanticRefs = [];
                 foreach ($semanticResults['documents'] as $semanticDoc) {
                     $doc = Document::with('folder:folder_id,folder_name')
                         ->find($semanticDoc['doc_id']);
 
                     if ($doc) {
-                        $documentReferences[] = [
+                        // CRITICAL FIX: Enforce folder constraint
+                        // If a global folder constraint was detected (e.g. "MOA"), 
+                        // exclude any semantic results that are NOT in that folder.
+                        if ($folderConstraintId && $doc->folder_id !== $folderConstraintId) {
+                            Log::info('Filtered out relevant document due to folder constraint', [
+                                'doc_id' => $doc->doc_id,
+                                'doc_folder' => $doc->folder_id,
+                                'constraint_folder' => $folderConstraintId
+                            ]);
+                            continue;
+                        }
+
+                        $semanticRefs[] = [
                             'doc_id' => $doc->doc_id,
                             'title' => $doc->title,
                             'folder_id' => $doc->folder_id,
@@ -258,6 +344,37 @@ class AIAssistantController extends Controller
                             'matches' => $semanticDoc['matches'] ?? 1
                         ];
                     }
+                }
+                $allRefs = $allRefs->merge($semanticRefs);
+            }
+
+            // Deduplicate by doc_id and convert to array
+            $documentReferences = $allRefs->unique('doc_id')->values()->toArray();
+
+            // Detect "open document" command - should auto-open the viewer
+            $isOpenCommand = preg_match('/\b(open|view|display|show me)\b.*(document|file|it|this|that|pdf)/i', $request->message) ||
+                             preg_match('/\b(open|view|display)\b.*\b(it|this|that)\b/i', $request->message) ||
+                             preg_match('/^(open|view)\s+(the\s+)?(document|file|pdf)/i', $request->message);
+            
+            Log::info('Open command detection', [
+                'message' => $request->message,
+                'isOpenCommand' => $isOpenCommand,
+                'document_refs_count' => count($documentReferences),
+                'all_doc_ids_count' => count($allDocumentIds)
+            ]);
+            
+            // If it's an open command and we have documents (from references or session), set auto_open
+            $autoOpenDocId = null;
+            if ($isOpenCommand) {
+                // Prioritize: use document references first, then fall back to all document IDs
+                if (count($documentReferences) > 0) {
+                    $autoOpenDocId = $documentReferences[0]['doc_id'];
+                } elseif (count($allDocumentIds) > 0) {
+                    $autoOpenDocId = $allDocumentIds[0];
+                }
+                
+                if ($autoOpenDocId) {
+                    Log::info('Auto-open document triggered', ['doc_id' => $autoOpenDocId]);
                 }
             }
 
@@ -274,6 +391,16 @@ class AIAssistantController extends Controller
                 'created_at' => $timestamp,
             ]);
 
+            // Limit referenced documents to 5 and calculate remainder
+            $totalReferences = count($documentReferences);
+            $limit = 5;
+            $moreDocumentsCount = max(0, $totalReferences - $limit);
+            
+            // Slice the array if needed (preserving keys not strictly necessary as it returns array of objects, but values() ensures indexed array)
+            if ($totalReferences > $limit) {
+                $documentReferences = array_slice($documentReferences, 0, $limit);
+            }
+
             return response()->json([
                 'id' => time(),
                 'content' => $aiResponse,
@@ -281,6 +408,8 @@ class AIAssistantController extends Controller
                 'type' => 'ai',
                 'timestamp' => $timestamp->toISOString(),
                 'documents' => $documentReferences,
+                'more_documents_count' => $moreDocumentsCount,
+                'auto_open_doc_id' => $autoOpenDocId,
             ]);
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
@@ -307,6 +436,9 @@ class AIAssistantController extends Controller
             ], 500);
             
         } catch (\Exception $e) {
+            // DEBUG: Write to a separate log file
+            file_put_contents(storage_path('logs/ai_debug.log'), date('Y-m-d H:i:s') . " ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n----------------\n", FILE_APPEND);
+
             Log::error('Chat failed', [
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id(),
@@ -461,6 +593,11 @@ class AIAssistantController extends Controller
                 return response()->json(['error' => 'Conversation not found'], 404);
             }
 
+            // Delete related chat history to prevent orphaned records
+            AIHistory::where('conversation_id', $conversationId)
+                ->where('user_id', Auth::id())
+                ->delete();
+
             return response()->json(['message' => 'Conversation deleted']);
         } catch (\Exception $e) {
             Log::error('Delete conversation failed', [
@@ -540,7 +677,7 @@ class AIAssistantController extends Controller
             // Get document embeddings/chunks for accessible documents
             // We fetch ALL chunks first, then select them in a round-robin fashion
             $embeddings = DocumentEmbedding::whereIn('doc_id', $accessibleDocuments)
-                ->with('document:doc_id,title')
+                ->with(['document:doc_id,title,folder_id', 'document.folder:folder_id,folder_name'])
                 ->orderBy('doc_id')
                 ->orderBy('chunk_index')
                 ->get();
@@ -577,10 +714,11 @@ class AIAssistantController extends Controller
 
             $chunkCount = 0;
 
-            // Use higher limits for Groq (supports 128K context), lower for local
-            // INCREASED LIMITS: Local 3 -> 15 chunks, 2000 -> 6000 chars to support comparison
-            $maxChunks = $useGroqLimits ? 40 : 15;
-            $maxContextLength = $useGroqLimits ? 32000 : 6000;
+            // Use moderate limits for Groq to avoid rate limits on free tier (12K tokens/min)
+            // Groq: ~8K chars ≈ 2K tokens, leaving room for prompt + response (est. 4 chars/token)
+            // Local: 15 chunks, 6000 chars for comparison queries
+            $maxChunks = $useGroqLimits ? 12 : 15;
+            $maxContextLength = $useGroqLimits ? 8000 : 6000;
             
             // Variable to track which documents we've already added a header for in the current block
             // Since we're interleaving, we might switch back and forth.
@@ -593,10 +731,11 @@ class AIAssistantController extends Controller
                     break;
                 }
 
-                $docTitle = $embedding->document->title ?? 'Document ' . $embedding->doc_id;
+                $docTitle = $embedding->document?->title ?? 'Document ' . $embedding->doc_id;
+                $folderName = $embedding->document?->folder?->folder_name ?? 'Uncategorized';
                 
-                // Content with clear attribution
-                $chunkContent = "--- Excerpt from Document: \"{$docTitle}\" ---\n{$embedding->chunk_text}\n";
+                // Content with clear attribution and folder context
+                $chunkContent = "--- Excerpt from Document: \"{$docTitle}\" (Folder: {$folderName}) ---\n{$embedding->chunk_text}\n";
 
                 // Check if adding this chunk would exceed our length limit
                 if (strlen($context . $chunkContent) > $maxContextLength) {
@@ -628,128 +767,7 @@ class AIAssistantController extends Controller
         }
     }
 
-    /**
-     * Search for documents based on user query (e.g., asking for document location)
-     */
-    private function searchDocumentsByQuery(string $message, int $userId): array
-    {
-        try {
-            // Check if the user is asking about document location or searching for a document
-            $isLocationQuery = preg_match('/(where|location|find|search|give|show|tell|link).*(document|file|link|location)/i', $message) ||
-                               preg_match('/(give me|show me|tell me|find).*(location|where|link|document|file)/i', $message) ||
-                               preg_match('/\b(link|location|where is|find|search)\b/i', $message);
 
-            if (!$isLocationQuery) {
-                return [];
-            }
-
-            Log::info('Document location query detected', ['message' => $message]);
-
-            // Extract potential document title from the message
-            // Look for quoted text or capitalized phrases (relaxed for case-insensitivity)
-            $titlePattern = '/"([^"]+)"|\'([^\']+)\'|([a-zA-Z][a-zA-Z\s]+(?:Guide|Manual|Policy|Procedures|Document|File|Report))/i';
-            preg_match_all($titlePattern, $message, $matches);
-
-            $searchTerms = array_filter(array_merge(
-                $matches[1] ?? [],
-                $matches[2] ?? [],
-                $matches[3] ?? []
-            ));
-
-            if (empty($searchTerms)) {
-                // If no specific title found, extract keywords from the message
-                $words = explode(' ', $message);
-                $searchTerms = array_filter($words, function($word) {
-                    return strlen($word) >= 3 && !in_array(strtolower($word), ['where', 'location', 'find', 'document', 'file', 'give', 'show', 'tell', 'link', 'this', 'that', 'here', 'there']);
-                });
-            }
-
-            // Search for documents matching the terms (all active documents)
-            $query = Document::where('status', 'active')
-                ->with('folder:folder_id,folder_name,parent_folder_id');
-
-            if (!empty($searchTerms)) {
-                // Search with specific terms
-                foreach ($searchTerms as $term) {
-                    $query->where(function($q) use ($term) {
-                        $q->where('title', 'ILIKE', "%{$term}%")
-                          ->orWhere('description', 'ILIKE', "%{$term}%");
-                    });
-                }
-                $documents = $query->limit(5)->get();
-            } else {
-                // If user asks "give me the link" without specifying which document,
-                // show the most recent documents
-                Log::info('No specific search terms, showing recent documents');
-                $documents = Document::where('status', 'active')
-                    ->with('folder:folder_id,folder_name,parent_folder_id')
-                    ->orderBy('created_at', 'desc')
-                    ->limit(5)
-                    ->get();
-            }
-
-            if ($documents->isEmpty()) {
-                return [];
-            }
-
-            // Build context for AI
-            $context = "\n\n=== DOCUMENT DATABASE SEARCH RESULTS ===\n\n";
-            $context .= "I have searched the user's document management system and found these documents:\n\n";
-
-            $documentReferences = [];
-
-            foreach ($documents as $doc) {
-                $folderPath = $this->buildFolderPath($doc->folder);
-                $context .= "Document #{$doc->doc_id}: \"{$doc->title}\"\n";
-                $context .= "  └─ Folder Location: {$folderPath}\n";
-                $context .= "  └─ Uploaded: {$doc->created_at->format('F d, Y')}\n";
-                if ($doc->description) {
-                    $context .= "  └─ Description: {$doc->description}\n";
-                }
-                $context .= "\n";
-
-                $documentReferences[] = [
-                    'doc_id' => $doc->doc_id,
-                    'title' => $doc->title,
-                    'folder_id' => $doc->folder_id,
-                    'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
-                ];
-            }
-
-            $context .= "\n=== CRITICAL INSTRUCTIONS ===\n";
-            $context .= "YOU MUST RESPOND BASED ON THE DOCUMENTS LISTED ABOVE.\n";
-            $context .= "These documents are from the user's OWN document management system.\n\n";
-            $context .= "Your response MUST:\n";
-            $context .= "1. Tell the user that you found the document(s) in their system\n";
-            $context .= "2. State the exact document title(s) from the list above\n";
-            $context .= "3. State the folder location(s) shown above\n";
-            $context .= "4. Tell them clickable links will appear below your message\n\n";
-            $context .= "DO NOT:\n";
-            $context .= "- Say you cannot access documents or locations\n";
-            $context .= "- Suggest checking HR, intranet, or physical locations\n";
-            $context .= "- Give generic advice\n";
-            $context .= "- Create, generate, or write ANY links, markdown links, or clickable elements\n";
-            $context .= "- Write [**Document Link**] or any link syntax like [text](url) or [text](#)\n";
-            $context .= "- Use markdown link formatting - the system automatically adds clickable links below your message\n";
-            $context .= "- Write phrases like 'Click here:' followed by a link\n\n";
-            $context .= "EXAMPLE GOOD RESPONSE:\n";
-            $context .= "\"I found the '{$documents->first()->title}' document in your system! It's located in the '{$this->buildFolderPath($documents->first()->folder)}' folder. You can click on the document link below this message to navigate directly to it.\"\n\n";
-
-            return [
-                'context' => $context,
-                'count' => $documents->count(),
-                'documents' => $documentReferences
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Failed to search documents by query', [
-                'error' => $e->getMessage(),
-                'message' => $message,
-                'user_id' => $userId
-            ]);
-            return [];
-        }
-    }
 
     /**
      * Build folder path string for a folder
@@ -953,54 +971,221 @@ class AIAssistantController extends Controller
     }
 
     /**
+     * Detect if the message refers to a specific folder
+     */
+    private function detectFolder(string $message): ?array
+    {
+        // 1. Check for specific aliases/acronyms using centralized mapping
+        $aliases = $this->folderAliases;
+
+        foreach ($aliases as $acronym => $targets) {
+            // Check for whole word match of acronym
+            if (preg_match('/\b' . preg_quote($acronym, '/') . '\b/i', $message)) {
+                foreach ($targets as $target) {
+                    $folder = \App\Models\Folder::where('folder_name', 'ILIKE', $target)->first();
+                    if ($folder) {
+                        return [
+                            'id' => $folder->folder_id, 
+                            'name' => $folder->folder_name,
+                            'is_alias' => true
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 2. Standard Folder Search
+        $allFolders = \App\Models\Folder::pluck('folder_name', 'folder_id')->toArray();
+        
+        // Sort folders by length (descending) to match "Legal Documents" before "Documents"
+        uasort($allFolders, function($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+
+        foreach ($allFolders as $id => $name) {
+            // Skip very short folder names to avoid false matches (e.g., "hi" matching folder "Hi")
+            if (strlen($name) < 3) continue;
+            if (stripos($message, $name) !== false) {
+                return ['id' => $id, 'name' => $name, 'is_alias' => false];
+            }
+        }
+
+        return null;
+    }
+
+    private function getFolderSummary($folderId, $folderName): array
+    {
+        // Fetch ALL documents for accurate count and references
+        $allDocs = Document::where('folder_id', $folderId)
+            ->where('status', 'active')
+            ->with('folder:folder_id,folder_name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        $count = $allDocs->count();
+
+        $context = "\n\n=== FOLDER SUMMARY ===\n";
+        $context .= "You mentioned the '{$folderName}' folder.\n";
+        $context .= "This folder contains {$count} active documents.\n";
+        
+        // Show only 5 most recent in context for readability
+        $recentDocs = $allDocs->take(5);
+        if ($recentDocs->count() > 0) {
+            $context .= "Here are the most recent ones:\n";
+            foreach ($recentDocs as $doc) {
+                $context .= "- \"{$doc->title}\"\n";
+            }
+        }
+        
+        // Return ALL documents for accurate reference count
+        return [
+            'context' => $context,
+            'count' => $count,
+            'documents' => $allDocs->map(function($doc) {
+                return [
+                    'doc_id' => $doc->doc_id,
+                    'title' => $doc->title,
+                    'folder_id' => $doc->folder_id,
+                    'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
+                ];
+            })->toArray()
+        ];
+    }
+
+    /**
      * Search documents by metadata (title, description) - Fast SQL search
      */
-    private function searchDocumentsMetadata(string $message, int $userId): array
+    private function searchDocumentsMetadata(string $message, int $userId, array $dateParams = []): array
     {
         try {
             // Extract potential search terms from the message
-            $words = preg_split('/\s+/', $message);
+            $cleanMessage = preg_replace('/[[:punct:]]+/', ' ', $message);
+            $words = preg_split('/\s+/', $cleanMessage);
             
-            // Filter out common words but keep proper names (capitalized) and meaningful terms
-            $stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'can', 'may', 'might', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how'];
+            $stopWords = $this->stopWords;
             
-            $searchTerms = array_filter($words, function($word) use ($stopWords) {
+            // Detect folder using centralized method
+            $detectedFolder = $this->detectFolder($message);
+            $detectedFolderId = $detectedFolder['id'] ?? null;
+            $detectedFolderName = $detectedFolder['name'] ?? null;
+
+            if ($detectedFolderId) {
+                Log::info('Detected folder in query', ['folder_name' => $detectedFolderName, 'folder_id' => $detectedFolderId]);
+            }
+            
+            // Filter out folder name from search terms if it was found via direct string match (not alias)
+            $searchTerms = array_filter($words, function($word) use ($stopWords, $detectedFolder) {
                 $wordLower = strtolower($word);
-                // Keep if: length >= 3 AND (not a stop word OR starts with capital letter - likely a name)
+                
+                // If we detected a folder and this word is part of the folder name (and not an alias match), skip it
+                if ($detectedFolder && !$detectedFolder['is_alias'] && stripos($detectedFolder['name'], $word) !== false) {
+                    return false;
+                }
+
+                // NEW: Strict Stopwords (Question/List words) that are NEVER proper names in this context
+                // This prevents "How" from being treated as a proper name and becoming a mandatory search term
+                $strictStopWords = ['how', 'what', 'where', 'why', 'when', 'who', 'which', 'many', 'count', 'list', 'show', 'total', 'find', 'search', 'have'];
+                if (in_array($wordLower, $strictStopWords)) {
+                    return false;
+                }
+
+                // NEW: Folder Alias Exception
+                // If we matched an alias like "MOA", we MUST NOT search for "moa" as a text term.
+                // It is redundant and causes failures if the acronym isn't literally in the document title.
+                if ($detectedFolder && $detectedFolder['is_alias']) {
+                    foreach (array_keys($this->folderAliases) as $acronym) {
+                        if (strcasecmp($word, $acronym) === 0) {
+                            return false;
+                        }
+                    }
+                }
+
                 $isProperName = ctype_upper($word[0] ?? '');
                 return strlen($word) >= 3 && (!in_array($wordLower, $stopWords) || $isProperName);
             });
 
-            if (empty($searchTerms)) {
+            // If we only detected a folder and no entity terms, return empty (don't return all docs in folder)
+            if (empty($searchTerms) && !$detectedFolderId) {
                 return [];
             }
 
+            // Detect if user is asking for ALL documents in a folder (list/count query)
+            $isListQuery = preg_match('/\b(how many|list|all|every|show all|display all|what documents|documents are|count)\b/i', $message);
+            
             Log::info('Metadata search triggered', [
                 'original_message' => $message,
-                'search_terms' => array_values($searchTerms)
+                'search_terms' => array_values($searchTerms),
+                'detected_folder' => $detectedFolderName,
+                'is_list_query' => $isListQuery
             ]);
 
             // Search for documents matching the terms in title or description
             $query = Document::where('status', 'active')
                 ->with('folder:folder_id,folder_name,parent_folder_id');
 
-            // Add OR conditions for each search term
-            $query->where(function($q) use ($searchTerms) {
-                foreach ($searchTerms as $term) {
-                    $q->orWhere('title', 'ILIKE', "%{$term}%")
-                      ->orWhere('description', 'ILIKE', "%{$term}%");
-                }
-            });
+            // Apply folder filter if detected
+            if ($detectedFolderId) {
+                $query->where('folder_id', $detectedFolderId);
+            }
 
-            $documents = $query->limit(10)->get();
+            // Apply Date Filter if present
+            if (!empty($dateParams['years'])) {
+                $query->where(function($q) use ($dateParams) {
+                    foreach ($dateParams['years'] as $year) {
+                        $q->orWhereYear('created_at', $year);
+                        $q->orWhere('title', 'LIKE', "%{$year}%");
+                    }
+                });
+            }
+
+            // Use AND logic for search terms
+            if (!empty($searchTerms)) {
+                
+                foreach ($searchTerms as $term) {
+                    $query->where(function($q) use ($term) {
+                        $q->where('title', 'ILIKE', "%{$term}%")
+                          ->orWhere('description', 'ILIKE', "%{$term}%");
+                    });
+                }
+            } else if ($isListQuery && $detectedFolderId) {
+                // List query with folder - return all documents in that folder
+                Log::info('List query for folder - returning all folder documents', ['folder' => $detectedFolderName]);
+            } else if (empty($searchTerms) && !$isListQuery) {
+                // No search terms and not a list query 
+                if ($detectedFolderId) {
+                    $context = $this->getFolderSummary($detectedFolderId, $detectedFolderName);
+                    return [
+                        'context' => $context['context'],
+                        'count' => $context['count'],
+                        'documents' => $context['documents']
+                    ];
+                }
+                return [];
+            }
+
+            // Get total count before limiting
+            $totalCount = $query->count();
+            $documents = $query->limit(15)->get();
 
             if ($documents->isEmpty()) {
+                if ($isListQuery && $detectedFolderId) {
+                     return [
+                        'context' => "\n\n=== SEARCH RESULT ===\nI checked the folder '{$detectedFolderName}' and found 0 documents.\n",
+                        'count' => 0,
+                        'documents' => []
+                     ];
+                }
                 return [];
             }
 
             // Build context for AI
             $context = "\n\n=== DOCUMENT METADATA SEARCH RESULTS ===\n\n";
-            $context .= "I found these documents in your system that match your search:\n\n";
+            
+            if ($detectedFolderName) {
+                $context .= "Refined Search: Documents in folder '{$detectedFolderName}'\n";
+            }
+            $context .= "Total matching documents found in database: {$totalCount}\n";
+            $context .= "Showing the most relevant {$documents->count()} documents:\n\n";
 
             $documentReferences = [];
 
@@ -1049,13 +1234,30 @@ class AIAssistantController extends Controller
         $hasContentQuery = preg_match('/(does|has|find|search|look for|check if|tell me if|show me).*(have|has|contain|include|mention)/i', $message) ||
                           preg_match('/\b(affidavit|certificate|resolution|contract|agreement|document|file)\b/i', $message);
 
-        // Trigger on names (potential person/org search) - Relaxed capital letter requirement
-        $hasNames = preg_match('/\b[a-zA-Z][a-z]+\s+[a-zA-Z][a-z]+\b/', $message);
+        // Content queries already handled
+        if ($hasContentQuery) return true;
 
-        // Trigger on search keywords
+        // NEW LOGIC: Trigger on ANY significant keyword (case-insensitive)
+        // This replaces the strict Capitalized Name check
+        
+        // Strip punctuation
+        $cleanMessage = preg_replace('/[[:punct:]]+/', ' ', $message);
+        $words = preg_split('/\s+/', $cleanMessage);
+        
+        foreach ($words as $word) {
+            $wordLower = strtolower($word);
+            
+            // If word is significant (>=3 chars and not a stopword)
+            if (strlen($wordLower) >= 3 && !in_array($wordLower, $this->stopWords)) {
+                // It's a significant term (like "oliver", "housing", "salary") -> Trigger Semantic Search
+                return true;
+            }
+        }
+
+        // Trigger on search keywords (fallback)
         $hasSearchKeywords = preg_match('/\b(find|search|locate|where|which|show|list)\b/i', $message);
 
-        return $hasContentQuery || $hasNames || $hasSearchKeywords;
+        return $hasSearchKeywords;
     }
 
     /**
@@ -1091,9 +1293,8 @@ class AIAssistantController extends Controller
     private function groqIntelligentSearch(string $query, int $userId): array
     {
         try {
-            // Fetch recent documents with embeddings (content excerpts)
-            $documents = Document::where('created_by', $userId)
-                ->where('status', 'active')
+            // Fetch all active documents with embeddings (content excerpts)
+            $documents = Document::where('status', 'active')
                 ->with(['folder:folder_id,folder_name', 'embeddings'])
                 ->orderBy('created_at', 'desc')
                 ->take(50)
@@ -1159,6 +1360,19 @@ class AIAssistantController extends Controller
      */
     private function askGroqToIdentifyDocuments(string $query, string $documentList): array
     {
+        $searchKey = env('GROQ_SEARCH_API_KEY');
+        
+        // Option 1: Try with Search Key if available
+        if ($searchKey) {
+            try {
+                return $this->groqService->identifyRelevantDocuments($query, $documentList, ['apiKey' => $searchKey]);
+            } catch (\Exception $e) {
+                Log::warning('Groq Search API Key failed, falling back to default key', ['error' => $e->getMessage()]);
+                // Proceed to fallback
+            }
+        }
+        
+        // Option 2: Default Key (fallback or primary if no search key)
         return $this->groqService->identifyRelevantDocuments($query, $documentList);
     }
 
@@ -1169,8 +1383,11 @@ class AIAssistantController extends Controller
     {
         $results = [];
 
+        // Cast relevantDocIds to integers for proper comparison
+        $relevantDocIds = array_map('intval', $relevantDocIds);
+
         foreach ($documents as $doc) {
-            if (!in_array($doc->doc_id, $relevantDocIds)) {
+            if (!in_array((int)$doc->doc_id, $relevantDocIds, true)) {
                 continue;
             }
 
@@ -1227,12 +1444,21 @@ class AIAssistantController extends Controller
                "- Answer using ONLY the content shown above\n" .
                "- Quote specific text from the excerpts\n" .
                "- State document titles only\n" .
-               "- If asked 'what folder?', reply with ONLY the folder name\n\n" .
+               "- If asked 'what folder?', reply with ONLY the folder name\n" .
+               "- Correct obvious OCR errors (e.g., 'IOLIVER' -> 'OLIVER') SILENTLY\n" .
+               "- Do not explain the correction, just use the clean name\n" .
+               "- Do not quote messy text verbatim\n\n" .
                "FORBIDDEN:\n" .
                "- Creating multi-level folder paths\n" .
                "- Using phrases like 'located in', 'found in'\n" .
                "- Mentioning folders unless directly asked\n" .
-               "- Inventing information not in the context\n\n";
+               "- Inventing information not in the context\n\n" .
+               "RESPONSE FORMATTING RULES:\n" .
+               "- CHECK FOR DUPLICATES: Treat documents with the same person's name and same subject as ONE record.\n" .
+               "- ANSWER ONLY what is asked in 1-2 sentences. Be extremely concise.\n" .
+               "- If multiple documents refer to the SAME person, state: 'Found multiple documents for [Name] relating to [Subject].' and stop.\n" .
+               "- Distinguish between 'Identity Count' (people) and 'Document Count' (files).\n" .
+               "- Use neutral, factual language.";
     }
 
     /**
@@ -1253,5 +1479,218 @@ class AIAssistantController extends Controller
             $map[$docId]['matches']++;
         }
         return array_values($map);
+    }
+    private function extractDateParams(string $message): array
+    {
+        $params = ['years' => []];
+        
+        // Match 4-digit years starting with 20 or 19 (e.g., 2024, 2023, 1999)
+        if (preg_match_all('/\b(20\d{2}|19\d{2})\b/', $message, $matches)) {
+            $params['years'] = array_unique($matches[1]);
+        }
+        
+        return $params;
+    }
+
+    /**
+     * Generate analytics statistics based on user query
+     */
+    private function getAnalyticsStats(string $message, int $userId): string
+    {
+        try {
+            // Check if analytics are requested
+            $isAnalyticsQuery = preg_match('/(analytics|stats|statistics|breakdown|report|trend|summary|count|how many)/i', $message);
+            
+            if (!$isAnalyticsQuery) {
+                return '';
+            }
+
+            // Detect Folder using centralized method
+            $detectedFolder = $this->detectFolder($message);
+            $folderId = $detectedFolder['id'] ?? null;
+            $folderName = $detectedFolder['name'] ?? null;
+            
+            // CRITICAL CHECK:
+            // If the user is asking for stats ("how many") but we DID NOT detect a folder,
+            // we should only return global stats (Total Active Documents) if the query refers to "documents" or "files" generally.
+            // If they asked for "how many [specific term]" and we didn't find a folder for [specific term], 
+            // DO NOT return global stats, because "Total Active Documents: 13" is misleading for "How many Apples?".
+            
+            if (!$folderId) {
+                // Check if message has specific search terms (words >= 3 chars not in stoplist)
+                $cleanMessage = preg_replace('/[[:punct:]]+/', ' ', $message);
+                $words = preg_split('/\s+/', $cleanMessage);
+                $hasSignificantTerms = false;
+                
+                foreach ($words as $word) {
+                    $wordLower = strtolower($word);
+                    if (strlen($wordLower) >= 3 && !in_array($wordLower, $this->stopWords)) {
+                        $hasSignificantTerms = true;
+                        break;
+                    }
+                }
+                
+                // If the user entered specific terms (like "MOA" which didn't match a folder alias yet, or "Contracts"),
+                // and we didn't find a folder, then return EMPTY analytics.
+                // This forces the system to rely on Metadata Search or Semantic Search results instead.
+                if ($hasSignificantTerms) {
+                    return ''; 
+                }
+            }
+
+            $context = "\n=== DATABASE ANALYTICS & STATISTICS ===\n";
+            
+            // Detect grouping
+            $groupBy = 'month'; // Default
+            if (stripos($message, 'yearly') !== false || stripos($message, 'by year') !== false) {
+                $groupBy = 'year';
+            } elseif (stripos($message, 'weekly') !== false || stripos($message, 'by week') !== false) {
+                $groupBy = 'week';
+            }
+
+            if ($folderId) {
+                $context .= "Filter: Folder '{$folderName}'\n";
+            }
+
+            // Base Query
+            $query = Document::where('status', 'active');
+            if ($folderId) {
+                $query->where('folder_id', $folderId);
+            }
+
+            // 1. Total Count
+            $totalCount = $query->count();
+            
+            // If filtering by folder, say "Documents in [Folder]: X". Else "Total Active Documents: X"
+            if ($folderId) {
+                $context .= "Documents in '{$folderName}': {$totalCount}\n\n";
+            } else {
+                $context .= "Total Active Documents: {$totalCount}\n\n";
+            }
+
+            $needsBreakdown = preg_match('/(analytics|stats|breakdown|report|trend|summary|monthly|yearly|weekly)/i', $message);
+
+            if ($needsBreakdown || $totalCount > 0) {
+                $context .= "Breakdown by " . ucfirst($groupBy) . ":\n";
+                
+                $stats = [];
+                if ($groupBy === 'year') {
+                    // PostgreSQL Year
+                    $stats = $query->selectRaw("EXTRACT(YEAR FROM created_at) as period, count(*) as count")
+                        ->groupBy('period')
+                        ->orderBy('period', 'desc')
+                        ->get();
+                } elseif ($groupBy === 'week') {
+                    // PostgreSQL Week
+                    $stats = $query->selectRaw("TO_CHAR(created_at, 'YYYY-IW') as period, count(*) as count")
+                        ->groupBy('period')
+                        ->orderBy('period', 'desc')
+                        ->limit(12)
+                        ->get();
+                } else {
+                    // PostgreSQL Month (Default)
+                    $stats = $query->selectRaw("TO_CHAR(created_at, 'Month YYYY') as period, count(*) as count")
+                         ->selectRaw("MAX(created_at) as sort_date") // For sorting
+                        ->groupBy('period')
+                        ->orderBy('sort_date', 'desc')
+                        ->limit(12)
+                        ->get();
+                }
+
+                foreach ($stats as $stat) {
+                    $period = trim($stat->period); // Postgres TO_CHAR might add padding
+                    $context .= "- {$period}: {$stat->count} documents\n";
+                }
+            }
+            
+            return $context . "\n";
+
+        } catch (\Exception $e) {
+            Log::error('Analytics generation failed', ['error' => $e->getMessage()]);
+            return "\n[Analytics error: could not generate statistics]\n";
+        }
+    }
+
+    /**
+     * Get context for all folders if user asks "what folders", "list folders", etc.
+     */
+    private function getAllFoldersContext(string $message): string
+    {
+        // Expanded triggers to catch more folder-related queries
+        $pattern = '/(folders|directories|categories|what.*have|list.*all|show.*folder|all.*folder|folder.*list)/i';
+        
+        if (!preg_match($pattern, $message)) {
+            Log::debug('getAllFoldersContext: Pattern did not match', ['message' => $message, 'pattern' => $pattern]);
+            return '';
+        }
+        
+        Log::info('getAllFoldersContext: Pattern matched, building folder context', ['message' => $message]);
+
+        try {
+            // Get all folders with document counts and creator info
+            $folders = \App\Models\Folder::withCount(['documents' => function($query) {
+                $query->where('status', 'active');
+            }])->with('creator:user_id,firstname,lastname')->get();
+
+            if ($folders->isEmpty()) {
+                 return "\n=== FOLDER LIST ===\nThere are no folders created in the system yet.\n";
+            }
+
+            // Get root folders (no parent)
+            $rootFolders = $folders->whereNull('parent_folder_id');
+            $allSubfolders = $folders->whereNotNull('parent_folder_id');
+            
+            $totalFolders = $folders->count();
+            $rootCount = $rootFolders->count();
+            $subfolderCount = $allSubfolders->count();
+
+            $context = "\n=== FOLDER LIST ===\n";
+            $context .= "Total folders in the system: {$totalFolders} ({$rootCount} main folders, {$subfolderCount} subfolders)\n\n";
+            
+            // Recursively list folders starting from root
+            foreach ($rootFolders as $root) {
+                $context .= $this->buildFolderTree($root, $folders, 0);
+            }
+            
+            // Instructions for AI response
+            $context .= "\n=== RESPONSE INSTRUCTIONS ===\n";
+            $context .= "Present the folder list EXACTLY as shown above. Use ONLY the data provided (names, dates, creators). Do NOT invent any information.\n";
+            
+            return $context . "\n";
+
+        } catch (\Exception $e) {
+             Log::error('Get all folders context failed', ['error' => $e->getMessage()]);
+             return '';
+        }
+    }
+
+    /**
+     * Recursively build folder tree with proper indentation
+     */
+    private function buildFolderTree($folder, $allFolders, int $depth): string
+    {
+        $indent = str_repeat('   ', $depth);
+        $prefix = $depth === 0 ? '📁 ' : '└─ ';
+        
+        // Get creator name
+        $creatorName = 'Unknown';
+        if ($folder->creator) {
+            $creatorName = trim($folder->creator->firstname . ' ' . $folder->creator->lastname);
+        }
+        
+        // Format creation date
+        $createdAt = $folder->created_at ? $folder->created_at->format('M d, Y h:i A') : 'Unknown date';
+        
+        $line = "{$indent}{$prefix}{$folder->folder_name} ({$folder->documents_count} documents)\n";
+        $line .= "{$indent}   Created: {$createdAt} by {$creatorName}\n";
+        
+        // Find children of this folder
+        $children = $allFolders->where('parent_folder_id', $folder->folder_id);
+        
+        foreach ($children as $child) {
+            $line .= $this->buildFolderTree($child, $allFolders, $depth + 1);
+        }
+        
+        return $line;
     }
 }

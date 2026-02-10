@@ -14,7 +14,7 @@ class AccountController extends Controller
     public function index(Request $request)
     {
         // Get all users with their permissions
-        $users = User::select('user_id', 'firstname', 'lastname', 'middle_name', 'email', 'role', 'status', 'can_edit', 'can_delete', 'can_archive', 'can_upload', 'can_view')
+        $users = User::select('user_id', 'firstname', 'lastname', 'middle_name', 'email', 'role', 'status', 'can_edit', 'can_delete', 'can_upload', 'can_view')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($user) {
@@ -29,7 +29,6 @@ class AccountController extends Controller
                     'permissions' => [
                         'can_edit' => $user->can_edit,
                         'can_delete' => $user->can_delete,
-                        'can_archive' => $user->can_archive,
                         'can_upload' => $user->can_upload,
                         'can_view' => $user->can_view,
                     ],
@@ -46,7 +45,7 @@ class AccountController extends Controller
      */
     public function getUsers(Request $request)
     {
-        $users = User::select('user_id', 'firstname', 'lastname', 'middle_name', 'email', 'role', 'status', 'created_at', 'can_edit', 'can_delete', 'can_archive', 'can_upload', 'can_view')
+        $users = User::select('user_id', 'firstname', 'lastname', 'middle_name', 'email', 'role', 'status', 'created_at', 'can_edit', 'can_delete', 'can_upload', 'can_view')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($user) {
@@ -62,7 +61,6 @@ class AccountController extends Controller
                     'permissions' => [
                         'can_edit' => $user->can_edit,
                         'can_delete' => $user->can_delete,
-                        'can_archive' => $user->can_archive,
                         'can_upload' => $user->can_upload,
                         'can_view' => $user->can_view,
                     ],
@@ -103,14 +101,12 @@ class AccountController extends Controller
                 $permissions = $validated['permissions'];
                 $userData['can_edit'] = $permissions['can_edit'] ?? false;
                 $userData['can_delete'] = $permissions['can_delete'] ?? false;
-                $userData['can_archive'] = $permissions['can_archive'] ?? false;
                 $userData['can_upload'] = $permissions['can_upload'] ?? false;
                 $userData['can_view'] = $permissions['can_view'] ?? false;
             } else {
                 if ($validated['role'] === 'admin') {
                      $userData['can_edit'] = true;
                      $userData['can_delete'] = true;
-                     $userData['can_archive'] = true;
                      $userData['can_upload'] = true;
                      $userData['can_view'] = true;
                 } else {
@@ -133,7 +129,6 @@ class AccountController extends Controller
                     'permissions' => [
                         'can_edit' => $user->can_edit,
                         'can_delete' => $user->can_delete,
-                        'can_archive' => $user->can_archive,
                         'can_upload' => $user->can_upload,
                         'can_view' => $user->can_view,
                     ],
@@ -186,7 +181,6 @@ class AccountController extends Controller
                 $permissions = $validated['permissions'];
                 $updateData['can_edit'] = $permissions['can_edit'] ?? $user->can_edit;
                 $updateData['can_delete'] = $permissions['can_delete'] ?? $user->can_delete;
-                $updateData['can_archive'] = $permissions['can_archive'] ?? $user->can_archive;
                 $updateData['can_upload'] = $permissions['can_upload'] ?? $user->can_upload;
                 $updateData['can_view'] = $permissions['can_view'] ?? $user->can_view;
             }
@@ -202,7 +196,6 @@ class AccountController extends Controller
                 $permissionLabels = [
                     'can_edit' => 'Edit Documents',
                     'can_delete' => 'Delete Documents',
-                    'can_archive' => 'Archive Documents',
                     'can_upload' => 'Upload Documents',
                     'can_view' => 'View Documents',
                 ];
@@ -252,7 +245,6 @@ class AccountController extends Controller
                     'permissions' => [
                         'can_edit' => $user->can_edit,
                         'can_delete' => $user->can_delete,
-                        'can_archive' => $user->can_archive,
                         'can_upload' => $user->can_upload,
                         'can_view' => $user->can_view,
                     ],
@@ -321,5 +313,334 @@ class AccountController extends Controller
                 'message' => 'Failed to fetch user documents: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Handle permission request from Staff
+     * Saves to permission_requests table and notifies Admins
+     */
+    public function requestPermission(Request $request)
+    {
+        $validated = $request->validate([
+            'permissions' => 'required|array',
+            'permissions.*' => 'boolean',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $user = $request->user();
+            
+            // Filter only true permissions that user doesn't already have
+            $requestedPermissions = [];
+            foreach ($validated['permissions'] as $key => $value) {
+                if ($value && !$user->$key) {
+                    $requestedPermissions[$key] = true;
+                }
+            }
+            
+            if (empty($requestedPermissions)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No new permissions to request',
+                ], 400);
+            }
+            
+            // Check for existing pending request with same permissions
+            $existingRequest = \App\Models\PermissionRequest::where('user_id', $user->user_id)
+                ->where('status', 'pending')
+                ->first();
+            
+            if ($existingRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You already have a pending permission request',
+                ], 400);
+            }
+            
+            // Create permission request
+            $permissionRequest = \App\Models\PermissionRequest::create([
+                'user_id' => $user->user_id,
+                'permissions' => $requestedPermissions,
+                'reason' => $validated['reason'] ?? null,
+                'status' => 'pending',
+            ]);
+            
+            // Build notification message
+            $permissionLabels = [
+                'can_view' => 'View Documents',
+                'can_upload' => 'Upload Documents',
+                'can_edit' => 'Edit Documents',
+                'can_delete' => 'Delete Documents',
+            ];
+            
+            $requestedLabels = [];
+            foreach ($requestedPermissions as $key => $value) {
+                if (isset($permissionLabels[$key])) {
+                    $requestedLabels[] = $permissionLabels[$key];
+                }
+            }
+            
+            $requesterName = $user->firstname . ' ' . $user->lastname;
+            $permissionsList = implode(', ', $requestedLabels);
+            $reason = $validated['reason'] ?? 'No reason provided';
+            
+            $message = "{$requesterName} has requested: {$permissionsList}. Reason: {$reason}";
+            
+            // Notify all admins
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                \App\Models\Notification::create([
+                    'user_id' => $admin->user_id,
+                    'title' => 'Permission Request',
+                    'message' => $message,
+                    'type' => 'permission_request',
+                    'is_read' => false,
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Permission request submitted successfully',
+                'request' => $permissionRequest,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit permission request: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get pending permission requests (for Admin)
+     */
+    public function getPendingRequests()
+    {
+        $requests = \App\Models\PermissionRequest::with('user')
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($request) {
+                $permissionLabels = [
+                    'can_view' => 'View Documents',
+                    'can_upload' => 'Upload Documents',
+                    'can_edit' => 'Edit Documents',
+                    'can_delete' => 'Delete Documents',
+                ];
+                
+                $requestedLabels = [];
+                foreach ($request->permissions as $key => $value) {
+                    if ($value && isset($permissionLabels[$key])) {
+                        $requestedLabels[] = $permissionLabels[$key];
+                    }
+                }
+                
+                return [
+                    'id' => $request->id,
+                    'user_id' => $request->user_id,
+                    'user_name' => $request->user ? $request->user->firstname . ' ' . $request->user->lastname : 'Unknown',
+                    'user_email' => $request->user ? $request->user->email : '',
+                    'permissions' => $request->permissions,
+                    'permission_labels' => $requestedLabels,
+                    'reason' => $request->reason,
+                    'created_at' => $request->created_at->toISOString(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests,
+        ]);
+    }
+
+    /**
+     * Accept a permission request (for Admin)
+     */
+    public function acceptRequest(Request $request, $id)
+    {
+        try {
+            $permissionRequest = \App\Models\PermissionRequest::findOrFail($id);
+            
+            if ($permissionRequest->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This request has already been processed',
+                ], 400);
+            }
+            
+            $user = \App\Models\User::where('user_id', $permissionRequest->user_id)->first();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found',
+                ], 404);
+            }
+            
+            // Update user permissions
+            $updateData = [];
+            foreach ($permissionRequest->permissions as $key => $value) {
+                if ($value) {
+                    $updateData[$key] = true;
+                }
+            }
+            $user->update($updateData);
+            
+            // Update request status
+            $permissionRequest->update([
+                'status' => 'approved',
+                'admin_id' => auth()->id(),
+                'admin_response' => $request->input('response'),
+            ]);
+            
+            // Build notification message
+            $permissionLabels = [
+                'can_view' => 'View Documents',
+                'can_upload' => 'Upload Documents',
+                'can_edit' => 'Edit Documents',
+                'can_delete' => 'Delete Documents',
+            ];
+            
+            $grantedLabels = [];
+            foreach ($permissionRequest->permissions as $key => $value) {
+                if ($value && isset($permissionLabels[$key])) {
+                    $grantedLabels[] = $permissionLabels[$key];
+                }
+            }
+            
+            // Notify the staff member
+            \App\Models\Notification::create([
+                'user_id' => $user->user_id,
+                'title' => 'Permission Request Approved',
+                'message' => 'Your request for the following permissions has been approved: ' . implode(', ', $grantedLabels),
+                'type' => 'permission_approved',
+                'is_read' => false,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Permission request approved successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve request: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Decline a permission request (for Admin)
+     */
+    public function declineRequest(Request $request, $id)
+    {
+        try {
+            $permissionRequest = \App\Models\PermissionRequest::findOrFail($id);
+            
+            if ($permissionRequest->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This request has already been processed',
+                ], 400);
+            }
+            
+            $user = \App\Models\User::where('user_id', $permissionRequest->user_id)->first();
+            
+            // Update request status
+            $permissionRequest->update([
+                'status' => 'denied',
+                'admin_id' => auth()->id(),
+                'admin_response' => $request->input('response'),
+            ]);
+            
+            // Build notification message
+            $permissionLabels = [
+                'can_view' => 'View Documents',
+                'can_upload' => 'Upload Documents',
+                'can_edit' => 'Edit Documents',
+                'can_delete' => 'Delete Documents',
+            ];
+            
+            $deniedLabels = [];
+            foreach ($permissionRequest->permissions as $key => $value) {
+                if ($value && isset($permissionLabels[$key])) {
+                    $deniedLabels[] = $permissionLabels[$key];
+                }
+            }
+            
+            $responseMessage = $request->input('response') 
+                ? " Reason: " . $request->input('response')
+                : '';
+            
+            // Notify the staff member
+            if ($user) {
+                \App\Models\Notification::create([
+                    'user_id' => $user->user_id,
+                    'title' => 'Permission Request Denied',
+                    'message' => 'Your request for the following permissions has been denied: ' . implode(', ', $deniedLabels) . $responseMessage,
+                    'type' => 'permission_denied',
+                    'is_read' => false,
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Permission request declined',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to decline request: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get current user's permission requests (for Staff)
+     */
+    public function getMyRequests(Request $request)
+    {
+        $user = $request->user();
+        
+        $requests = \App\Models\PermissionRequest::where('user_id', $user->user_id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($request) {
+                $permissionLabels = [
+                    'can_view' => 'View Documents',
+                    'can_upload' => 'Upload Documents',
+                    'can_edit' => 'Edit Documents',
+                    'can_delete' => 'Delete Documents',
+                ];
+                
+                $requestedLabels = [];
+                foreach ($request->permissions as $key => $value) {
+                    if ($value && isset($permissionLabels[$key])) {
+                        $requestedLabels[] = $permissionLabels[$key];
+                    }
+                }
+                
+                return [
+                    'id' => $request->id,
+                    'permissions' => $request->permissions,
+                    'permission_labels' => $requestedLabels,
+                    'reason' => $request->reason,
+                    'status' => $request->status,
+                    'admin_response' => $request->admin_response,
+                    'created_at' => $request->created_at->toISOString(),
+                    'updated_at' => $request->updated_at->toISOString(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests,
+            'current_permissions' => [
+                'can_view' => $user->can_view,
+                'can_upload' => $user->can_upload,
+                'can_edit' => $user->can_edit,
+                'can_delete' => $user->can_delete,
+            ],
+        ]);
     }
 }

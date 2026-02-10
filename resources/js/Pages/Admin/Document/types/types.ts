@@ -33,7 +33,7 @@ export interface Document {
   description?: string;
   file_path: string;
   created_by: string;
-  status: 'active' | 'draft' | 'archived' | 'pending';
+  status: 'active' | 'draft' | 'pending';
   folder_id: number | null;
   folder?: Folder;
   remarks?: string;
@@ -98,7 +98,9 @@ export interface FolderCardProps {
 export interface DocumentListItemProps {
   document: Document;
   folders?: Array<{ folder_id: number; folder_name: string }>;
+  isHighlighted?: boolean;
   onDocumentUpdated?: () => void;
+  onViewDocument?: (document: Document) => void;
 }
 
 export interface BreadcrumbNavProps {

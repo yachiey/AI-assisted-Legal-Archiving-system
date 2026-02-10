@@ -21,19 +21,30 @@ class StaffController extends Controller
         // Get document statistics - count active documents
         $totalDocuments = Document::where('status', 'active')->count();
 
+        // Get count of documents uploaded by this staff member
+        $myDocumentsCount = Document::where('status', 'active')
+            ->where('created_by', $user->user_id)
+            ->count();
+
+        // Get count of recent uploads by this staff member (Today)
+        $myUploadsCount = Document::where('status', 'active')
+            ->where('created_by', $user->user_id)
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+
         // Get monthly upload statistics (last 12 months)
         $monthlyUploads = $this->getMonthlyUploadData();
 
         // Get document analytics by folder
         $documentAnalytics = $this->getDocumentAnalytics();
 
-        // Get recent files uploaded by the current staff member (within last 24 hours)
+        // Get documents uploaded by this staff member in the last 24 hours
         $recentFiles = Document::with(['user', 'folder'])
             ->where('status', 'active')
             ->where('created_by', $user->user_id)
-            ->where('updated_at', '>=', now()->subDay())
-            ->orderBy('updated_at', 'desc')
-            ->limit(5)
+            ->where('created_at', '>=', now()->subDay())
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
             ->get()
             ->map(function ($doc) {
                 return [
@@ -41,28 +52,11 @@ class StaffController extends Controller
                     'title' => $doc->title,
                     'timestamp' => $doc->updated_at->format('g:i A'),
                     'date' => $doc->updated_at->format('M d, Y'),
+                    'folder_name' => $doc->folder ? $doc->folder->folder_name : 'Uncategorized',
                     'created_by' => $doc->user ? $doc->user->firstname . ' ' . $doc->user->lastname : 'Unknown',
                 ];
             });
 
-        // Get recent downloads (from last 24 hours)
-        $recentDownloads = \App\Models\ActivityLog::with(['document', 'user'])
-            ->where('activity_type', 'download')
-            ->where('user_id', $user->user_id)
-            ->where('activity_time', '>=', now()->subDay())
-            ->orderBy('activity_time', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($log) {
-                $activityTime = \Carbon\Carbon::parse($log->activity_time);
-                return [
-                    'id' => $log->log_id,
-                    'title' => $log->document ? $log->document->title : 'Unknown Document',
-                    'timestamp' => $activityTime->format('g:i A'),
-                    'date' => $activityTime->format('M d, Y'),
-                    'downloaded_by' => $log->user ? $log->user->firstname . ' ' . $log->user->lastname : 'Unknown',
-                ];
-            });
 
         return Inertia::render('Staff/Dashboard/index', [
             'user' => $user ? [
@@ -80,19 +74,18 @@ class StaffController extends Controller
                 'can_upload' => $user->can_upload,
                 'can_delete' => $user->can_delete,
                 'can_edit' => $user->can_edit,
-                'can_archive' => $user->can_archive,
             ] : [
                 'can_view' => false,
                 'can_upload' => false,
                 'can_delete' => false,
                 'can_edit' => false,
-                'can_archive' => false,
             ],
             'notifications' => $user ? \App\Models\Notification::where('user_id', $user->user_id)->where('is_read', false)->orderBy('created_at', 'desc')->get() : [],
             'monthlyUploads' => $monthlyUploads,
             'documentAnalytics' => $documentAnalytics,
             'recentFiles' => $recentFiles,
-            'recentDownloads' => $recentDownloads,
+            'myDocumentsCount' => $myDocumentsCount,
+            'myUploadsCount' => $myUploadsCount,
         ]);
     }
 

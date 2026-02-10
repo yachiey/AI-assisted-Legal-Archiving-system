@@ -12,13 +12,9 @@ const UserInfoHeader: React.FC<UserInfoHeaderProps> = ({ userData }) => {
         ? `/storage/${userData.profile_picture}`
         : (userData.avatar || `https://i.pravatar.cc/48?u=${userData.email}`);
 
-    // Get initials for fallback display
-    const getInitials = () => {
-        const nameParts = userData.name.split(' ');
-        if (nameParts.length >= 2) {
-            return `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
-        }
-        return userData.name.substring(0, 2).toUpperCase();
+    // Get initial for fallback display (just first letter)
+    const getInitial = () => {
+        return userData.name.charAt(0).toUpperCase();
     };
 
     return (
@@ -35,8 +31,8 @@ const UserInfoHeader: React.FC<UserInfoHeaderProps> = ({ userData }) => {
                         }}
                     />
                 ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white text-base font-bold border-2 border-gray-200">
-                        {getInitials()}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white text-xl font-bold border-2 border-gray-200">
+                        {getInitial()}
                     </div>
                 )}
                 <div className="ml-3 flex-1">

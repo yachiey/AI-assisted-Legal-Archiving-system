@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function useApi<T>(apiCall: () => Promise<T>, deps: any[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,6 +17,7 @@ export function useApi<T>(apiCall: () => Promise<T>, deps: any[] = []) {
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
+        isInitialLoad.current = false;
       }
     };
 
@@ -24,14 +26,12 @@ export function useApi<T>(apiCall: () => Promise<T>, deps: any[] = []) {
 
   const refetch = async () => {
     try {
-      setLoading(true);
+      // Don't show loading state on refetch - keep existing data visible
       setError(null);
       const result = await apiCall();
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
     }
   };
 

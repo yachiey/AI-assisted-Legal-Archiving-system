@@ -19,13 +19,10 @@ class DocumentQueryService
     {
         $query = Document::with(['folder', 'user']);
 
-        // Apply status filter (CRITICAL: This determines active vs archived documents)
+        // Apply status filter
         if ($request->has('status') && $request->status !== null && $request->status !== '') {
-            // If status is explicitly provided (e.g., 'archived', 'active', 'processing', 'failed')
+            // If status is explicitly provided (e.g., 'active', 'processing', 'failed')
             $query->where('status', $request->status);
-        } else {
-            // Default: exclude archived documents from main list
-            $query->where('status', '!=', 'archived');
         }
 
         // Apply folder filter
@@ -38,13 +35,35 @@ class DocumentQueryService
             $query->whereYear('created_at', $request->year);
         }
 
-        // Apply search filter
+        // Apply search filter - searches title, description, remarks, document content AND semantic (AI) search
         if ($request->has('search') && $request->search) {
             $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                // Use LOWER() for case-insensitive search across all database engines
-                $q->whereRaw('LOWER(title) LIKE ?', ['%' . strtolower($searchTerm) . '%'])
-                  ->orWhereRaw('LOWER(remarks) LIKE ?', ['%' . strtolower($searchTerm) . '%']);
+            $lowerSearchTerm = '%' . strtolower($searchTerm) . '%';
+
+            // Get document IDs that have matching content in embeddings (extracted text)
+            $contentMatchDocIds = DocumentEmbedding::whereRaw('LOWER(chunk_text) LIKE ?', [$lowerSearchTerm])
+                ->distinct()
+                ->pluck('doc_id')
+                ->toArray();
+
+            // Try AI semantic search (falls back to empty array if API fails)
+            $semanticDocIds = $this->getSemanticSearchResults($searchTerm);
+
+            $query->where(function ($q) use ($lowerSearchTerm, $contentMatchDocIds, $semanticDocIds) {
+                // Search in document metadata
+                $q->whereRaw('LOWER(title) LIKE ?', [$lowerSearchTerm])
+                  ->orWhereRaw('LOWER(COALESCE(description, \'\')) LIKE ?', [$lowerSearchTerm])
+                  ->orWhereRaw('LOWER(COALESCE(remarks, \'\')) LIKE ?', [$lowerSearchTerm]);
+
+                // Also include documents with matching content
+                if (!empty($contentMatchDocIds)) {
+                    $q->orWhereIn('doc_id', $contentMatchDocIds);
+                }
+
+                // Also include documents found by AI semantic search
+                if (!empty($semanticDocIds)) {
+                    $q->orWhereIn('doc_id', $semanticDocIds);
+                }
             });
         }
 
@@ -60,7 +79,7 @@ class DocumentQueryService
      */
     public function getDocumentCounts(): array
     {
-        $totalDocuments = Document::where('status', '!=', 'archived')->count();
+        $totalDocuments = Document::count();
         $documentsByStatus = Document::select('status')
             ->selectRaw('count(*) as count')
             ->groupBy('status')
@@ -75,7 +94,7 @@ class DocumentQueryService
 
     /**
      * Get bulk folder document counts (optimized)
-     * Only counts active documents, excludes archived
+     * Only counts active documents
      */
     public function getBulkFolderCounts(array $folderIds): array
     {
@@ -98,7 +117,7 @@ class DocumentQueryService
 
     /**
      * Get single folder document count (optimized)
-     * Only counts active documents, excludes archived
+     * Only counts active documents
      */
     public function getFolderDocumentCount(int $folderId): int
     {
@@ -187,6 +206,58 @@ class DocumentQueryService
             ->whereIn('status', ['processing', 'processed'])
             ->latest('created_at')
             ->first();
+    }
+
+    /**
+     * AI semantic search using Groq API
+     * Returns doc IDs that semantically match the search term.
+     * Falls back to empty array (SQL-only results) if API fails or times out.
+     */
+    private function getSemanticSearchResults(string $searchTerm): array
+    {
+        try {
+            $searchApiKey = env('GROQ_SEARCH_API_KEY');
+            if (empty($searchApiKey)) {
+                return [];
+            }
+
+            $groqService = app(GroqService::class);
+
+            // Get all active documents with titles and short descriptions
+            $documents = Document::where('status', 'active')
+                ->select('doc_id', 'title', 'description')
+                ->get();
+
+            if ($documents->isEmpty()) {
+                return [];
+            }
+
+            // Build compact document list for Groq
+            $documentList = "Available Documents:\n";
+            foreach ($documents as $doc) {
+                $preview = $doc->description ? ' - ' . mb_substr($doc->description, 0, 120) : '';
+                $documentList .= "ID:{$doc->doc_id} | {$doc->title}{$preview}\n";
+            }
+
+            // Use Groq with 3-second timeout and the dedicated search API key
+            $ids = $groqService->identifyRelevantDocuments($searchTerm, $documentList, [
+                'timeout' => 3,
+                'apiKey' => $searchApiKey,
+            ]);
+
+            Log::info('Semantic search results', [
+                'search_term' => $searchTerm,
+                'found_ids' => $ids,
+            ]);
+
+            return array_map('intval', $ids);
+        } catch (\Exception $e) {
+            Log::warning('Semantic search failed, falling back to SQL search only', [
+                'error' => $e->getMessage(),
+                'search_term' => $searchTerm,
+            ]);
+            return [];
+        }
     }
 
     /**

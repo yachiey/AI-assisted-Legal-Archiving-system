@@ -14,6 +14,7 @@ import realDocumentService from '../../services/realDocumentService';
 const DocumentListItem: React.FC<DocumentListItemProps> = ({
   document,
   folders = [],
+  isHighlighted = false,
   onDocumentUpdated
 }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -36,8 +37,8 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     if (!menuOpen) {
       const rect = event.currentTarget.getBoundingClientRect();
       setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.right + window.scrollX - 160 // 160px is menu width
+        top: rect.bottom,
+        left: rect.right - 160
       });
     }
 
@@ -54,65 +55,32 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       case 'edit':
         setIsEditOpen(true);
         break;
-      case 'archive':
-        await handleArchive();
-        break;
-      case 'restore':
-        await handleRestore();
-        break;
       case 'delete':
         setIsDeleteOpen(true);
         break;
+      case 'download':
+        handleDownload();
+        break;
     }
   };
 
-  const handleArchive = async (): Promise<void> => {
-    try {
-      console.log('Archiving document:', document.doc_id, document.title);
-      await realDocumentService.archiveDocument(document.doc_id);
-      console.log('Archive successful, refreshing list');
-
-      // Show forest green toast
-      setToastMessage(`Document "${document.title}" has been archived successfully!`);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-
-      // Refresh the document list
-      if (onDocumentUpdated) {
-        onDocumentUpdated();
-      } else {
-        console.warn('onDocumentUpdated callback not available, manually reloading');
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to archive document:', error);
-      alert(`Failed to archive document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  const handleDownload = (): void => {
+    // Determine the best filename (ensure it has an extension)
+    const filepath = document.file_path || document.title;
+    const extension = filepath.split('.').pop()?.toLowerCase() || '';
+    let downloadName = document.title;
+    if (extension && !downloadName.toLowerCase().endsWith('.' + extension)) {
+      downloadName = `${downloadName}.${extension}`;
     }
+
+    const link = window.document.createElement('a');
+    link.href = `/api/documents/${document.doc_id}/download`;
+    link.download = downloadName;
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
   };
 
-  const handleRestore = async (): Promise<void> => {
-    try {
-      console.log('Restoring document:', document.doc_id, document.title);
-      await realDocumentService.restoreDocument(document.doc_id);
-      console.log('Restore successful, refreshing list');
-
-      // Show forest green toast
-      setToastMessage(`Document "${document.title}" has been restored successfully!`);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-
-      // Refresh the document list
-      if (onDocumentUpdated) {
-        onDocumentUpdated();
-      } else {
-        console.warn('onDocumentUpdated callback not available, manually reloading');
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to restore document:', error);
-      alert(`Failed to restore document: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
 
   const handleDocumentUpdated = () => {
     if (onDocumentUpdated) {
@@ -130,7 +98,6 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     const statusConfig: Record<Document['status'], string> = {
       active: 'bg-green-100 text-green-800',
       draft: 'bg-yellow-100 text-yellow-800',
-      archived: 'bg-gray-100 text-gray-800',
       pending: 'bg-blue-100 text-blue-800'
     };
 
@@ -173,23 +140,28 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     return extension || 'FILE';
   };
 
-  // Close menu when clicking outside
+  // Close menu when clicking outside or scrolling
   useEffect(() => {
     if (!menuOpen || typeof window === 'undefined') return;
 
-    const handleClickOutside = () => {
+    const closeMenu = () => {
       setMenuOpen(false);
       setMenuPosition(null);
     };
 
-    window.document.addEventListener('click', handleClickOutside);
-    return () => window.document.removeEventListener('click', handleClickOutside);
+    window.document.addEventListener('click', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+    return () => {
+      window.document.removeEventListener('click', closeMenu);
+      window.removeEventListener('scroll', closeMenu, true);
+    };
   }, [menuOpen]);
 
   return (
     <>
       <div
-        className="flex items-center justify-between p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer group"
+        className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer group ${isHighlighted ? 'bg-green-100 ring-2 ring-green-500 ring-inset animate-pulse' : ''
+          }`}
         onClick={handleDocumentClick}
         role="button"
         tabIndex={0}
@@ -241,7 +213,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       {typeof window !== 'undefined' && menuOpen && menuPosition && createPortal(
         <div
           style={{
-            position: 'absolute',
+            position: 'fixed',
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,
             zIndex: 10000
@@ -252,9 +224,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             onProperties={() => handleMenuAction('properties')}
             onEdit={() => handleMenuAction('edit')}
             onDelete={() => handleMenuAction('delete')}
-            onArchive={() => handleMenuAction('archive')}
-            onRestore={() => handleMenuAction('restore')}
-            isArchived={document.status === 'archived'}
+            onDownload={() => handleMenuAction('download')}
           />
         </div>,
         window.document.body

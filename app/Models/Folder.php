@@ -37,4 +37,9 @@ class Folder extends Model
     {
         return $this->belongsTo(User::class, 'created_by', 'user_id');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'folder_id', 'folder_id');
+    }
 }

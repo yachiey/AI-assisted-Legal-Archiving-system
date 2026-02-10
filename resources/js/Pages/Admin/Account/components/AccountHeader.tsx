@@ -14,26 +14,34 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
 }) => {
     return (
         <div className="mb-8">
-            {/* Title and Stats */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Management</h1>
-                    <p className="text-gray-600">Manage users, roles, and permissions</p>
-                </div>
+            <div className="mb-8 rounded-2xl p-6 shadow-lg border border-green-700/20" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
+                {/* Title and Action */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                    <div>
+                        <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight flex items-center gap-3">
+                            <Users className="w-8 h-8 text-yellow-400" />
+                            ACCOUNT MANAGEMENT
+                        </h1>
+                        <div className="h-1 w-48 bg-gradient-to-r from-yellow-400 to-transparent rounded-full mb-3"></div>
+                        <p className="text-lg text-green-50 font-medium tracking-wide">Manage users, roles, and permissions</p>
+                    </div>
 
-                <button
-                    onClick={onAddUserClick}
-                    className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg w-full md:w-auto justify-center md:justify-start"
-                >
-                    <UserPlus className="w-5 h-5" />
-                    Add New User
-                </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={onAddUserClick}
+                            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                        >
+                            <UserPlus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                            Add Account
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Total Users */}
-                <div className="rounded-2xl p-6 border border-green-700/30 shadow-md" 
+                <div className="rounded-2xl p-6 border border-green-700/30 shadow-md"
                     style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
                     <div className="flex items-center justify-between">
                         <div>

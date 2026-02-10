@@ -103,12 +103,12 @@ class AIAnalysisService
             $userPrompt = <<<EOT
 Analyze this document and provide metadata in JSON format with these fields:
 
-1. "title": A specific title formatted STRICTLY as "YYYY-MM-DD-ClientName-DocumentType" (e.g. 2024-01-20-JohnDoe-Affidavit). Extract Date (default to today if missing), Client Name (default 'Unknown'), and Document Type from content.
-2. "description": A brief summary of the document content (max 500 chars)
+1. "title": A specific title formatted STRICTLY as "YYYY-MM-DD-FullName-DocumentType". The FullName MUST be PascalCase with NO spaces, NO hyphens, NO periods (e.g. "OliverDFuentevilla" NOT "OLIVER D. FUENTEVILLA" or "Oliver-D-Fuentevilla"). DocumentType MUST be the FULL SPECIFIC type in PascalCase - NEVER use just "Affidavit", always include the subtype like "AffidavitOfNoViolation", "AffidavitOfLoss", "AffidavitOfCompliance". Examples: "2025-09-02-OliverDFuentevilla-AffidavitOfNoViolation", "2024-01-20-JuanDelaCruz-AffidavitOfLoss", "2024-03-15-MariaClara-MemorandumOfAgreement", "2023-11-10-CmuSecurityAgency-ServiceContract".
+2. "description": A 2-3 sentence summary (max 500 chars). MUST follow this structure: "[Document Type] filed by [FULL NAME OF PERSON], a resident of [ADDRESS/LOCATION], regarding [PURPOSE]. [Date or details]." The FIRST sentence MUST contain the person's FULL NAME - never skip the name.
 3. "category": The document category (choose from: MOA, Resolution, Contract, Policy, Memorandum, Correspondence, Student Records, Criminal Case, Civil Case, Housing, Other)
 4. "document_type": Specific type (e.g., "Memorandum of Agreement", "Board Resolution", "Employment Contract", etc.)
 5. "key_topics": Array of 3-5 main topics/keywords
-6. "suggested_folder": IMPORTANT - Choose ONLY from these existing folders: {$foldersList}. Do NOT create new folder names or use generic terms like "Legal Document". Match to the most appropriate existing folder.
+6. "suggested_folder": IMPORTANT - Available folders: {$foldersList}. If one of these folders is appropriate for this document type, use it. However, if NONE of the existing folders match the document type well (e.g., Certificate of Employment should NOT go to "MODE OF AGREEMENT"), suggest a NEW descriptive folder name instead (e.g., "Employment Records", "Certificates", "HR Documents"). Do NOT use generic terms like "Legal Document" or "Documents".
 7. "urgency": "high", "medium", or "low"
 8. "requires_review": true/false - if document needs legal/compliance review
 

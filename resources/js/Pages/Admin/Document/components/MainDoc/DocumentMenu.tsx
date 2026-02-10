@@ -1,23 +1,19 @@
 // DocumentMenu.tsx
 import React from "react";
-import { Edit, Trash2, Info, Archive, RotateCcw } from "lucide-react";
+import { Edit, Trash2, Info, RotateCcw, Download } from "lucide-react";
 
 interface DocumentMenuProps {
   onEdit: () => void;
   onDelete: () => void;
   onProperties: () => void;
-  onArchive?: () => void;
-  onRestore?: () => void;
-  isArchived?: boolean;
+  onDownload: () => void;
 }
 
 const DocumentMenu: React.FC<DocumentMenuProps> = ({
   onEdit,
   onDelete,
   onProperties,
-  onArchive,
-  onRestore,
-  isArchived = false
+  onDownload,
 }) => {
   const handleMenuClick = (e: React.MouseEvent, action: () => void) => {
     e.preventDefault();
@@ -48,41 +44,26 @@ const DocumentMenu: React.FC<DocumentMenuProps> = ({
           </button>
         </li>
 
-        {!isArchived && (
-          <li>
-            <button
-              onClick={(e) => handleMenuClick(e, onEdit)}
-              className="w-full text-left px-4 py-2 hover:bg-white/30 flex items-center gap-2 text-gray-900 hover:text-[#228B22] transition-all font-medium"
-            >
-              <Edit className="w-4 h-4" />
-              Edit
-            </button>
-          </li>
-        )}
+        <li>
+          <button
+            onClick={(e) => handleMenuClick(e, onEdit)}
+            className="w-full text-left px-4 py-2 hover:bg-white/30 flex items-center gap-2 text-gray-900 hover:text-[#228B22] transition-all font-medium"
+          >
+            <Edit className="w-4 h-4" />
+            Edit
+          </button>
+        </li>
+        <li>
+          <button
+            onClick={(e) => handleMenuClick(e, onDownload)}
+            className="w-full text-left px-4 py-2 hover:bg-white/30 flex items-center gap-2 text-gray-900 hover:text-[#228B22] transition-all font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </button>
+        </li>
 
-        {isArchived && onRestore && (
-          <li>
-            <button
-              onClick={(e) => handleMenuClick(e, onRestore)}
-              className="w-full text-left px-4 py-2 hover:bg-yellow-50 flex items-center gap-2 text-[#F4D03F] hover:text-[#FBEC5D] transition-all font-medium"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Restore
-            </button>
-          </li>
-        )}
 
-        {!isArchived && onArchive && (
-          <li>
-            <button
-              onClick={(e) => handleMenuClick(e, onArchive)}
-              className="w-full text-left px-4 py-2 hover:bg-orange-50 flex items-center gap-2 text-orange-600 hover:text-orange-700 transition-all font-medium"
-            >
-              <Archive className="w-4 h-4" />
-              Archive
-            </button>
-          </li>
-        )}
 
         <li>
           <button

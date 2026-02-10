@@ -1,7 +1,8 @@
 import React, { useState, useEffect, JSX } from 'react';
 import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
-import { Plus, FileText, FolderPlus, Folder as FolderIcon, Archive, ScanLine, Lock, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { Plus, FileText, FolderPlus, Folder as FolderIcon, ScanLine, Lock, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 
 
 import SearchBar from '../SearhBar/SearchBar';
@@ -24,7 +25,6 @@ interface UserPermissions {
   can_upload: boolean;
   can_delete: boolean;
   can_edit: boolean;
-  can_archive: boolean;
 }
 
 type ViewMode = 'folders' | 'documents';
@@ -66,9 +66,14 @@ const DocumentManagement: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isUploadCancelDialogOpen, setIsUploadCancelDialogOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+  const [highlightedDocId, setHighlightedDocId] = useState<number | null>(null);
+  const [cameFromAI, setCameFromAI] = useState(false);
 
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
@@ -93,7 +98,6 @@ const DocumentManagement: React.FC = () => {
     can_upload: false,
     can_delete: false,
     can_edit: false,
-    can_archive: false,
   });
 
   // Fetch user permissions on mount
@@ -114,7 +118,6 @@ const DocumentManagement: React.FC = () => {
             can_upload: user.can_upload ?? false,
             can_delete: user.can_delete ?? false,
             can_edit: user.can_edit ?? false,
-            can_archive: user.can_archive ?? false,
           });
         }
       } catch (error) {
@@ -126,8 +129,24 @@ const DocumentManagement: React.FC = () => {
 
   const handleCreate = async () => {
     try {
-      await loadFolders(currentFolder?.folder_id ?? null);
+      if (currentFolder) {
+        // When inside a folder, reload subfolders
+        const subfoldersData = await folderService.getFoldersByParent(currentFolder.folder_id);
+        const filteredSubfolders = subfoldersData.filter(f =>
+          f.folder_id !== currentFolder.folder_id &&
+          f.folder_id !== currentFolder.parent_folder_id
+        );
+        setState(prev => ({ ...prev, subfolders: filteredSubfolders }));
+        // Load document counts for new subfolders
+        if (filteredSubfolders.length > 0) {
+          loadFolderDocumentCounts(filteredSubfolders);
+        }
+      } else {
+        // At root level, reload root folders
+        await loadFolders(null);
+      }
       await refreshCounts();
+      setSidebarRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Error refreshing folders:', error);
       window.location.reload();
@@ -174,6 +193,20 @@ const DocumentManagement: React.FC = () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     const folderId = urlParams.get('folder');
+    const highlightId = urlParams.get('highlight');
+    const fromAI = urlParams.get('from');
+
+    // Check if user came from AI Assistant
+    if (fromAI === 'ai') {
+      setCameFromAI(true);
+    }
+
+    // Set highlight first so it's ready when folder loads
+    if (highlightId) {
+      setHighlightedDocId(parseInt(highlightId));
+      // Clear highlight after 5 seconds
+      setTimeout(() => setHighlightedDocId(null), 5000);
+    }
 
     if (folderId) {
       const targetFolder = folders.find(f => f.folder_id === parseInt(folderId));
@@ -187,17 +220,17 @@ const DocumentManagement: React.FC = () => {
   // Track if we just opened a folder to prevent double loading
   const justOpenedFolder = React.useRef(false);
 
-  // Check if any document-level filters are active (year, status)
-  const hasDocumentFilters = filters.status === 'archived' || filters.year !== undefined;
+  // Check if any document-level filters are active (year)
+  const hasDocumentFilters = filters.year !== undefined;
 
   // Load data when search term or filters change (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (viewMode === 'folders') {
         setState(prev => ({ ...prev, loading: true }));
-        // Show documents when document-level filters are active (archived, year)
-        if (hasDocumentFilters) {
-          loadDocuments(); // Load documents when year or archived filter is active
+        // Show documents when document-level filters are active (year)
+        if (filters.year !== undefined) {
+          loadDocuments(); // Load documents when year filter is active
         } else {
           loadFolders(); // Load folders by default
         }
@@ -252,17 +285,10 @@ const DocumentManagement: React.FC = () => {
     try {
       let documentsData: Document[];
 
-      // Handle status filter
-      if (filters.status === 'archived') {
-        documentsData = await realDocumentService.getArchivedDocuments(currentFolder?.folder_id);
-      } else if (searchTerm || Object.keys(filters).length > 0) {
-        const mergedFilters = {
-          ...filters,
-          ...(currentFolder && { folder_id: currentFolder.folder_id })
-        };
-        documentsData = await realDocumentService.getFilteredDocuments(mergedFilters, searchTerm);
+      if (filters.status === 'deleted') {
+        documentsData = await realDocumentService.getAllDocuments(currentFolder?.folder_id, { status: 'deleted' });
       } else {
-        documentsData = await realDocumentService.getAllDocuments(currentFolder?.folder_id);
+        documentsData = await realDocumentService.getAllDocuments(currentFolder?.folder_id, filters, searchTerm);
       }
 
       setState(prev => ({ ...prev, documents: documentsData, loading: false }));
@@ -558,423 +584,485 @@ const DocumentManagement: React.FC = () => {
   }, [folders]); // Update when folders change
 
   return (
-    <div className="flex h-full bg-gray-50">
-      {/* Sidebar */}
-      <DocumentSidebar
-        currentFolder={state.currentFolder}
-        onFolderSelect={(folder) => {
-          if (folder) {
-            handleFolderClick(folder);
-          } else {
-            setState(prev => ({
-              ...prev,
-              currentFolder: null,
-              viewMode: 'folders',
-              searchTerm: '',
-              filters: {},
-              documents: [],
-              subfolders: []
-            }));
-            loadFolders(null);
-          }
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={setSidebarCollapsed}
-      />
+    <div className="flex h-full relative" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
+      {/* Mobile Overlay Backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          className="absolute inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
 
-      {/* Main Content */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-72'}`}>
-        <div className="flex-1 overflow-y-auto p-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="max-w-7xl mx-auto">
-            {/* Header - Forest Green Design */}
-            <div className="rounded-xl shadow-sm p-6 mb-6" style={{ backgroundColor: '#1b5e20' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-white">DOCUMENTS</h1>
-                  <p className="text-gray-200 mt-1 font-normal">
-                    Manage your legal documents and folders
-                  </p>
-                  <div className="flex items-center gap-6 mt-4 text-sm text-gray-300 font-normal">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-lg">{folderCount}</span>
-                      <span className="text-green-100/80">folders</span>
-                    </div>
-                    <div className="w-px h-4 bg-white/20"></div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-lg">{documentCount}</span>
-                      <span className="text-green-100/80">documents</span>
-                    </div>
-                    {currentFolder && (
-                      <>
-                        <div className="w-px h-4 bg-white/20"></div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-lg">{getFolderDocumentCount(currentFolder.folder_id)}</span>
-                          <span className="text-green-100/80">documents in current folder</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+      {/* Sidebar - Hidden on mobile by default, shown as overlay when open */}
+      <div className={`
+        absolute md:relative inset-y-0 left-0 z-50
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <DocumentSidebar
+          currentFolder={state.currentFolder}
+          onFolderSelect={(folder) => {
+            if (folder) {
+              handleFolderClick(folder);
+              setIsMobileSidebarOpen(false);
+            } else {
+              setState(prev => ({
+                ...prev,
+                currentFolder: null,
+                viewMode: 'folders',
+                searchTerm: '',
+                filters: {},
+                documents: [],
+                subfolders: []
+              }));
+              loadFolders(null);
+              setIsMobileSidebarOpen(false);
+            }
+          }}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={setSidebarCollapsed}
+          refreshTrigger={sidebarRefreshKey}
+        />
+      </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3">
+      {/* Main Content - Full width on mobile, with margin on desktop */}
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+        <div className="flex-1 overflow-y-auto p-6 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* Back to AI Assistant Button - Shows when navigated from AI */}
+          {cameFromAI && (
+            <button
+              onClick={() => {
+                setCameFromAI(false);
+                window.history.back();
+              }}
+              className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg hover:scale-105"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to AI Assistant
+            </button>
+          )}
+
+          {/* Header - Forest Green Design */}
+          <div className="rounded-2xl shadow-lg border border-green-700/20 p-6 mb-8" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
+            <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 sm:gap-6">
+              <div className="flex-1">
+                {/* Mobile: Hamburger + Title in one row */}
+                <div className="flex items-center gap-3 mb-2">
+                  {/* Hamburger Menu - Only visible on mobile */}
                   <button
-                    onClick={handleAddFolder}
-                    className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
-                    type="button"
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                    aria-label="Open menu"
                   >
-                    <FolderPlus className="w-5 h-5" />
-                    <span>Add Folder</span>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
                   </button>
 
-                  {userPermissions.can_upload ? (
-                    <button
-                      onClick={handleAddDocument}
-                      className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
-                      type="button"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Add Document</span>
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="flex items-center gap-2 bg-gray-300 text-gray-500 px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed"
-                      type="button"
-                      title="You don't have permission to upload documents"
-                    >
-                      <Lock className="w-5 h-5" />
-                      <span>Add Document</span>
-                    </button>
-                  )}
+                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight flex items-center gap-3">
+                    <FileText className="w-8 h-8 text-yellow-400" />
+                    DOCUMENTS
+                  </h1>
+                </div>
+                <div className="h-1 w-48 bg-gradient-to-r from-yellow-400 to-transparent rounded-full mb-3"></div>
 
-                  {userPermissions.can_upload ? (
-                    <button
-                      onClick={handleScanDocument}
-                      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
-                      type="button"
-                    >
-                      <ScanLine className="w-5 h-5" />
-                      <span>Scan Document</span>
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="flex items-center gap-2 bg-gray-300 text-gray-500 px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed"
-                      type="button"
-                      title="You don't have permission to upload documents"
-                    >
-                      <Lock className="w-5 h-5" />
-                      <span>Scan Document</span>
-                    </button>
-                  )}
-                  <div className="relative" ref={sortMenuRef}>
-                    <button
-                      onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                      className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm backdrop-blur-sm"
-                      type="button"
-                    >
-                      <ArrowUpDown className="w-5 h-5" />
-                      <span>{sortField === 'name' ? 'Name' : 'Date'}</span>
-                    </button>
+                <p className="text-lg text-green-50 font-medium tracking-wide">
+                  Manage your legal documents and folders
+                </p>
 
-                    {isSortMenuOpen && (
-                      <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                        <div className="px-4 py-2 border-b border-gray-50 mb-1">
-                          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sort By</span>
-                        </div>
-
-                        <button
-                          onClick={() => handleSortSelection('name', 'asc')}
-                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
-                        >
-                          <span>Name (A-Z)</span>
-                          {sortField === 'name' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
-                        </button>
-
-                        <button
-                          onClick={() => handleSortSelection('name', 'desc')}
-                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
-                        >
-                          <span>Name (Z-A)</span>
-                          {sortField === 'name' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
-                        </button>
-
-                        <div className="my-1 border-t border-gray-50"></div>
-
-                        <button
-                          onClick={() => handleSortSelection('date', 'desc')}
-                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
-                        >
-                          <span>Date (Newest First)</span>
-                          {sortField === 'date' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
-                        </button>
-
-                        <button
-                          onClick={() => handleSortSelection('date', 'asc')}
-                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
-                        >
-                          <span>Date (Oldest First)</span>
-                          {sortField === 'date' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
-                        </button>
+                <div className="flex flex-wrap items-center gap-3 sm:gap-6 mt-4 sm:mt-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-base sm:text-lg">{folderCount}</span>
+                    <span className="text-green-100/80 text-xs sm:text-sm">Folders</span>
+                  </div>
+                  <div className="w-px h-4 bg-white/20"></div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-base sm:text-lg">{documentCount}</span>
+                    <span className="text-green-100/80 text-xs sm:text-sm">Total Documents</span>
+                  </div>
+                  {currentFolder && (
+                    <>
+                      <div className="w-px h-4 bg-white/20"></div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-base sm:text-lg">{getFolderDocumentCount(currentFolder.folder_id)}</span>
+                        <span className="text-green-100/80 text-xs sm:text-sm">in this folder</span>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-                  <div className="flex bg-white/10 rounded-lg p-1 border border-white/20">
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, documentViewMode: 'list' }))}
-                      className={`p-1.5 rounded-md transition-all ${documentViewMode === 'list' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
-                      title="List View"
-                    >
-                      <List className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setState(prev => ({ ...prev, documentViewMode: 'grid' }))}
-                      className={`p-1.5 rounded-md transition-all ${documentViewMode === 'grid' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
-                      title="Grid View"
-                    >
-                      <LayoutGrid className="w-5 h-5" />
-                    </button>
-                  </div>
+              {/* Action Buttons - Wrap on mobile */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <button
+                  onClick={handleAddFolder}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                  type="button"
+                >
+                  <FolderPlus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                  <span className="hidden xs:inline sm:inline">{currentFolder ? 'Add Subfolder' : 'Add Folder'}</span>
+                </button>
+
+                {userPermissions.can_upload ? (
+                  <button
+                    onClick={handleAddDocument}
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                    type="button"
+                  >
+                    <Plus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                    <span className="hidden xs:inline sm:inline">Add Document</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="flex items-center gap-2 bg-gray-300 text-gray-500 px-3 sm:px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed min-h-[44px]"
+                    type="button"
+                    title="You don't have permission to upload documents"
+                  >
+                    <Lock className="w-5 h-5" />
+                    <span className="hidden xs:inline sm:inline">Add Document</span>
+                  </button>
+                )}
+
+                {userPermissions.can_upload ? (
+                  <button
+                    onClick={handleScanDocument}
+                    className="hidden sm:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                    type="button"
+                  >
+                    <ScanLine className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                    <span>Scan Document</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="hidden sm:flex items-center gap-2 bg-gray-300 text-gray-500 px-3 sm:px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed min-h-[44px]"
+                    type="button"
+                    title="You don't have permission to upload documents"
+                  >
+                    <Lock className="w-5 h-5" />
+                    <span>Scan Document</span>
+                  </button>
+                )}
+                <div className="relative" ref={sortMenuRef}>
+                  <button
+                    onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm backdrop-blur-sm min-h-[44px]"
+                    type="button"
+                  >
+                    <ArrowUpDown className="w-5 h-5" />
+                    <span className="hidden sm:inline">{sortField === 'name' ? 'Name' : 'Date'}</span>
+                  </button>
+
+                  {isSortMenuOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sort By</span>
+                      </div>
+
+                      <button
+                        onClick={() => handleSortSelection('name', 'asc')}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                      >
+                        <span>Name (A-Z)</span>
+                        {sortField === 'name' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
+                      </button>
+
+                      <button
+                        onClick={() => handleSortSelection('name', 'desc')}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                      >
+                        <span>Name (Z-A)</span>
+                        {sortField === 'name' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
+                      </button>
+
+                      <div className="my-1 border-t border-gray-50"></div>
+
+                      <button
+                        onClick={() => handleSortSelection('date', 'desc')}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                      >
+                        <span>Date (Newest First)</span>
+                        {sortField === 'date' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
+                      </button>
+
+                      <button
+                        onClick={() => handleSortSelection('date', 'asc')}
+                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                      >
+                        <span>Date (Oldest First)</span>
+                        {sortField === 'date' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <AddFolderModal
-                  isOpen={isModalOpen}
-                  onClose={() => setIsModalOpen(false)}
-                  onCreate={handleCreate}
-                  parentFolderId={viewMode === 'documents' ? currentFolder?.folder_id : null}
-                />
+                <div className="flex bg-white/10 rounded-lg p-1 border border-white/20">
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, documentViewMode: 'list' }))}
+                    className={`p-1.5 rounded-md transition-all min-h-[36px] min-w-[36px] ${documentViewMode === 'list' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                    title="List View"
+                  >
+                    <List className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, documentViewMode: 'grid' }))}
+                    className={`p-1.5 rounded-md transition-all min-h-[36px] min-w-[36px] ${documentViewMode === 'grid' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                    title="Grid View"
+                  >
+                    <LayoutGrid className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              <AddFolderModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onCreate={handleCreate}
+                parentFolderId={viewMode === 'documents' ? currentFolder?.folder_id : null}
+              />
             </div>
+          </div>
 
-            {/* Search Bar */}
-            <SearchBar
-              searchTerm={searchTerm}
-              onSearchChange={handleSearchChange}
-              onFilterClick={handleFilterClick}
-            />
+          {/* Search Bar */}
+          <SearchBar
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
+            onFilterClick={handleFilterClick}
+          />
 
-            {/* Navigation */}
-            {viewMode === 'documents' && (
+          {/* Navigation */}
+          {viewMode === 'documents' && (
+            <div className="mt-6 mb-6">
               <BreadcrumbNav
                 currentFolder={currentFolder}
                 onNavigate={handleBackToFolders}
                 breadcrumbPath={[]} // We'll fix this separately since it needs to be async
               />
-            )}
+            </div>
+          )}
 
-            {/* Loading State - Skeleton */}
-            {initialLoading && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-3 bg-gray-100 rounded w-3/4"></div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="h-3 bg-gray-100 rounded w-20"></div>
-                      <div className="h-3 bg-gray-100 rounded w-16"></div>
+          {/* Loading State - Skeleton */}
+          {initialLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-100 rounded w-3/4"></div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Quick Loading Indicator for Updates */}
-            {loading && !initialLoading && (
-              <div className="fixed top-4 right-4 bg-white rounded-lg px-4 py-2 z-50 shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
-                  <span className="text-sm text-gray-700 font-medium">Updating...</span>
+                  <div className="flex justify-between items-center">
+                    <div className="h-3 bg-gray-100 rounded w-20"></div>
+                    <div className="h-3 bg-gray-100 rounded w-16"></div>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
+          )}
 
-            {/* Content Area */}
-            {!initialLoading && (
-              <>
-                {viewMode === 'folders' && !currentFolder ? (
-                  <>
-                    {/* Show folders grid when no document-level filters are active */}
-                    {!hasDocumentFilters ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style={{ willChange: 'transform' }}>
-                        {loading ? (
-                          // Show loading skeleton when loading folders
-                          [...Array(6)].map((_, i) => (
-                            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-                                <div className="flex-1">
-                                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                                  <div className="h-3 bg-gray-100 rounded w-3/4"></div>
-                                </div>
-                              </div>
-                              <div className="flex justify-between items-center">
-                                <div className="h-3 bg-gray-100 rounded w-20"></div>
-                                <div className="h-3 bg-gray-100 rounded w-16"></div>
+          {/* Quick Loading Indicator for Updates */}
+          {loading && !initialLoading && (
+            <div className="fixed top-4 right-4 bg-white rounded-lg px-4 py-2 z-50 shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
+                <span className="text-sm text-gray-700 font-medium">Updating...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Content Area */}
+          {!initialLoading && (
+            <>
+              {viewMode === 'folders' && !currentFolder ? (
+                <>
+                  {/* Show folders grid when no document-level filters are active */}
+                  {!hasDocumentFilters ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 auto-rows-fr" style={{ willChange: 'transform' }}>
+                      {loading ? (
+                        // Show loading skeleton when loading folders
+                        [...Array(6)].map((_, i) => (
+                          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                              <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                                <div className="h-3 bg-gray-100 rounded w-3/4"></div>
                               </div>
                             </div>
-                          ))
-                        ) : sortedFolders.length > 0 ? (
-                          sortedFolders.map((folder) => (
-
-                            <FolderCard
-                              key={folder.folder_id}
-                              folder={folder}
-                              onFolderClick={handleFolderClick}
-                              documentCount={getFolderDocumentCount(folder.folder_id)}
-                              onFolderUpdated={async () => {
-                                await loadFolders(null);
-                                await refreshCounts();
-                              }}
-                            />
-                          ))
-                        ) : (
-                          renderEmptyFolderState()
-                        )}
-                      </div>
-                    ) : (
-                      // Show filtered documents list when document-level filters are active
-                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h2 className="text-xl font-bold text-gray-900">
-                                {filters.status === 'archived' ? 'Archived Documents' :
-                                  filters.year ? `Documents from ${filters.year}` : 'Filtered Documents'}
-                              </h2>
-                              <p className="text-sm text-gray-600 font-normal mt-1">
-                                {loading ? 'Loading...' : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
-                              </p>
+                            <div className="flex justify-between items-center">
+                              <div className="h-3 bg-gray-100 rounded w-20"></div>
+                              <div className="h-3 bg-gray-100 rounded w-16"></div>
                             </div>
                           </div>
-                        </div>
+                        ))
+                      ) : sortedFolders.length > 0 ? (
+                        sortedFolders.map((folder) => (
 
-                        <div className="divide-y divide-gray-100">
-                          {loading ? (
-                            <div className="p-8 text-center text-gray-500">
-                              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
-                              <p className="text-sm font-normal text-gray-600">Loading archived documents...</p>
-                            </div>
-                          ) : sortedDocuments.length > 0 ? (
-                            documentViewMode === 'list' ? (
-                              sortedDocuments.map((document) => (
-
-                                <DocumentListItem
-                                  key={document.doc_id}
-                                  document={document}
-                                  onDocumentUpdated={async () => {
-                                    await loadDocuments();
-                                  }}
-                                />
-                              ))
-                            ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 gap-y-10 p-4">
-                                {sortedDocuments.map((document) => (
-                                  <DocumentGridItem
-                                    key={document.doc_id}
-                                    document={document}
-                                    onDocumentUpdated={async () => {
-                                      await loadDocuments();
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            )
-                          ) : (
-                            <div className="p-12 text-center">
-                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                {filters.status === 'archived' ? (
-                                  <Archive className="w-8 h-8 text-gray-400" />
-                                ) : (
-                                  <FileText className="w-8 h-8 text-gray-400" />
-                                )}
-                              </div>
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {filters.status === 'archived' ? 'No Archived Documents' :
-                                  filters.year ? `No Documents from ${filters.year}` : 'No Documents Found'}
-                              </h3>
-                              <p className="text-gray-600 font-normal">
-                                {filters.status === 'archived' ? 'There are no archived documents at this time.' :
-                                  filters.year ? `There are no documents created in ${filters.year}.` : 'No documents match your filter criteria.'}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Unified File Manager View - Folders and Documents - Clean White */}
+                          <FolderCard
+                            key={folder.folder_id}
+                            folder={folder}
+                            onFolderClick={handleFolderClick}
+                            documentCount={getFolderDocumentCount(folder.folder_id)}
+                            onFolderUpdated={async () => {
+                              await loadFolders(null);
+                              await refreshCounts();
+                              setSidebarRefreshKey(prev => prev + 1);
+                            }}
+                          />
+                        ))
+                      ) : (
+                        renderEmptyFolderState()
+                      )}
+                    </div>
+                  ) : (
+                    // Show filtered documents list when document-level filters are active
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                       <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center justify-between">
                           <div>
                             <h2 className="text-xl font-bold text-gray-900">
-                              {currentFolder?.folder_name || 'All Documents'}
+                              {filters.status === 'deleted' ? 'Deleted Documents' :
+                                filters.year ? `Documents from ${filters.year}` : 'Filtered Documents'}
                             </h2>
                             <p className="text-sm text-gray-600 font-normal mt-1">
-                              {loading ? 'Loading...' : `${subfolders.length} folder${subfolders.length !== 1 ? 's' : ''}, ${getDocumentCountText()}`}
+                              {loading ? 'Loading...' : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
                             </p>
                           </div>
                         </div>
                       </div>
 
                       <div className="divide-y divide-gray-100">
-                        {isTransitioning ? (
+                        {loading ? (
                           <div className="p-8 text-center text-gray-500">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-4"></div>
-                            <p className="text-sm font-normal text-gray-600">Loading...</p>
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                            <p className="text-sm font-normal text-gray-600">Loading documents...</p>
                           </div>
-                        ) : (
-                          <>
-                            {/* Subfolders */}
-                            {sortedSubfolders.map((folder) => (
+                        ) : sortedDocuments.length > 0 ? (
+                          documentViewMode === 'list' ? (
+                            sortedDocuments.map((document) => (
 
-                              <div
-                                key={`folder-${folder.folder_id}`}
-                                className="p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer flex items-center gap-4 group"
-                                onClick={() => handleFolderClick(folder)}
-                              >
-                                <div className="flex-shrink-0">
-                                  <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-all">
-                                    <FolderIcon className="w-6 h-6 text-blue-600" />
+                              <DocumentListItem
+                                key={document.doc_id}
+                                document={document}
+                                isHighlighted={highlightedDocId === document.doc_id}
+                                onDocumentUpdated={async () => {
+                                  await loadDocuments();
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 gap-y-10 p-4">
+                              {sortedDocuments.map((document) => (
+                                <DocumentGridItem
+                                  key={document.doc_id}
+                                  document={document}
+                                  isHighlighted={highlightedDocId === document.doc_id}
+                                  onDocumentUpdated={async () => {
+                                    await loadDocuments();
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )
+                        ) : (
+                          <div className="p-12 text-center">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <FileText className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {filters.status === 'deleted' ? 'No Deleted Documents' :
+                                filters.year ? `No Documents from ${filters.year}` : 'No Documents Found'}
+                            </h3>
+                            <p className="text-gray-600 font-normal">
+                              {filters.year ? `There are no documents created in ${filters.year}.` : 'No documents match your filter criteria.'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Unified File Manager View - Folders and Documents - Clean White */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="p-6 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-900">
+                            {currentFolder?.folder_name || 'All Documents'}
+                          </h2>
+                          <p className="text-sm text-gray-600 font-normal mt-1">
+                            {loading ? 'Loading...' : `${subfolders.length} folder${subfolders.length !== 1 ? 's' : ''}, ${getDocumentCountText()}`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-gray-100">
+                      {isTransitioning ? (
+                        <div className="p-8 text-center text-gray-500">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-4"></div>
+                          <p className="text-sm font-normal text-gray-600">Loading...</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Subfolders */}
+                          {sortedSubfolders.map((folder) => (
+
+                            <div
+                              key={`folder-${folder.folder_id}`}
+                              className="p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer flex items-center gap-4 group"
+                              onClick={() => handleFolderClick(folder)}
+                            >
+                              <div className="flex-shrink-0">
+                                <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-all">
+                                  <FolderIcon className="w-6 h-6 text-blue-600" />
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 truncate group-hover:text-green-600 transition-colors">
+                                  {folder.folder_name}
+                                </h3>
+                                <p className="text-sm text-gray-600 truncate font-normal">
+                                  {folder.folder_path}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0 text-sm text-gray-500 font-normal">
+                                {getFolderDocumentCount(folder.folder_id)} items
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Documents */}
+                          {loading && documents.length === 0 ? (
+                            <div className="p-4 text-center text-gray-500 text-sm font-normal">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                              <span className="text-gray-600">Loading documents...</span>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              {/* Search loading overlay */}
+                              {loading && documents.length > 0 && (
+                                <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-xl">
+                                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
+                                    <span className="text-sm text-gray-600">Searching...</span>
                                   </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-gray-900 truncate group-hover:text-green-600 transition-colors">
-                                    {folder.folder_name}
-                                  </h3>
-                                  <p className="text-sm text-gray-600 truncate font-normal">
-                                    {folder.folder_path}
-                                  </p>
-                                </div>
-                                <div className="flex-shrink-0 text-sm text-gray-500 font-normal">
-                                  {getFolderDocumentCount(folder.folder_id)} items
-                                </div>
-                              </div>
-                            ))}
-
-                            {/* Documents */}
-                            {loading && documents.length === 0 ? (
-                              <div className="p-4 text-center text-gray-500 text-sm font-normal">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                                <span className="text-gray-600">Loading documents...</span>
-                              </div>
-                            ) : (
-                              documentViewMode === 'list' ? (
+                              )}
+                              {documentViewMode === 'list' ? (
                                 sortedDocuments.map((document) => (
-
                                   <DocumentListItem
                                     key={`doc-${document.doc_id}`}
                                     document={document}
                                     folders={folders.map(f => ({ folder_id: f.folder_id, folder_name: f.folder_name }))}
+                                    isHighlighted={highlightedDocId === document.doc_id}
                                     onDocumentUpdated={async () => {
                                       await loadDocuments();
                                       await refreshCounts();
@@ -988,6 +1076,7 @@ const DocumentManagement: React.FC = () => {
                                       key={`doc-${document.doc_id}`}
                                       document={document}
                                       folders={folders.map(f => ({ folder_id: f.folder_id, folder_name: f.folder_name }))}
+                                      isHighlighted={highlightedDocId === document.doc_id}
                                       onDocumentUpdated={async () => {
                                         await loadDocuments();
                                         await refreshCounts();
@@ -995,70 +1084,72 @@ const DocumentManagement: React.FC = () => {
                                     />
                                   ))}
                                 </div>
-                              )
-                            )}
+                              )}
+                            </div>
+                          )}
 
-                            {/* Empty State - Only show when truly empty */}
-                            {!loading && subfolders.length === 0 && documents.length === 0 && (
-                              renderEmptyDocumentState()
-                            )}
-                          </>
-                        )}
-                      </div>
+                          {/* Empty State - Only show when truly empty */}
+                          {!loading && subfolders.length === 0 && documents.length === 0 && (
+                            renderEmptyDocumentState()
+                          )}
+                        </>
+                      )}
                     </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 
       {/* Upload Modal */}
-      {isUploadModalOpen && createPortal(
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30 backdrop-blur-sm"
-          style={{ margin: 0, padding: 0 }}
-          onClick={(e) => e.stopPropagation()}
-        >
+      {
+        isUploadModalOpen && createPortal(
           <div
-            className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-2xl mx-4"
+            className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30 backdrop-blur-sm"
+            style={{ margin: 0, padding: 0 }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
-                <p className="text-sm text-gray-500 mt-1">You can upload up to 5 documents at a time</p>
+            <div
+              className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-2xl mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
+                  <p className="text-sm text-gray-500 mt-1">You can upload up to 5 documents at a time</p>
+                </div>
+                <button
+                  onClick={() => setIsUploadCancelDialogOpen(true)}
+                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-1 rounded-lg transition-all text-xl"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setIsUploadModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-1 rounded-lg transition-all text-xl"
-              >
-                ✕
-              </button>
-            </div>
 
-            {/* Modal Content */}
-            <div className="p-6">
-              <MultiFileUploadUI
-                maxFileSize={50 * 1024 * 1024}
-                acceptedFileTypes=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                minFiles={1}
-                maxFiles={5}
-                onUploadSuccess={() => {
-                  setIsUploadModalOpen(false);
-                  loadDocuments();
-                }}
-                onUploadError={(error) => {
-                  console.error('Upload error:', error);
-                }}
-              />
+              {/* Modal Content */}
+              <div className="p-6">
+                <MultiFileUploadUI
+                  maxFileSize={50 * 1024 * 1024}
+                  acceptedFileTypes=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                  minFiles={1}
+                  maxFiles={5}
+                  onUploadSuccess={() => {
+                    setIsUploadModalOpen(false);
+                    loadDocuments();
+                  }}
+                  onUploadError={(error) => {
+                    console.error('Upload error:', error);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        )
+      }
 
       {/* Filter Modal */}
       <FilterModal
@@ -1069,11 +1160,49 @@ const DocumentManagement: React.FC = () => {
         folders={folders}
       />
 
-      {/* Scan Document Modal */}
       <ScanDocumentModal
         isOpen={isScanModalOpen}
         onClose={() => setIsScanModalOpen(false)}
       />
+
+      {/* Upload Cancel Confirmation Dialog */}
+      {isUploadCancelDialogOpen && createPortal(
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Dialog Header */}
+            <div className="px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
+              <h3 className="text-lg font-bold text-white">Cancel Upload?</h3>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="px-6 py-5">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Are you sure you want to cancel the upload process? Any selected files will be cleared.
+              </p>
+            </div>
+
+            {/* Dialog Actions */}
+            <div className="px-6 py-4 bg-gray-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setIsUploadCancelDialogOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Continue Upload
+              </button>
+              <button
+                onClick={() => {
+                  setIsUploadCancelDialogOpen(false);
+                  setIsUploadModalOpen(false);
+                }}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors shadow-md"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

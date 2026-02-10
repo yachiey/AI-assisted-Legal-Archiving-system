@@ -87,7 +87,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
         xhr.responseType = 'arraybuffer';
 
         return new Promise<void>((resolve, reject) => {
-          xhr.onload = function() {
+          xhr.onload = function () {
             if (xhr.status >= 200 && xhr.status < 300) {
               const contentType = xhr.getResponseHeader('content-type') || '';
               if (contentType.includes('application/json')) {
@@ -124,7 +124,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
         xhr.responseType = 'arraybuffer';
 
         return new Promise<void>((resolve, reject) => {
-          xhr.onload = function() {
+          xhr.onload = function () {
             if (xhr.status >= 200 && xhr.status < 300) {
               const contentType = xhr.getResponseHeader('content-type') || '';
               if (contentType.includes('application/json')) {
@@ -175,7 +175,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
     tryMethods(0);
   };
 
-  const getFileExtension = (filename: string): string => {
+  const getFileExtension = (filename: string | undefined | null): string => {
+    if (!filename) return '';
     return filename.split('.').pop()?.toLowerCase() || '';
   };
 
@@ -183,16 +184,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
     // Use file_path instead of title for accurate type detection
     const filepath = document.file_path || document.title;
     const extension = getFileExtension(filepath);
-    
+
     if (extension === 'pdf') return 'pdf';
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) return 'image';
     if (['txt', 'md', 'csv', 'json', 'xml', 'html'].includes(extension)) return 'text';
-    
+
     return 'unknown';
   };
 
   const handleDownload = async () => {
-    if (!fileContent || !document) return;
+    if (!document) return;
 
     try {
       // Log the download activity
@@ -208,13 +209,31 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
       console.error('Failed to log download:', error);
     }
 
-    // Proceed with download
-    const link = window.document.createElement('a');
-    link.href = fileContent;
-    link.download = document.title;
-    window.document.body.appendChild(link);
-    link.click();
-    window.document.body.removeChild(link);
+    // Determine the best filename (ensure it has an extension)
+    const filepath = document.file_path || document.title;
+    const extension = filepath.split('.').pop()?.toLowerCase() || '';
+    let downloadName = document.title;
+    if (extension && !downloadName.toLowerCase().endsWith('.' + extension)) {
+      downloadName = `${downloadName}.${extension}`;
+    }
+
+    // Proceed with download using blob if available, otherwise fallback to API
+    if (fileContent) {
+      const link = window.document.createElement('a');
+      link.href = fileContent;
+      link.download = downloadName;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+    } else {
+      // Fallback: Use the new secure download API directly
+      const link = window.document.createElement('a');
+      link.href = `/api/documents/${document.doc_id}/download`;
+      link.download = downloadName;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+    }
   };
 
   const handleZoomIn = () => {
@@ -395,7 +414,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
                 <div className="w-px h-6 bg-gray-300 mx-2"></div>
               </>
             )}
-            
+
             <button
               onClick={handleDownload}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -403,7 +422,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
             >
               <Download className="w-4 h-4 text-gray-600" />
             </button>
-            
+
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -423,14 +442,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center gap-4">
-              <span>Status: 
-                <span className={`ml-1 px-2 py-1 rounded-full text-xs ${
-                  document.status === 'active' ? 'bg-green-100 text-green-800' :
+              <span>Status:
+                <span className={`ml-1 px-2 py-1 rounded-full text-xs ${document.status === 'active' ? 'bg-green-100 text-green-800' :
                   document.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                  document.status === 'archived' ? 'bg-gray-100 text-gray-800' :
-                  'bg-blue-100 text-blue-800'
-                }`}>
-                  {document.status.charAt(0).toUpperCase() + document.status.slice(1)}
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                  {(document.status || 'unknown').charAt(0).toUpperCase() + (document.status || 'unknown').slice(1)}
                 </span>
               </span>
               {document.remarks && (
@@ -438,7 +455,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
               )}
             </div>
             <div>
-              Created: {new Date(document.created_at).toLocaleDateString()} • 
+              Created: {new Date(document.created_at).toLocaleDateString()} •
               Updated: {new Date(document.updated_at).toLocaleDateString()}
             </div>
           </div>

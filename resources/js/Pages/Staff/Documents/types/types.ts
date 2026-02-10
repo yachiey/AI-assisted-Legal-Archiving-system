@@ -33,12 +33,14 @@ export interface Document {
   description?: string;
   file_path: string;
   created_by: string;
-  status: 'active' | 'draft' | 'archived' | 'pending';
+  status: 'active' | 'draft' | 'pending';
   folder_id: number | null;
   folder?: Folder;
   remarks?: string;
   physical_location?: string;
   ai_suggested_folder?: string;
+  document_ref_id?: string;
+  user?: User;
   created_at: string;
   updated_at: string;
 }
@@ -96,6 +98,7 @@ export interface FolderCardProps {
 export interface DocumentListItemProps {
   document: Document;
   folders?: Array<{ folder_id: number; folder_name: string }>;
+  isHighlighted?: boolean;
   onDocumentUpdated?: () => void;
 }
 

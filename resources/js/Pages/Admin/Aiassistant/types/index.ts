@@ -14,6 +14,8 @@ export interface ChatMessage {
   timestamp: string;
   session_id?: string; // Optional, only present in API responses
   documents?: DocumentReference[]; // Optional, documents mentioned in the message
+  more_documents_count?: number; // Optional, count of additional documents not shown
+  auto_open_doc_id?: number; // Optional, if present auto-open this document
 }
 
 export interface ChatSession {
@@ -39,6 +41,8 @@ export interface Document {
   type: string;
   size: number;
   uploadDate: string;
+  created_at: string;
+  updated_at: string;
   status: string;
   folder_id?: number | null;
   folder?: Folder | null;

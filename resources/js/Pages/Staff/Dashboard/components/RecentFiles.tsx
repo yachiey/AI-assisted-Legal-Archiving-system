@@ -1,11 +1,13 @@
-import { FC } from 'react';
-import { FileText, Clock, User, ArrowUpRight } from 'lucide-react';
+import { FC, useState } from 'react';
+import { FileText, Clock, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import UploadDocumentViewer from '../../Documents/components/FileUpload/UploadDocumentViewer';
 
 interface RecentFile {
     id: number;
     title: string;
     timestamp: string;
     date: string;
+    folder_name?: string;
     created_by: string;
 }
 
@@ -14,6 +16,38 @@ interface RecentFilesProps {
 }
 
 const RecentFiles: FC<RecentFilesProps> = ({ files }) => {
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
+    const [selectedFileName, setSelectedFileName] = useState<string>('');
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
+
+    // Calculate pagination
+    const totalPages = Math.ceil(files.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentFiles = files.slice(startIndex, endIndex);
+
+    const handlePrevPage = () => {
+        setCurrentPage(prev => Math.max(prev - 1, 1));
+    };
+
+    const handleNextPage = () => {
+        setCurrentPage(prev => Math.min(prev + 1, totalPages));
+    };
+
+    const goToPage = (page: number) => {
+        setCurrentPage(page);
+    };
+
+    const handleViewDocument = (file: RecentFile) => {
+        setSelectedDocId(file.id);
+        setSelectedFileName(file.title);
+        setViewerOpen(true);
+    };
+
     return (
         <div className="relative bg-white rounded-3xl shadow-lg border border-gray-100/50 p-6 overflow-hidden group/card hover:shadow-2xl transition-all duration-500">
             {/* Decorative gradient */}
@@ -31,20 +65,21 @@ const RecentFiles: FC<RecentFilesProps> = ({ files }) => {
                     <div className="flex-1">
                         <h3 className="text-xl font-black text-gray-900 tracking-tight"
                             style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
-                            Recent Files
+                            Recent Uploads
                         </h3>
                         <p className="text-xs text-gray-500 font-medium tracking-wide mt-0.5">
-                            Latest uploaded documents
+                            Your recently uploaded documents
                         </p>
                     </div>
                 </div>
 
                 {/* Files List */}
                 <div className="space-y-2.5">
-                    {files.length > 0 ? (
-                        files.map((file, index) => (
+                    {currentFiles.length > 0 ? (
+                        currentFiles.map((file, index) => (
                             <div
                                 key={file.id}
+                                onClick={() => handleViewDocument(file)}
                                 className="group relative flex items-center justify-between p-4 bg-gradient-to-br from-gray-50/80 to-white rounded-2xl hover:from-blue-50/50 hover:to-blue-50/30 transition-all duration-400 border border-gray-100/80 hover:border-blue-200/60 hover:shadow-md cursor-pointer overflow-hidden"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
@@ -57,12 +92,16 @@ const RecentFiles: FC<RecentFilesProps> = ({ files }) => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-gray-900 text-sm truncate group-hover:text-blue-700 transition-colors mb-1"
-                                           style={{ fontFamily: "'Inter', sans-serif" }}>
+                                            style={{ fontFamily: "'Inter', sans-serif" }}>
                                             {file.title}
                                         </p>
-                                        <div className="flex items-center gap-2">
-                                            <User className="w-3 h-3 text-gray-400" strokeWidth={2.5} />
-                                            <p className="text-xs text-gray-600 font-medium">{file.created_by}</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <p className="text-xs text-gray-600 font-medium">{file.folder_name || 'Uncategorized'}</p>
+                                            </div>
+                                            <span className="text-gray-300">•</span>
+                                            <p className="text-xs text-gray-500">{file.date}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -91,7 +130,63 @@ const RecentFiles: FC<RecentFilesProps> = ({ files }) => {
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
+                        <div className="text-sm text-gray-500 font-medium">
+                            Showing {startIndex + 1} to {Math.min(endIndex, files.length)} of {files.length}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handlePrevPage}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-lg bg-gray-100 border border-gray-200 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                                aria-label="Previous page"
+                            >
+                                <ChevronLeft className="w-4 h-4 text-gray-600" />
+                            </button>
+
+                            <div className="flex gap-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <button
+                                        key={page}
+                                        onClick={() => goToPage(page)}
+                                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${currentPage === page
+                                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md'
+                                            : 'bg-gray-100 border border-gray-200 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={handleNextPage}
+                                disabled={currentPage === totalPages}
+                                className="p-2 rounded-lg bg-gray-100 border border-gray-200 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                                aria-label="Next page"
+                            >
+                                <ChevronRight className="w-4 h-4 text-gray-600" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Document Viewer Modal */}
+            <UploadDocumentViewer
+                isOpen={viewerOpen}
+                onClose={() => {
+                    setViewerOpen(false);
+                    setSelectedDocId(null);
+                    setSelectedFileName('');
+                }}
+                docId={selectedDocId}
+                fileName={selectedFileName}
+            />
         </div>
     );
 };

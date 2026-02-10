@@ -47,6 +47,19 @@ def main():
     # Fix for Windows console output issues
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
+    # Fix Windows invalid handle error (error 6) when launched via 'start cmd /k'
+    import sys
+    try:
+        sys.stdout.write('')
+        sys.stdout.flush()
+    except OSError:
+        sys.stdout = open(os.devnull, 'w')
+    try:
+        sys.stderr.write('')
+        sys.stderr.flush()
+    except OSError:
+        sys.stderr = open(os.devnull, 'w')
+
     # Disable Flask's banner to avoid console issues
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
 

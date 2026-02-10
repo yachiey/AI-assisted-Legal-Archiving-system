@@ -4,7 +4,6 @@ import axios from 'axios';
 interface UserPermissions {
     can_edit: boolean;
     can_delete: boolean;
-    can_archive: boolean;
     can_upload: boolean;
     can_view: boolean;
 }

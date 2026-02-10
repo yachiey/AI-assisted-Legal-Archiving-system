@@ -71,16 +71,9 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
               </h3>
 
               <div className="bg-white/10 rounded-lg p-5 space-y-4 hover:bg-white/15 transition-all duration-300 hover:shadow-lg transform hover:scale-[1.02] backdrop-blur-md border border-white/20">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white/65">Name</label>
-                    <p className="text-base text-white/95 font-semibold">{folder.folder_name}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-white/65">Folder ID</label>
-                    <p className="text-base text-white/90">#{folder.folder_id}</p>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/65">Name</label>
+                  <p className="text-base text-white/95 font-semibold">{folder.folder_name}</p>
                 </div>
 
                 <div>

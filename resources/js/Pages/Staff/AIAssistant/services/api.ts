@@ -109,8 +109,9 @@ class ApiService {
     return response.json();
   }
 
-  async getDocuments(): Promise<any[]> {
-    const response = await fetch(`${this.baseUrl}/documents`, {
+  async getDocuments(search?: string): Promise<any[]> {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    const response = await fetch(`${this.baseUrl}/documents${params}`, {
       headers: this.getHeaders(),
     });
 

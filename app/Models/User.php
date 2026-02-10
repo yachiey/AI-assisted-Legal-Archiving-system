@@ -26,7 +26,6 @@ class User extends Authenticatable
         'status',
         'can_edit',
         'can_delete',
-        'can_archive',
         'can_upload',
         'can_view',
     ];
@@ -34,7 +33,6 @@ class User extends Authenticatable
     protected $casts = [
         'can_edit' => 'boolean',
         'can_delete' => 'boolean',
-        'can_archive' => 'boolean',
         'can_upload' => 'boolean',
         'can_view' => 'boolean',
     ];

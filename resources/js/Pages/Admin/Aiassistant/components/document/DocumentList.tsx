@@ -49,7 +49,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onDelete,
           key={document.id}
           className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors group"
         >
-          <div 
+          <div
             className="flex items-center flex-1 cursor-pointer"
             onClick={() => onSelect?.(document)}
           >
@@ -61,21 +61,21 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onDelete,
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{document.title}</p>
               <div className="flex items-center mt-1 space-x-4 text-xs text-gray-500">
-                <span>{document.type}</span>
-                <span>{document.size}</span>
-                <span>{new Date(document.uploadDate).toLocaleDateString()}</span>
+                {document.type && <span>{document.type}</span>}
+                {document.size && <span>{document.size}</span>}
+                <span>{new Date(document.uploadDate || document.created_at).toLocaleDateString()}</span>
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <div className={`flex items-center ${getStatusColor(document.status)}`}>
               {getStatusIcon(document.status)}
               <span className="ml-1 text-xs capitalize">{document.status}</span>
             </div>
-            
+
             <button
-              onClick={() => onDelete(document.id)}
+              onClick={() => onDelete(document.doc_id || document.id)}
               className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 transition-opacity"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

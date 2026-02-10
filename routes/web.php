@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ContactController;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 
@@ -21,6 +22,7 @@ Route::get('/', [HomeController::class, 'index']);
 // Login route - return the main page with login modal capability
 Route::get('/login', [HomeController::class, 'index'])->name('login');
 Route::post('/login', [LoginController::class, 'login']); // Handle login submission
+Route::post('/contact', [ContactController::class, 'store']);
 
 Route::get('/ai-processing', [AIProcessController::class, 'show'])->name('ai.processing');
 Route::get('/manualy-processing', [ManualProcessController::class, 'show'])->name('manual.processing');
@@ -32,7 +34,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/ai-assistant', [AIAssistantController::class, 'index'])->name('admin.Aiassistant.index');
     route::get('/documents', [DocumentController::class, 'index'])->name('admin.Document.index');
 
-    Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports');
+// Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports');
     Route::post('/reports/export-pdf', [ReportController::class, 'exportPDF'])->name('admin.reports.export-pdf');
     Route::post('/reports/export-excel', [ReportController::class, 'exportExcel'])->name('admin.reports.export-excel');
     Route::post('/reports/export-activity-logs', [ReportController::class, 'exportActivityLogs'])->name('admin.reports.export-activity-logs');
@@ -56,6 +58,16 @@ Route::get('/admin/documents', [DocumentController::class, 'index'])->name('docu
 Route::post('/admin/documents', [DocumentController::class, 'store'])->name('documents.store');
 Route::get('/admin/documents/list', [DocumentController::class, 'getDocuments'])->name('documents.list');
 Route::get('/admin/documents/counts', [DocumentController::class, 'getDocumentCounts'])->name('documents.counts');
+
+    // Admin Notification Routes
+    Route::get('/notifications', [AdminController::class, 'getNotifications'])->name('admin.notifications.list');
+    Route::put('/notifications/{id}/read', [AdminController::class, 'markNotificationRead'])->name('admin.notifications.read');
+    Route::put('/notifications/read-all', [AdminController::class, 'markAllNotificationsRead'])->name('admin.notifications.read-all');
+
+    // Permission Request Management Routes
+    Route::get('/permission-requests/pending', [AccountController::class, 'getPendingRequests'])->name('admin.permission-requests.pending');
+    Route::post('/permission-requests/{id}/accept', [AccountController::class, 'acceptRequest'])->name('admin.permission-requests.accept');
+    Route::post('/permission-requests/{id}/decline', [AccountController::class, 'declineRequest'])->name('admin.permission-requests.decline');
 });
 
 // Shared Authenticated Routes (Admin + Staff)
@@ -97,4 +109,8 @@ Route::prefix('staff')->middleware(['auth', 'role:staff'])->group(function () {
     Route::get('/notifications', [StaffController::class, 'getNotifications'])->name('staff.notifications.list');
     Route::put('/notifications/{id}/read', [StaffController::class, 'markNotificationRead'])->name('staff.notifications.read');
     Route::put('/notifications/read-all', [StaffController::class, 'markAllNotificationsRead'])->name('staff.notifications.read-all');
+    
+    // Permission Request Routes
+    Route::post('/request-permission', [AccountController::class, 'requestPermission'])->name('staff.request-permission');
+    Route::get('/my-permission-requests', [AccountController::class, 'getMyRequests'])->name('staff.my-permission-requests');
 });

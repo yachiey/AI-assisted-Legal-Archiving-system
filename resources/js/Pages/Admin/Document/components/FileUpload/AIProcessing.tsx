@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Folder, Calendar, User, Brain, CheckCircle, AlertCircle, ChevronDown, Eye } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import ProcessingModal from '../../../../../Components/Modal/Processing/ProcessingModal';
+
+import { FileText, Folder, Calendar, User, Brain, CheckCircle, AlertCircle, ChevronDown, Eye, Plus } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import UploadDocumentViewer from './UploadDocumentViewer';
 import DocumentQueueNavigation from './DocumentQueueNavigation';
@@ -36,7 +39,7 @@ interface FolderItem {
 
 const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [processingStatus, setProcessingStatus] = useState<'idle' | 'completed' | 'error'>('idle');
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'analyzing' | 'processing' | 'completed' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [physicalLocation, setPhysicalLocation] = useState<string>(documentData?.physicalLocation || '');
   const [documentRefId, setDocumentRefId] = useState<string>(documentData?.document_ref_id || '');
@@ -46,8 +49,33 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
   // Folder management state
   const [availableFolders, setAvailableFolders] = useState<FolderItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(documentData?.folder_id || null);
-  const [aiSuggestedFolder] = useState<string>(documentData?.suggestedLocation || '');
+  const [aiSuggestedFolder, setAiSuggestedFolder] = useState<string>(documentData?.suggestedLocation || '');
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState<boolean>(false);
+
+  // Sync state with prop updates (polling updates documentData)
+  // COMPREHENSIVE RESET: Sync state when new document is loaded via props
+  useEffect(() => {
+    if (documentData?.doc_id) {
+      // 1. Reset document state
+      setDocument(documentData);
+
+      // 2. Reset AI suggestion state
+      setAiSuggestedFolder(documentData.suggestedLocation || '');
+
+      // 3. Reset UI states from previous interaction
+      setShowCreateFolderDialog(false);
+      setNewFolderName('');
+      setIsCreatingFolder(false);
+
+      // 4. Reset completion ref
+      isCompletingRef.current = false;
+      hasShownDialogRef.current = false;
+
+      // 5. Reset folder fetch status to trigger re-checks
+      setIsFolderFetchComplete(false);
+    }
+  }, [documentData?.doc_id]);
+
   const [newFolderName, setNewFolderName] = useState<string>('');
   const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false);
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
@@ -69,8 +97,8 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
     clearQueue
   } = useDocumentQueue(documentData?.doc_id);
 
-  // Use documentData from backend
-  const document: DocumentData = documentData || {
+  // Use local state for document data to support updates from polling
+  const [document, setDocument] = useState<DocumentData>(documentData || {
     fileName: "No file selected",
     title: "No document",
     description: "",
@@ -79,48 +107,226 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
     createdBy: "System",
     createdAt: new Date().toISOString().split('T')[0],
     status: "Pending"
-  };
+  });
 
-  // Fetch available folders on component mount
+  const isCompletingRef = React.useRef(false);
+  const hasShownDialogRef = React.useRef(false);
+  const [isFolderFetchComplete, setIsFolderFetchComplete] = useState<boolean>(false);
+
+  // Poll for document status
+
+
+  // Fetch available folders when component loads or document changes
   useEffect(() => {
+    let mounted = true;
+
     const fetchFolders = async () => {
       try {
         const axios = (await import('axios')).default;
-        const response = await axios.get('/api/manual-process/folders', {
+        const response = await axios.get('/api/folders', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
             'Accept': 'application/json'
           }
         });
-        setAvailableFolders(response.data);
 
-        // Check if AI-suggested folder exists in available folders
-        if (aiSuggestedFolder && response.data.length > 0) {
-          const matchedFolder = response.data.find((f: FolderItem) =>
-            f.folder_name.toLowerCase() === aiSuggestedFolder.toLowerCase()
-          );
-
-          if (matchedFolder) {
-            setSelectedFolderId(matchedFolder.folder_id);
-          } else {
-            setNewFolderName(aiSuggestedFolder);
-            setShowCreateFolderDialog(true);
-          }
+        if (mounted) {
+          // API returns direct array [Folder, Folder...], NOT { data: [...] }
+          setAvailableFolders(response.data || []);
+          setIsFolderFetchComplete(true);
         }
       } catch (error) {
         console.error('Failed to fetch folders:', error);
+        if (mounted) {
+          setIsFolderFetchComplete(true); // Always mark complete to unblock UI
+        }
       }
     };
 
+    setIsFolderFetchComplete(false);
     fetchFolders();
-  }, [aiSuggestedFolder]);
 
-  // Set processing status when document is loaded
+    return () => { mounted = false; };
+  }, [documentData?.doc_id]);
+
+  // Check for folder match whenever folders are loaded or suggestion changes
   useEffect(() => {
-    if (documentData?.doc_id) {
-      setProcessingStatus('completed');
+    // Use state first, fallback to prop
+    const aiSuggested = aiSuggestedFolder || documentData?.suggestedLocation;
+
+    // Only proceed if we have a suggestion and folders have been fetched
+    if (aiSuggested && isFolderFetchComplete) {
+      const folders = availableFolders || [];
+      const matched = folders.find((f: any) =>
+        f.folder_name.toLowerCase().trim() === aiSuggested.toLowerCase().trim()
+      );
+
+      if (matched) {
+        setSelectedFolderId(matched.folder_id);
+      } else {
+        // Folder doesn't exist, show creation dialog
+
+        // Use timeout and ref to ensure we only show it once and allow UI to settle
+        if (!hasShownDialogRef.current && !showCreateFolderDialog && !isCreatingFolder) {
+          hasShownDialogRef.current = true;
+          setTimeout(() => {
+            setNewFolderName(aiSuggested);
+            setShowCreateFolderDialog(true);
+          }, 500); // 500ms delay to force UI update/settle
+        }
+      }
+    }
+  }, [aiSuggestedFolder, documentData?.suggestedLocation, isFolderFetchComplete, availableFolders]);
+
+  // Auto-analyze document when component loads
+  useEffect(() => {
+    // Initial check
+    if (documentData?.doc_id && processingStatus === 'idle') {
+      // If status is active/completed, just show it. If pending, start analyzing.
+      if (documentData.status === 'processing') {
+        setProcessingStatus('analyzing');
+      }
     }
   }, [documentData]);
+
+  // Poll for document status
+  useEffect(() => {
+    if (!documentData?.doc_id) return;
+
+    // ... existing polling logic ...
+
+
+    // Initial check logic moved to separate useEffect
+
+
+    // Auto-analyze document when component loads
+
+
+    const pollInterval = setInterval(async () => {
+      if (document.status === 'active' || document.status === 'failed') {
+        setIsProcessing(false);
+        setProcessingStatus(document.status === 'active' ? 'completed' : 'error');
+        clearInterval(pollInterval);
+        return;
+      }
+
+      try {
+        const axios = (await import('axios')).default;
+        const response = await axios.get(`/api/documents/${documentData.doc_id}`);
+
+        if (response.data.success && response.data.data) {
+          const updatedDoc = response.data.data;
+          // Fix: Ensure we are setting nested data correctly if the API returns it
+          setDocument(prev => ({
+            ...prev,
+            ...updatedDoc,
+            suggestedLocation: updatedDoc.suggestedLocation,
+            description: updatedDoc.description,
+            remarks: updatedDoc.remarks,
+            title: updatedDoc.title
+          }));
+
+          // Fix: Update UI state for AI recommendation box
+          if (updatedDoc.suggestedLocation) {
+            setAiSuggestedFolder(updatedDoc.suggestedLocation);
+          }
+
+          if (updatedDoc.status === 'active') {
+            setIsProcessing(false);
+            setProcessingStatus('completed');
+            // Update other state based on new data
+            if (updatedDoc.suggestedLocation) {
+              // Logic to update selected folder based on suggestion is handled in separate effect
+            }
+          } else if (updatedDoc.status === 'failed') {
+            setIsProcessing(false);
+            setProcessingStatus('error');
+            setErrorMessage(updatedDoc.remarks || 'Processing failed');
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [documentData?.doc_id, document.status]);
+
+  // Cleanup on unmount (User Abandonment)
+  useEffect(() => {
+    const DOCUMENT_QUEUE_KEY = 'document_upload_queue';
+
+    const performCleanup = () => {
+      if (!isCompletingRef.current && document?.doc_id) {
+        // Delete the document if user abandons without clicking Accept
+        // This ensures documents are not saved unless explicitly accepted
+        fetch(`/api/documents/${document.doc_id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          keepalive: true
+        });
+        // Clear the document queue from session storage
+        sessionStorage.removeItem(DOCUMENT_QUEUE_KEY);
+      }
+    };
+
+    const handleUnload = (e: BeforeUnloadEvent) => {
+      if (!isCompletingRef.current && document?.doc_id) {
+        performCleanup();
+        // Show browser's default confirmation dialog
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    const handlePopState = () => {
+      // Browser back/forward button pressed
+      if (!isCompletingRef.current && document?.doc_id) {
+        performCleanup();
+      }
+    };
+
+    // Handle Inertia.js navigation (back button, link clicks, etc.)
+    const removeInertiaListener = router.on('before', () => {
+      if (!isCompletingRef.current && document?.doc_id) {
+        performCleanup();
+      }
+    });
+
+    // Handle browser close/reload
+    window.addEventListener('beforeunload', handleUnload);
+    // Handle browser back/forward button
+    window.addEventListener('popstate', handlePopState);
+
+    // Handle component unmount
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('popstate', handlePopState);
+      removeInertiaListener();
+    };
+  }, [document?.doc_id]);
+
+  // Update folder selection when document data changes (from polling)
+  useEffect(() => {
+    if (document.suggestedLocation && availableFolders.length > 0) {
+      const matchedFolder = availableFolders.find((f: FolderItem) =>
+        f.folder_name.toLowerCase().trim() === document.suggestedLocation!.toLowerCase().trim()
+      );
+      if (matchedFolder) {
+        setSelectedFolderId(matchedFolder.folder_id);
+      } else if (document.suggestedLocation) {
+        setNewFolderName(document.suggestedLocation);
+        // Don't auto-show dialog during polling, might be annoying? 
+        // Maybe only if status just changed to completed?
+        // For now, let's keep it simple.
+      }
+    }
+  }, [document.suggestedLocation, availableFolders]);
+
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
@@ -164,6 +370,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
   };
 
   const handleAcceptAI = async () => {
+    isCompletingRef.current = true;
     if (!documentRefId.trim()) {
       setErrors({ documentRefId: 'Please enter a Document ID' });
       if (docRefIdInputRef.current) {
@@ -176,14 +383,15 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
     setIsProcessing(true);
 
     try {
-      if (documentData?.doc_id && (physicalLocation || selectedFolderId)) {
+      // ALWAYS call update API if we have a document ID - this renames file and moves to folder
+      if (documentData?.doc_id) {
         const axios = (await import('axios')).default;
         await axios.post('/api/manual-process/update', {
           doc_id: documentData.doc_id,
-          title: documentData.title,
-          folder_id: selectedFolderId || documentData.folder_id,
-          description: documentData.description,
-          remarks: documentData.remarks,
+          title: document.title, // Use updated state (AI-generated title), not original prop
+          folder_id: selectedFolderId || document.folder_id,
+          description: document.description,
+          remarks: document.remarks,
           physical_location: physicalLocation,
           document_ref_id: documentRefId
         }, {
@@ -237,6 +445,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
   };
 
   const handleManualReview = () => {
+    isCompletingRef.current = true;
     const docId = documentData?.doc_id;
     const url = docId ? `/manualy-processing?docId=${docId}` : '/manualy-processing';
     router.visit(url);
@@ -271,7 +480,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
         });
 
         const toast = window.document.createElement('div');
-        toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50';
+        toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50';
         toast.textContent = hasQueue && !isLastDocument
           ? `Document deleted. Moving to next (${remainingCount} remaining)...`
           : 'Document deleted successfully';
@@ -356,6 +565,15 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
 
   return (
     <div className="min-h-screen p-4 bg-gray-50">
+      <ProcessingModal
+        isOpen={processingStatus === 'analyzing' || processingStatus === 'processing'}
+        step={processingStatus === 'analyzing' ? 'extracting' : 'analyzing'}
+        details={
+          processingStatus === 'analyzing'
+            ? 'Extracting text & generating embeddings...'
+            : 'Finalizing document processing...'
+        }
+      />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -418,7 +636,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                 <FileText className="w-5 h-5 text-white flex-shrink-0" />
               </div>
               <p className="text-gray-900 text-base leading-relaxed font-medium mt-0.5">
-                "{document.fileName}"
+                "{getSelectedFolderName() || aiSuggestedFolder ? `${getSelectedFolderName() || aiSuggestedFolder}/` : ''}{document.fileName}"
               </p>
             </div>
           </div>
@@ -557,6 +775,19 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                           );
                         })
                       )}
+
+                      {/* Create New Folder Option */}
+                      <button
+                        onClick={() => {
+                          setDropdownOpen(false);
+                          setNewFolderName('');
+                          setShowCreateFolderDialog(true);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-green-50 border-t border-gray-100 transition-all duration-200 text-[#228B22] font-bold flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create New Folder...
+                      </button>
                     </div>
                   )}
                 </div>
@@ -717,9 +948,9 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
         </div>
       )}
 
-      {/* Create Folder Dialog */}
-      {showCreateFolderDialog && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-start pt-20 justify-center z-[9999] p-4">
+      {/* Create Folder Dialog - Rendered in Portal to avoid overflow/z-index issues */}
+      {showCreateFolderDialog && createPortal(
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-start pt-20 justify-center z-[100000] p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
               <div className="flex items-center">
@@ -774,7 +1005,8 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
               </p>
             </div>
           </div>
-        </div>
+        </div>,
+        window.document.body
       )}
 
       {/* Document Viewer */}

@@ -19,9 +19,8 @@ const StaffSidebar: FC = () => {
 
     return (
         <div
-            className={`h-screen relative transition-all duration-300 shadow-2xl ${
-                collapsed ? "w-20" : "w-72"
-            }`}
+            className={`h-full relative transition-all duration-300 shadow-2xl ${collapsed ? "w-20" : "w-64"
+                }`}
             style={{
                 background: 'linear-gradient(180deg, #228B22 0%, #1a6b1a 100%)'
             }}
@@ -30,9 +29,8 @@ const StaffSidebar: FC = () => {
             <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
 
             {/* Brand Logo */}
-            <div className={`relative flex justify-center items-center transition-all duration-300 ${
-                collapsed ? "py-6" : "py-6 px-4"
-            }`}>
+            <div className={`relative flex justify-center items-center transition-all duration-300 ${collapsed ? "py-6" : "py-6 px-4"
+                }`}>
                 <div className="relative">
                     <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full"></div>
                     <Brand
@@ -78,9 +76,8 @@ const StaffSidebar: FC = () => {
             )}
 
             {/* Sidebar Links */}
-            <ul className={`space-y-2 ${
-                collapsed ? "px-2" : "px-4"
-            }`}>
+            <ul className={`space-y-2 ${collapsed ? "px-2" : "px-4"
+                }`}>
                 {navLinksData.map((item, index) => (
                     <SidebarLink
                         key={item.title}

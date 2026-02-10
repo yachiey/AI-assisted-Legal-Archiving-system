@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { router } from '@inertiajs/react';
 import AdminLayout from "../../../../Layouts/AdminLayout";
 
 import { Header } from './components/layout/Header';
@@ -8,12 +9,27 @@ import { ChatInterface } from './components/chat/ChatInterface';
 import { Modal } from './components/ui/Modal';
 import { apiService } from './services/api';
 import { useApi } from './hooks/useApi';
-import { ChatSession, ChatMessage, Document } from './types';
+import { ChatSession, ChatMessage, Document, DocumentReference } from './types';
 import { Sidebar } from './components/layout/SidebarUi/Sidebar';
+import DocumentViewer from '../Document/components/DocumentViewer/DocumentViewer';
+import { Document as FullDocument } from '../Document/types/types';
 
 function Aiassistant() {
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
+    // Restore from sessionStorage on mount
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('admin_ai_selectedSessionId') || null;
+    }
+    return null;
+  });
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    // Restore from sessionStorage on mount
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('admin_ai_chatMessages');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   // const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   // const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +37,28 @@ function Aiassistant() {
   const [documentsShownInSession, setDocumentsShownInSession] = useState(false);
   const [sessionDocumentIds, setSessionDocumentIds] = useState<number[]>([]);
   const [isNewConversation, setIsNewConversation] = useState(false);
+
+  // Document viewer state
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false);
+
+  // Save conversation state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (selectedSessionId) {
+        sessionStorage.setItem('admin_ai_selectedSessionId', selectedSessionId);
+      } else {
+        sessionStorage.removeItem('admin_ai_selectedSessionId');
+      }
+    }
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('admin_ai_chatMessages', JSON.stringify(chatMessages));
+    }
+  }, [chatMessages]);
 
   // API hooks
   const { data: chatSessions, loading: sessionsLoading, refetch: refetchSessions } = useApi<ChatSession[]>(
@@ -102,8 +140,9 @@ function Aiassistant() {
     setIsLoading(true);
 
     try {
-      // Store document IDs for the session if this is the first time attaching documents
-      let documentIdsToSend = sessionDocumentIds;
+      // DOCUMENT SCOPING: Only send document IDs when the user has explicitly selected/attached documents.
+      // When no new documents are attached, send NO document IDs to let the backend handle freely.
+      let documentIdsToSend: number[] = [];
       if (attachedDocuments && attachedDocuments.length > 0) {
         const newDocIds = attachedDocuments.map(doc => doc.doc_id || doc.id);
         setSessionDocumentIds(newDocIds);
@@ -150,6 +189,11 @@ function Aiassistant() {
     setDocumentsShownInSession(false); // Reset document display flag for new chat
     setSessionDocumentIds([]); // Clear session document IDs for new chat
     setIsNewConversation(false); // Reset new conversation flag
+    // Clear sessionStorage for new chat
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('admin_ai_selectedSessionId');
+      sessionStorage.removeItem('admin_ai_chatMessages');
+    }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
@@ -218,6 +262,45 @@ function Aiassistant() {
 
   const currentSession = chatSessions?.find(s => s.id === selectedSessionId);
 
+  // Handle viewing a document from AI chat
+  const handleViewDocument = async (docId: number) => {
+    setIsLoadingDocument(true);
+    try {
+      // Fetch full document details
+      const response = await fetch(`/api/documents/${docId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        setSelectedDocument(responseData.success ? responseData.data : responseData);
+        setIsViewerOpen(true);
+      } else {
+        console.error('Failed to fetch document details');
+      }
+    } catch (error) {
+      console.error('Error fetching document:', error);
+    } finally {
+      setIsLoadingDocument(false);
+    }
+  };
+
+  // Handle navigating to document location in Documents page
+  const handleNavigateToDocument = (doc: DocumentReference) => {
+    // Navigate to Documents page with folder and highlight params
+    const params: Record<string, string> = { from: 'ai' };
+    if (doc.folder_id) {
+      params.folder = String(doc.folder_id);
+    }
+    if (doc.doc_id) {
+      params.highlight = String(doc.doc_id);
+    }
+    router.visit('/admin/documents', { data: params });
+  };
+
   return (
     <div className="h-screen overflow-hidden bg-gray-50">
       <div className="h-full flex">
@@ -251,7 +334,9 @@ function Aiassistant() {
             <ChatInterface
               messages={chatMessages}
               onSendMessage={handleSendMessage}
-              loading={isLoading}
+              onViewDocument={handleViewDocument}
+              onNavigate={handleNavigateToDocument}
+              loading={isLoading || isLoadingDocument}
             />
           </div>
         </div>
@@ -284,6 +369,16 @@ function Aiassistant() {
           </div>
         </Modal>
         */}
+
+        {/* Document Viewer Modal */}
+        <DocumentViewer
+          isOpen={isViewerOpen}
+          onClose={() => {
+            setIsViewerOpen(false);
+            setSelectedDocument(null);
+          }}
+          document={selectedDocument}
+        />
       </div>
     </div>
   );

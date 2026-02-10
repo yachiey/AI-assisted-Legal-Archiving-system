@@ -7,7 +7,6 @@ import DocumentMenu from "../MainDoc/DocumentMenu";
 import RenameFolderModal from "./RenameFolderModal";
 import DeleteFolderDialog from "./DeleteFolderDialog";
 import FolderPropertiesModal from "./FolderPropertiesModal";
-import ArchiveDocumentDialog from "../MainDoc/ArchiveDocumentDialog";
 import folderService from "../../services/folderService";
 import realDocumentService from "../../services/realDocumentService";
 
@@ -26,8 +25,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [selectedDocForArchive, setSelectedDocForArchive] = useState<Document | null>(null);
 
   // Load documents for this folder
   const loadFolderDocuments = async (): Promise<void> => {
@@ -130,13 +127,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
         console.log('Edit document:', document.title);
         // TODO: Open document edit modal
         break;
-      case 'archive':
-        setSelectedDocForArchive(document);
-        setArchiveDialogOpen(true);
-        break;
-      case 'restore':
-        handleRestoreDocument(document);
-        break;
       case 'delete':
         console.log('Delete document:', document.title);
         // TODO: Open document delete confirmation
@@ -144,33 +134,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
     }
   };
 
-  const handleArchiveDocument = async (): Promise<void> => {
-    if (!selectedDocForArchive) return;
 
-    try {
-      await realDocumentService.archiveDocument(selectedDocForArchive.doc_id);
-      // Reload documents to reflect the change
-      await loadFolderDocuments();
-      if (onFolderUpdated) {
-        onFolderUpdated();
-      }
-    } catch (error) {
-      throw new Error('Failed to archive document. Please try again.');
-    }
-  };
-
-  const handleRestoreDocument = async (document: Document): Promise<void> => {
-    try {
-      await realDocumentService.restoreDocument(document.doc_id);
-      // Reload documents to reflect the change
-      await loadFolderDocuments();
-      if (onFolderUpdated) {
-        onFolderUpdated();
-      }
-    } catch (error) {
-      console.error('Failed to restore document:', error);
-    }
-  };
 
   if (isClicked) {
     return null;
@@ -337,9 +301,8 @@ const FolderCard: React.FC<FolderCardProps> = ({
                             </p>
                             <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
                               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${document.status === 'active' ? 'bg-[#FBEC5D]/20 text-[#FBEC5D]' :
-                                  document.status === 'draft' ? 'bg-yellow-500/20 text-yellow-200' :
-                                    document.status === 'archived' ? 'bg-white/10 text-white/60' :
-                                      'bg-blue-500/20 text-blue-200'
+                                document.status === 'draft' ? 'bg-yellow-500/20 text-yellow-200' :
+                                  'bg-blue-500/20 text-blue-200'
                                 }`}>
                                 {document.status}
                               </span>
@@ -361,11 +324,9 @@ const FolderCard: React.FC<FolderCardProps> = ({
                                 <DocumentMenu
                                   onProperties={() => handleDocumentMenuAction('properties', document)}
                                   onEdit={() => handleDocumentMenuAction('edit', document)}
-                                  onDelete={() => handleDocumentMenuAction('delete', document)}
-                                  onArchive={() => handleDocumentMenuAction('archive', document)}
-                                  onRestore={() => handleDocumentMenuAction('restore', document)}
-                                  isArchived={document.status === 'archived'}
-                                />
+                                  onDelete={() => handleDocumentMenuAction('delete', document)} onDownload={function (): void {
+                                    throw new Error("Function not implemented.");
+                                  }} />
                               )}
                             </div>
                           </div>
@@ -401,17 +362,6 @@ const FolderCard: React.FC<FolderCardProps> = ({
           documentCount={documentCount}
         />
 
-        {selectedDocForArchive && (
-          <ArchiveDocumentDialog
-            isOpen={archiveDialogOpen}
-            onClose={() => {
-              setArchiveDialogOpen(false);
-              setSelectedDocForArchive(null);
-            }}
-            onArchive={handleArchiveDocument}
-            document={selectedDocForArchive}
-          />
-        )}
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ const ContactLeft: React.FC = () => {
                 <p className="text-base text-gray-700 flex items-center gap-2">
                     Phone:{" "}
                     <span className="text-black font-medium">
-                        +63 0000000000
+                        +63 917 188 6392
                     </span>
                 </p>
                 <p className="text-base text-gray-700 flex items-center gap-2">

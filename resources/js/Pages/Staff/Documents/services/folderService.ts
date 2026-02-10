@@ -2,7 +2,7 @@
 import { Folder, CreateFolderRequest, UpdateFolderRequest, User, Category } from '../types/types';
 
 // API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
 
 class FolderService {
   private apiUrl = `${API_BASE_URL}/folders`;

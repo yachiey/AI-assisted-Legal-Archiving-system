@@ -125,8 +125,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold
-                                                        ${doc.status === 'active' ? 'bg-green-100 text-green-800' :
-                                                            doc.status === 'archived' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                        ${doc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                                                         {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
                                                     </span>
                                                 </td>

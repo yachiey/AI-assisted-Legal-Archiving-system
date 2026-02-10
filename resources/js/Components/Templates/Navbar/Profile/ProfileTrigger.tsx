@@ -12,13 +12,9 @@ const ProfileTrigger: React.FC<ProfileTriggerProps> = ({
         ? `/storage/${userData.profile_picture}`
         : (userData.avatar || `https://i.pravatar.cc/40?u=${userData.email}`);
 
-    // Get initials for fallback display
-    const getInitials = () => {
-        const nameParts = userData.name.split(' ');
-        if (nameParts.length >= 2) {
-            return `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
-        }
-        return userData.name.substring(0, 2).toUpperCase();
+    // Get initial for fallback display (just first letter)
+    const getInitial = () => {
+        return userData.name.charAt(0).toUpperCase();
     };
 
     return (
@@ -45,8 +41,8 @@ const ProfileTrigger: React.FC<ProfileTriggerProps> = ({
                     }}
                 />
             ) : (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white text-sm font-bold border-2 border-white/50">
-                    {getInitials()}
+                <div className="w-9 h-9 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white text-base font-bold border-2 border-white/50">
+                    {getInitial()}
                 </div>
             )}
 
@@ -57,9 +53,8 @@ const ProfileTrigger: React.FC<ProfileTriggerProps> = ({
 
             {/* Dropdown Arrow */}
             <svg
-                className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                    isOpen ? "rotate-180" : ""
-                }`}
+                className={`ml-2 h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+                    }`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

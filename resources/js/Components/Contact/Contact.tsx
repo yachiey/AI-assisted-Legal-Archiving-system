@@ -1,4 +1,5 @@
 import React, { useState, ChangeEvent, FormEvent } from "react";
+import axios from "axios";
 import ContactLeft from "./ContactLeft";
 import Title from "../../../Layouts/Title";
 
@@ -17,7 +18,7 @@ const Contact: React.FC = () => {
             .match(/^\w+([-]?\w+)*@\w+([-]?\w+)*(\.\w{2,3})+$/);
     };
 
-    const handleSend = (e: FormEvent<HTMLButtonElement>) => {
+    const handleSend = async (e: FormEvent<HTMLButtonElement>) => {
         e.preventDefault();
 
         if (username === "") {
@@ -33,15 +34,39 @@ const Contact: React.FC = () => {
         } else if (message === "") {
             setErrMsg("Message is required!");
         } else {
-            setSuccessMsg(
-                `Thank you dear ${username}, your message has been sent successfully!`,
-            );
-            setErrMsg("");
-            setUsername("");
-            setPhoneNumber("");
-            setEmail("");
-            setSubject("");
-            setMessage("");
+            try {
+                const response = await axios.post('/contact', {
+                    username,
+                    phone: phoneNumber,
+                    email,
+                    subject,
+                    message
+                });
+
+                if (response.status === 200) {
+                    setSuccessMsg(
+                        `Thank you dear ${username}, your message has been sent successfully!`,
+                    );
+                    setErrMsg("");
+                    setUsername("");
+                    setPhoneNumber("");
+                    setEmail("");
+                    setSubject("");
+                    setMessage("");
+                }
+            } catch (error: any) {
+                console.error("Error sending message:", error);
+                if (error.response) {
+                    // Server responded with error
+                    setErrMsg(error.response.data?.message || "Server error. Please try again.");
+                } else if (error.request) {
+                    // Request made but no response
+                    setErrMsg("No response from server. Please check your connection.");
+                } else {
+                    // Error setting up request
+                    setErrMsg("Something went wrong. Please try again later.");
+                }
+            }
         }
     };
 

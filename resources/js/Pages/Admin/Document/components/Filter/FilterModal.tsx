@@ -88,7 +88,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:outline-none bg-white text-gray-900 font-normal shadow-sm"
             >
               <option value="">Active Documents</option>
-              <option value="archived">Archived Documents</option>
             </select>
           </div>
 

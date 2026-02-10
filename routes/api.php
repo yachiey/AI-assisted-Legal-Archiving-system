@@ -70,8 +70,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/documents/folder/{folderId}/count', [DocumentController::class, 'getFolderDocumentCount']);
 
     // Bulk document operations
-    Route::post('/documents/bulk-archive', [DocumentController::class, 'bulkArchive']);
-    Route::post('/documents/bulk-restore', [DocumentController::class, 'bulkRestore']);
     Route::post('/documents/bulk-delete', [DocumentController::class, 'bulkDelete']);
 
     // Manual Processing routes
@@ -81,10 +79,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Document routes with {id} parameter - MUST come after all specific document routes
     Route::get('/documents/{id}/content', [DocumentController::class, 'getContent']); // Get document content for viewing
     Route::get('/documents/{id}/text', [DocumentController::class, 'getDocumentText']); // Get document text for AI processing
+    Route::get('/documents/{id}/download', [DocumentController::class, 'download']); // Download document
     Route::put('/documents/{id}/metadata', [DocumentController::class, 'updateMetadata']); // Update document metadata (AI)
     Route::post('/documents/{id}/log-download', [DocumentController::class, 'logDownload']); // Log download activity
-    Route::put('/documents/{id}/archive', [DocumentController::class, 'archive']); // Archive document
-    Route::put('/documents/{id}/restore', [DocumentController::class, 'restore']); // Restore archived document
     Route::delete('/documents/{id}', [DocumentController::class, 'destroy']); // Delete document
     Route::get('/documents/{id}', [DocumentController::class, 'show']); // Get single document - MUST be last
 
@@ -116,7 +113,6 @@ Route::middleware('auth:sanctum')->group(function () {
             'permissions' => [
                 'can_edit' => $user->can_edit,
                 'can_delete' => $user->can_delete,
-                'can_archive' => $user->can_archive,
                 'can_upload' => $user->can_upload,
                 'can_view' => $user->can_view,
             ],
@@ -132,6 +128,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // User profile route
     Route::get('/user/profile', [App\Http\Controllers\AdminController::class, 'getUserProfile']);
+
+    // User list for filters (activity log export)
+    Route::get('/users/list', function () {
+        return \App\Models\User::select('user_id', 'firstname', 'lastname', 'role')
+            ->where('status', 'active')
+            ->orderBy('role')
+            ->orderBy('firstname')
+            ->get();
+    });
+
 
     // AI Assistant routes (moved inside auth middleware)
     Route::prefix('ai')->group(function () {

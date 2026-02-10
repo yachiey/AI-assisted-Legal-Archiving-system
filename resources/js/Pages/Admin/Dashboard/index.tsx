@@ -5,20 +5,21 @@ import { router } from '@inertiajs/react';
 import AdminLayout from "../../../../Layouts/AdminLayout";
 import DashboardHeader from "./components/DashboardHeader";
 import RecentFiles from "./components/RecentFiles";
-import RecentDownloads from "./components/RecentDownloads";
-import DocumentAnalytics from "./components/DocumentAnalytics";
 import MonthlyUploads from "./components/MonthlyUploads";
 import RecentActivity24h from "./components/RecentActivity24h";
 import FileUploadUI from "../Document/components/FileUpload/FileUploadUI";
+import ReportFilters from "./components/ReportFilters";
+import CategoryChart from "./components/CategoryChart";
+import StaffLeaderboard from "./components/StaffLeaderboard";
+
 import { usePage } from '@inertiajs/react';
 import { DashboardProps } from './types/dashboard';
-import { FileText, Upload, FolderOpen, Users, Search, MessageSquare, TrendingUp, BarChart3 } from 'lucide-react';
+import { FileText, Upload, FolderOpen, Users, TrendingUp } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { props } = usePage<DashboardProps>();
-  const stats = props.stats || { totalDocuments: 0, activeUsers: 0, totalUsers: 0 };
+  const stats = props.stats || { totalDocuments: 0, totalFolders: 0, totalUsers: 0, uploadedToday: 0 };
   const recentFiles = props.recentFiles || [];
-  const recentDownloads = props.recentDownloads || [];
 
   // ✅ Use real-time data from backend
   const monthlyUploads = props.monthlyUploads || [];
@@ -27,8 +28,56 @@ export default function AdminDashboard() {
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  const handleNavigate = (route: string) => {
-    router.visit(route);
+  // Report Filter Handlers
+  const handlePeriodChange = (period: 'week' | 'month' | 'year') => {
+    router.visit(window.location.pathname, {
+      data: {
+        period,
+        folder: props.selectedCategory || 'all'
+      },
+      only: ['documentsByCategory', 'pagination', 'selectedCategory', 'selectedPeriod', 'staffLeaderboard', 'staffPagination'],
+      preserveState: true,
+      preserveScroll: true
+    });
+  };
+
+  const handleCategoryChange = (folder: string) => {
+    router.visit(window.location.pathname, {
+      data: {
+        period: props.selectedPeriod || 'month',
+        folder
+      },
+      only: ['documentsByCategory', 'pagination', 'selectedCategory', 'selectedPeriod', 'staffLeaderboard', 'staffPagination'],
+      preserveState: true,
+      preserveScroll: true
+    });
+  };
+
+  const handlePageChange = (page: number) => {
+    router.visit(window.location.pathname, {
+      data: {
+        period: props.selectedPeriod || 'month',
+        folder: props.selectedCategory || 'all',
+        page
+      },
+      only: ['documentsByCategory', 'pagination', 'selectedCategory', 'selectedPeriod', 'staffLeaderboard', 'staffPagination'],
+      preserveState: true,
+      preserveScroll: true
+    });
+  };
+
+  const handleStaffPageChange = (page: number) => {
+    router.visit(window.location.pathname, {
+      data: {
+        period: props.selectedPeriod || 'month',
+        folder: props.selectedCategory || 'all',
+        page: props.pagination?.current_page || 1,
+        staff_page: page
+      },
+      only: ['staffLeaderboard', 'staffPagination'],
+      preserveState: true,
+      preserveScroll: true
+    });
   };
 
   return (
@@ -37,7 +86,7 @@ export default function AdminDashboard() {
 
       <div className="px-6 py-6">
         {/* Stat Cards - Forest Green & Yellow Design */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Total Documents Card - Forest Green */}
           <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
             style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
@@ -56,18 +105,18 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-[0.65rem] font-bold text-white/90 uppercase tracking-[0.1em] leading-tight"
-                   style={{ letterSpacing: '0.1em' }}>
+                  style={{ letterSpacing: '0.1em' }}>
                   Total Documents
                 </p>
                 <p className="text-3xl font-black text-white tracking-tight leading-none"
-                   style={{ fontFamily: "'Inter', sans-serif" }}>
+                  style={{ fontFamily: "'Inter', sans-serif" }}>
                   {stats.totalDocuments}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Recent Uploads Card - Yellow */}
+          {/* Total Folders Card - Yellow */}
           <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
             style={{ background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -77,7 +126,7 @@ export default function AdminDashboard() {
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <Upload className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
+                  <FolderOpen className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
                   <TrendingUp className="w-3.5 h-3.5 text-gray-700 opacity-50" />
@@ -85,18 +134,18 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-[0.65rem] font-bold text-gray-700 uppercase tracking-[0.1em] leading-tight"
-                   style={{ letterSpacing: '0.1em' }}>
-                  Recent Uploads
+                  style={{ letterSpacing: '0.1em' }}>
+                  Total Folders
                 </p>
                 <p className="text-3xl font-black text-gray-900 tracking-tight leading-none"
-                   style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {recentFiles.length}
+                  style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {stats.totalFolders || 0}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Active Users Card - Forest Green */}
+          {/* All Staff Card - Forest Green */}
           <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
             style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -114,18 +163,18 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-[0.65rem] font-bold text-white/90 uppercase tracking-[0.1em] leading-tight"
-                   style={{ letterSpacing: '0.1em' }}>
-                  Active Users
+                  style={{ letterSpacing: '0.1em' }}>
+                  All Staff
                 </p>
                 <p className="text-3xl font-black text-white tracking-tight leading-none"
-                   style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {stats.activeUsers}
+                  style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {stats.totalUsers}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* All Users Card - Yellow */}
+          {/* Recent Uploaded Today Card - Yellow */}
           <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
             style={{ background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -135,7 +184,7 @@ export default function AdminDashboard() {
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <Users className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
+                  <Upload className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
                   <TrendingUp className="w-3.5 h-3.5 text-gray-700 opacity-50" />
@@ -143,71 +192,59 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-1">
                 <p className="text-[0.65rem] font-bold text-gray-700 uppercase tracking-[0.1em] leading-tight"
-                   style={{ letterSpacing: '0.1em' }}>
-                  All Users
+                  style={{ letterSpacing: '0.1em' }}>
+                  Uploaded Today
                 </p>
                 <p className="text-3xl font-black text-gray-900 tracking-tight leading-none"
-                   style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {stats.totalUsers}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Downloads Card - Forest Green */}
-          <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
-            style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-black/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
-
-            <div className="relative p-4">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <FolderOpen className="w-5 h-5 text-white" strokeWidth={2.5} />
-                </div>
-                <div className="flex flex-col items-end">
-                  <TrendingUp className="w-3.5 h-3.5 text-white/70 opacity-70" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[0.65rem] font-bold text-white/90 uppercase tracking-[0.1em] leading-tight"
-                   style={{ letterSpacing: '0.1em' }}>
-                  Downloads
-                </p>
-                <p className="text-3xl font-black text-white tracking-tight leading-none"
-                   style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {recentDownloads.length}
+                  style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {stats.uploadedToday || 0}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Global Filters - Moved above the grid */}
+        <div className="mb-6">
+          <ReportFilters
+            selectedPeriod={props.selectedPeriod || 'month'}
+            selectedCategory={props.selectedCategory || 'all'}
+            onPeriodChange={handlePeriodChange}
+            onCategoryChange={handleCategoryChange}
+          />
+        </div>
+
+
         {/* Modern Grid Layout */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
 
-          {/* Top Row - Monthly Uploads and Analytics Side by Side */}
-          <div className="xl:col-span-8">
+          {/* Main Content Area (8 units) */}
+          <div className="xl:col-span-8 space-y-6">
+            {/* 1. GROWTH TREND: Monthly Uploads */}
             <MonthlyUploads data={monthlyUploads} />
-          </div>
 
-          <div className="xl:col-span-4">
-            <DocumentAnalytics categories={documentAnalytics} />
-          </div>
-
-          {/* Middle Row - Recent Activity */}
-          <div className="xl:col-span-12">
+            {/* 2. ACTIVITY: Recent Activity Feed */}
             <RecentActivity24h activities={activities} />
           </div>
 
-          {/* Bottom Row - Files and Downloads */}
-          <div className="xl:col-span-6">
-            <RecentFiles files={recentFiles} />
-          </div>
+          {/* Sidebar Area (4 units) */}
+          <div className="xl:col-span-4 space-y-6">
+            {/* 1. FOLDER DISTRIBUTION: Documents by Folder */}
+            <CategoryChart
+              data={props.documentsByCategory || []}
+              pagination={props.pagination}
+              onPageChange={handlePageChange}
+            />
 
-          <div className="xl:col-span-6">
-            <RecentDownloads downloads={recentDownloads} />
+            {/* 2. PRODUCTIVITY: Staff Activity Leaderboard */}
+            <StaffLeaderboard
+              data={props.staffLeaderboard || []}
+              pagination={props.staffPagination}
+              onPageChange={handleStaffPageChange}
+            />
+
+            {/* 3. QUICK VIEW: Recent Files */}
+            <RecentFiles files={recentFiles} />
           </div>
 
         </div>

@@ -7,6 +7,8 @@ import {
 } from "../../resources/js/Context/DashboardContext";
 import { ModalProvider, useModal } from "../js/Components/Modal/ModalContext";
 import Modal from "./ModalLayout";
+import { ChatProvider } from "../js/Context/ChatContext";
+import { ChatWidget } from "../js/Components/GlobalChat/ChatWidget";
 
 interface AdminLayoutProps {
     children: ReactNode;
@@ -31,9 +33,12 @@ export default function AdminLayout({ children, fullScreen = false, hideSidebar 
 
     return (
         <DashboardContextProvider>
-            <ModalProvider>
-                <InnerLayout isMobile={isMobile} fullScreen={fullScreen} hideSidebar={hideSidebar} noPadding={noPadding}>{children}</InnerLayout>
-            </ModalProvider>
+            <ChatProvider>
+                <ModalProvider>
+                    <InnerLayout isMobile={isMobile} fullScreen={fullScreen} hideSidebar={hideSidebar} noPadding={noPadding}>{children}</InnerLayout>
+                    <ChatWidget />
+                </ModalProvider>
+            </ChatProvider>
         </DashboardContextProvider>
     );
 }
@@ -87,7 +92,7 @@ function InnerLayout({
 
             {/* Main content */}
             <div className={`flex flex-col flex-1 w-full h-full z-0 overflow-hidden`}>
-                {!fullScreen && <Navbar />}
+                {!fullScreen && <Navbar hideSidebar={hideSidebar} />}
                 <main className={`flex-1 ${fullScreen ? 'overflow-hidden p-0' : noPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
                     {children}
                 </main>

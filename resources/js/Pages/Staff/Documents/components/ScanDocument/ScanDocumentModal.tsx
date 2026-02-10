@@ -20,8 +20,8 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({ isOpen, onClose }
       setErrorMessage('');
 
       // Call the local scanner service
-      // This assumes the user is running the 'scanner_service' locally on port 3000
-      const response = await axios.post('http://localhost:3000/scan', {}, {
+      // Uses the current hostname (host machine IP) where the scanner service is running
+      const response = await axios.post(`http://${window.location.hostname}:3000/scan`, {}, {
         timeout: 120000 // 2 minute timeout for scanning
       });
 
@@ -169,7 +169,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({ isOpen, onClose }
                 <ul className="list-disc pl-4 space-y-1">
                   <li>Verify Scanner is ON and connected via USB/LAN.</li>
                   <li>Ensure <b>NAPS2</b> is installed at default path.</li>
-                  <li>Verify <code>npm run start</code> is running in <code>/scanner_service</code>.</li>
+                  <li>Verify <code>npm run start</code> is running in <code>/scanner_service</code> on the host machine.</li>
                 </ul>
               </div>
 

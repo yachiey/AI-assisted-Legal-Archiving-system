@@ -1,7 +1,9 @@
-import { FC, ReactNode, useState } from "react";
+import { FC, ReactNode, useState, useEffect } from "react";
 import StaffSidebar from "../js/Components/Templates/StaffSidebar";
 import StaffNavbar from "../js/Components/Templates/StaffNavbar";
 import { DashboardContext } from "../js/Context/DashboardContext";
+import { ChatProvider } from "../js/Context/ChatContext";
+import { ChatWidget } from "../js/Components/GlobalChat/ChatWidget";
 
 interface StaffLayoutProps {
     children: ReactNode;
@@ -18,6 +20,17 @@ const StaffLayout: FC<StaffLayoutProps> = ({ children, fullScreen = false, hideS
 
     const [collapse, setCollapse] = useState<boolean>(initialCollapse);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const handleCollapse = (toggle?: boolean) => {
         const newCollapseState = toggle !== undefined ? toggle : !collapse;
@@ -57,18 +70,37 @@ const StaffLayout: FC<StaffLayoutProps> = ({ children, fullScreen = false, hideS
                 toggleMobileSidebar,
             }}
         >
-            <div className="flex h-screen overflow-hidden bg-gray-50">
-                {/* Sidebar */}
-                {!hideSidebar && <StaffSidebar />}
+            <ChatProvider>
+                <div className="flex h-screen overflow-hidden bg-gray-50">
+                    {/* Sidebar */}
+                    {!hideSidebar && (isMobile ? (
+                        showMobileSidebar && (
+                            <>
+                                <div
+                                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                                    onClick={() => toggleMobileSidebar(false)}
+                                />
+                                <div className="fixed top-0 left-0 w-64 h-full z-50">
+                                    <StaffSidebar />
+                                </div>
+                            </>
+                        )
+                    ) : (
+                        <div className="h-full z-10">
+                            <StaffSidebar />
+                        </div>
+                    ))}
 
-                {/* Main Content */}
-                <div className="flex flex-col flex-1 w-full h-full overflow-hidden">
-                    <StaffNavbar />
-                    <main className={`flex-1 ${noPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
-                        {children}
-                    </main>
+                    {/* Main Content */}
+                    <div className="flex flex-col flex-1 w-full h-full overflow-hidden">
+                        <StaffNavbar hideSidebar={hideSidebar} />
+                        <main className={`flex-1 ${noPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
+                            {children}
+                        </main>
+                    </div>
                 </div>
-            </div>
+                <ChatWidget />
+            </ChatProvider>
         </DashboardContext.Provider>
     );
 };

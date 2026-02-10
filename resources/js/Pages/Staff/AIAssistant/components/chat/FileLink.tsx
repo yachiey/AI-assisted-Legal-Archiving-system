@@ -1,34 +1,52 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { FileText, Eye } from 'lucide-react';
 import { DocumentReference } from '../../types';
 
 interface FileLinkProps {
   document: DocumentReference;
+  onViewDocument?: (docId: number) => void;
+  onNavigate?: (doc: DocumentReference) => void;
 }
 
-export const FileLink: React.FC<FileLinkProps> = ({ document }) => {
-  const handleClick = () => {
-    // Navigate to the specific folder where the document is located
-    if (document.folder_id) {
-      router.visit(`/admin/documents?folder=${document.folder_id}`);
-    } else {
-      // If no folder_id, navigate to root documents page
-      router.visit('/admin/documents');
+export const FileLink: React.FC<FileLinkProps> = ({ document, onViewDocument, onNavigate }) => {
+  const handleView = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onViewDocument) {
+      onViewDocument(document.doc_id);
+    }
+  };
+
+  const handleNavigate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onNavigate) {
+      onNavigate(document);
     }
   };
 
   return (
-    <button
-      onClick={handleClick}
-      className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-800 rounded-lg border border-green-200 transition-colors text-sm font-medium hover:shadow-md"
-      title={`Click to view "${document.title}" in the Documents page${document.folder_name ? ` (located in ${document.folder_name} folder)` : ''}`}
-    >
-      <FileText size={14} className="flex-shrink-0" />
-      <span className="truncate max-w-xs font-semibold">{document.title}</span>
+    <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-800 rounded-lg border border-green-200 text-sm font-medium max-w-full w-full">
+      {/* Document icon - click to navigate to location */}
+      <button
+        onClick={handleNavigate}
+        className="flex-shrink-0 p-1 hover:bg-green-200 rounded transition-colors"
+        title="Go to document location"
+      >
+        <FileText size={14} />
+      </button>
+      <span className="truncate flex-1 min-w-0 font-semibold text-left">{document.title}</span>
       {document.folder_name && (
-        <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded ml-1">📁 {document.folder_name}</span>
+        <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded truncate max-w-[100px] flex-shrink-0">
+          📁 {document.folder_name}
+        </span>
       )}
-    </button>
+      {/* Eye icon - click to open document viewer */}
+      <button
+        onClick={handleView}
+        className="p-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0"
+        title={`View "${document.title}"`}
+      >
+        <Eye size={14} />
+      </button>
+    </div>
   );
 };

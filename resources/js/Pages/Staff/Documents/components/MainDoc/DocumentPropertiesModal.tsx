@@ -158,7 +158,11 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
             <PropertyRow
               icon={<User className="w-4 h-4" />}
               label="Created By"
-              value={`User ID: ${document.created_by}`}
+              value={
+                document.user
+                  ? `${document.user.firstname} ${document.user.lastname}`.trim()
+                  : `User ID: ${document.created_by}`
+              }
             />
 
             {/* Created Date */}
@@ -179,7 +183,7 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
             <PropertyRow
               icon={<FileText className="w-4 h-4" />}
               label="Document ID"
-              value={`#${document.doc_id}`}
+              value={document.document_ref_id || 'Not assigned'}
             />
           </div>
         </div>

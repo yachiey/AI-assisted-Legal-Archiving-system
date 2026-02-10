@@ -8,7 +8,7 @@ echo ===================================================
 echo.
 
 :: 1. Build Frontend Assets
-echo [1/4] Building Frontend Assets...
+echo [1/8] Building Frontend Assets...
 call npm run build
 if %errorlevel% neq 0 (
     echo Error building frontend assets.
@@ -19,15 +19,27 @@ echo Frontend built successfully.
 echo.
 
 :: 2. Start Embedding Service
-echo [2/4] Starting Embedding Service (Port 5001)...
+echo [2/8] Starting Embedding Service (Port 5001)...
 start "Embedding Service" cmd /k "python aiservice/run_embedding_service.py"
 
 :: 3. Start Text Extraction Service
-echo [3/4] Starting Text Extraction Service (Port 5002)...
+echo [3/8] Starting Text Extraction Service (Port 5002)...
 start "Text Extraction Service" cmd /k "python aiservice/run_text_extraction.py"
 
-:: 4. Get Local IP and Start Laravel Server
-echo [4/4] Starting Web Server...
+:: 4. Start Scanner Bridge Service
+echo [4/8] Starting Scanner Bridge Service (Port 3000)...
+start "Scanner Bridge Service" cmd /k "cd scanner_service && node server.js"
+
+:: 5. Start AI Bridge Service
+echo [5/8] Starting AI Bridge Service (Port 5003)...
+start "AI Bridge Service" cmd /k "python aiservice/run_ai_bridge.py"
+
+:: 6. Start Chatbot Service
+echo [6/8] Starting Chatbot Service (Port 5000)...
+start "Chatbot Service" cmd /k "python aiservice/run_chatbot.py"
+
+:: 7. Get Local IP and Start Laravel Server
+echo [7/8] Starting Web Server...
 echo.
 echo ===================================================
 echo YOUR APPLICATION WILL BE AVAILABLE AT:
@@ -38,7 +50,7 @@ echo (Share this link with other staff on the same network)
 echo ===================================================
 echo.
 
-:: 5. Open Browser for Host and Start Server
+:: Open Browser for Host and Start Server
 echo.
 echo ===================================================
 echo ACCESS INSTRUCTIONS:
@@ -52,6 +64,17 @@ echo.
 
 :: Auto-open localhost for the host user
 start "" "http://localhost:8000"
+
+:: 8. Start Queue Worker
+echo [8/8] Starting Queue Worker...
+start "Queue Worker" cmd /k "php artisan queue:work"
+
+:: Wait for services to stabilize
+echo Waiting for services to start...
+timeout /t 3 /nobreak > nul
+
+:: Clear config cache to ensure fresh database settings
+php artisan config:clear > nul 2>&1
 
 php artisan serve --host 0.0.0.0 --port 8000
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FileText, Search } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { Document } from '../../types';
@@ -21,6 +22,7 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isOpen && !hasLoadedOnce) {
@@ -28,10 +30,10 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
     }
   }, [isOpen]);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async (search?: string) => {
     try {
       setLoading(true);
-      const docs = await apiService.getDocuments();
+      const docs = await apiService.getDocuments(search);
       setDocuments(docs);
       setHasLoadedOnce(true);
     } catch (error) {
@@ -40,11 +42,19 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filteredDocuments = documents.filter(doc =>
-    doc.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Debounced backend search when user types
+  useEffect(() => {
+    if (!hasLoadedOnce) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      loadDocuments(searchTerm || undefined);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchTerm, loadDocuments, hasLoadedOnce]);
+
+  const filteredDocuments = documents;
 
   // Group documents by folder
   const groupedDocuments = useMemo(() => {
@@ -116,8 +126,8 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -207,6 +217,7 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

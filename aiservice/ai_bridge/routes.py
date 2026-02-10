@@ -462,8 +462,8 @@ def register_routes(app):
                 # Calculate cosine similarity
                 similarity = np.dot(query_embedding, chunk_embedding) / (norm(query_embedding) * norm(chunk_embedding))
 
-                # Only include results with similarity > 0.3 (threshold)
-                if similarity > 0.3:
+                # Only include results with similarity > 0.45 (threshold)
+                if similarity > 0.45:
                     results.append({
                         'doc_id': embedding_record.get('doc_id'),
                         'title': embedding_record.get('document_title', 'Unknown Document'),

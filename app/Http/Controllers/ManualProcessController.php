@@ -104,6 +104,7 @@ class ManualProcessController extends Controller
                 'remarks' => $latestDocument->remarks,
                 'physical_location' => $latestDocument->physical_location,
                 'document_ref_id' => $latestDocument->document_ref_id,
+                'suggestedLocation' => $latestDocument->ai_suggested_folder, // Added missing field
             ];
         } else {
             // Construct current user's full name

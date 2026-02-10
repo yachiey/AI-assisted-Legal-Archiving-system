@@ -15,7 +15,6 @@ interface User {
         can_upload?: boolean;
         can_view?: boolean;
         can_edit?: boolean;
-        can_archive?: boolean;
     };
 }
 
@@ -39,7 +38,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, user, onClose, on
         can_view: user.permissions?.can_view || true,
         can_delete: user.permissions?.can_delete || false,
         can_edit: user.permissions?.can_edit || false,
-        can_archive: user.permissions?.can_archive || false,
         status: user.status || "active",
     });
 
@@ -61,7 +59,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, user, onClose, on
             can_view: user.permissions?.can_view || true,
             can_delete: user.permissions?.can_delete || false,
             can_edit: user.permissions?.can_edit || false,
-            can_archive: user.permissions?.can_archive || false,
             status: user.status || "active",
         });
     }, [user]);
@@ -123,7 +120,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, user, onClose, on
                     can_view: formData.can_view,
                     can_delete: formData.can_delete,
                     can_edit: formData.can_edit,
-                    can_archive: formData.can_archive,
                 },
                 status: formData.status,
             };
@@ -373,19 +369,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, user, onClose, on
                                     />
                                     <label htmlFor="can_edit" className="ml-2 text-sm text-gray-700">
                                         Edit Documents
-                                    </label>
-                                </div>
-                                <div className="flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        id="can_archive"
-                                        name="can_archive"
-                                        checked={formData.can_archive}
-                                        onChange={handleInputChange}
-                                        className="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500"
-                                    />
-                                    <label htmlFor="can_archive" className="ml-2 text-sm text-gray-700">
-                                        Archive Documents
                                     </label>
                                 </div>
                             </div>

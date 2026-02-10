@@ -16,7 +16,7 @@ if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 }
 
-// Removed Inertia token interceptor - using session auth for pages
+
 
 createInertiaApp({
     resolve: (name) =>
@@ -26,6 +26,8 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
-        root.render(<App {...props} />);
+        root.render(
+            <App {...props} />
+        );
     },
 });

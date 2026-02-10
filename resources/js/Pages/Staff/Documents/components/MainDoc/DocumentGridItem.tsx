@@ -13,6 +13,7 @@ import realDocumentService from '../../services/realDocumentService';
 const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     document,
     folders = [],
+    isHighlighted = false,
     onDocumentUpdated
 }) => {
     const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -34,8 +35,8 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
         if (!menuOpen) {
             const rect = event.currentTarget.getBoundingClientRect();
             setMenuPosition({
-                top: rect.bottom + window.scrollY,
-                left: rect.right + window.scrollX - 160 // Adjust for menu width
+                top: rect.bottom,
+                left: rect.right - 160
             });
         }
 
@@ -52,43 +53,32 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
             case 'edit':
                 setIsEditOpen(true);
                 break;
-            case 'archive':
-                await handleArchive();
-                break;
-            case 'restore':
-                await handleRestore();
-                break;
             case 'delete':
                 setIsDeleteOpen(true);
                 break;
+            case 'download':
+                handleDownload();
+                break;
         }
     };
 
-    const handleArchive = async (): Promise<void> => {
-        try {
-            await realDocumentService.archiveDocument(document.doc_id);
-            setToastMessage(`Document "${document.title}" has been archived!`);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
-            onDocumentUpdated?.();
-        } catch (error) {
-            console.error('Failed to archive document:', error);
-            alert(`Failed to archive document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const handleDownload = (): void => {
+        // Determine the best filename (ensure it has an extension)
+        const filepath = document.file_path || document.title;
+        const extension = filepath.split('.').pop()?.toLowerCase() || '';
+        let downloadName = document.title;
+        if (extension && !downloadName.toLowerCase().endsWith('.' + extension)) {
+            downloadName = `${downloadName}.${extension}`;
         }
+
+        const link = window.document.createElement('a');
+        link.href = `/api/documents/${document.doc_id}/download`;
+        link.download = downloadName;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
     };
 
-    const handleRestore = async (): Promise<void> => {
-        try {
-            await realDocumentService.restoreDocument(document.doc_id);
-            setToastMessage(`Document "${document.title}" has been restored!`);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
-            onDocumentUpdated?.();
-        } catch (error) {
-            console.error('Failed to restore document:', error);
-            alert(`Failed to restore document: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    };
 
     const handleDocumentUpdated = () => {
         onDocumentUpdated?.();
@@ -104,23 +94,28 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
         return filename.substring(lastDotIndex + 1).toUpperCase();
     };
 
-    // Close menu when clicking outside
+    // Close menu when clicking outside or scrolling
     useEffect(() => {
         if (!menuOpen || typeof window === 'undefined') return;
 
-        const handleClickOutside = () => {
+        const closeMenu = () => {
             setMenuOpen(false);
             setMenuPosition(null);
         };
 
-        window.document.addEventListener('click', handleClickOutside);
-        return () => window.document.removeEventListener('click', handleClickOutside);
+        window.document.addEventListener('click', closeMenu);
+        window.addEventListener('scroll', closeMenu, true);
+        return () => {
+            window.document.removeEventListener('click', closeMenu);
+            window.removeEventListener('scroll', closeMenu, true);
+        };
     }, [menuOpen]);
 
     return (
         <>
             <div
-                className="group relative bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-green-100/50 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-[240px] w-full backdrop-blur-sm justify-between"
+                className={`group relative bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-green-100/50 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-[240px] w-full backdrop-blur-sm justify-between ${isHighlighted ? 'bg-green-100 ring-2 ring-green-500 animate-pulse' : ''
+                    }`}
                 onClick={handleDocumentClick}
                 title={document.title}
             >
@@ -174,7 +169,7 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                 typeof window !== 'undefined' && menuOpen && menuPosition && createPortal(
                     <div
                         style={{
-                            position: 'absolute',
+                            position: 'fixed',
                             top: `${menuPosition.top}px`,
                             left: `${menuPosition.left}px`,
                             zIndex: 10000
@@ -185,20 +180,12 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                             onProperties={() => handleMenuAction('properties')}
                             onEdit={() => handleMenuAction('edit')}
                             onDelete={() => handleMenuAction('delete')}
-                            onArchive={() => handleMenuAction('archive')}
-                            onRestore={() => handleMenuAction('restore')}
-                            isArchived={document.status === 'archived'}
+                            onDownload={() => handleMenuAction('download')}
                         />
                     </div>,
                     window.document.body
                 )
             }
-
-            <DocumentViewer
-                isOpen={isViewerOpen}
-                onClose={() => setIsViewerOpen(false)}
-                document={document}
-            />
 
             {
                 typeof window !== 'undefined' && isPropertiesOpen && createPortal(
@@ -223,6 +210,12 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                     window.document.body
                 )
             }
+
+            <DocumentViewer
+                isOpen={isViewerOpen}
+                onClose={() => setIsViewerOpen(false)}
+                document={document}
+            />
 
             {
                 typeof window !== 'undefined' && isDeleteOpen && createPortal(

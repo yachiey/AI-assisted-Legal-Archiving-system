@@ -1,5 +1,5 @@
 import React, { DragEvent, ChangeEvent } from 'react';
-import { Upload, X, FileText, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { Upload, X, FileText, AlertCircle, CheckCircle, Loader, Copy, FolderOpen } from 'lucide-react';
 import { useMultiFileUpload } from '../../hooks/useMultiFileUpload';
 
 interface MultiFileUploadUIProps {
@@ -26,6 +26,7 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
         isDragging,
         isUploading,
         progress,
+        duplicateDocument,
         fileInputRef,
         fileCount,
         totalSize,
@@ -34,7 +35,8 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
         removeFile,
         clearFiles,
         handleConfirmUpload,
-        handleCancelUpload
+        handleCancelUpload,
+        dismissDuplicate
     } = useMultiFileUpload({
         maxFileSize,
         acceptedFileTypes,
@@ -213,6 +215,42 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
                         <span className="text-green-700 text-sm">
                             All files uploaded successfully! Redirecting to AI processing...
                         </span>
+                    </div>
+                </div>
+            )}
+
+            {/* Duplicate Document Notification */}
+            {duplicateDocument && (
+                <div className="mt-4 bg-amber-50 border border-amber-300 rounded-xl p-5">
+                    <div className="flex items-start gap-3">
+                        <Copy className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                            <h4 className="text-amber-800 font-semibold text-sm mb-1">
+                                Duplicate Document Detected
+                            </h4>
+                            <p className="text-amber-700 text-sm mb-3">
+                                <span className="font-medium">"{duplicateDocument.fileName}"</span> already exists in the system.
+                            </p>
+                            <div className="bg-white/70 rounded-lg p-3 border border-amber-200 space-y-1.5">
+                                <p className="text-gray-800 text-sm">
+                                    <span className="text-gray-500">Title:</span>{' '}
+                                    <span className="font-medium">{duplicateDocument.title}</span>
+                                </p>
+                                <p className="text-gray-800 text-sm flex items-center gap-1.5">
+                                    <FolderOpen className="w-3.5 h-3.5 text-gray-400" />
+                                    <span className="text-gray-500">Location:</span>{' '}
+                                    <span className="font-medium">{duplicateDocument.folder_name}</span>
+                                </p>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                                <button
+                                    onClick={dismissDuplicate}
+                                    className="px-4 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium transition-colors"
+                                >
+                                    Dismiss
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

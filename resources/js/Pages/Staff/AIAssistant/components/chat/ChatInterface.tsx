@@ -6,12 +6,16 @@ import { ChatMessage as ChatMessageType, Document } from '../../types';
 interface ChatInterfaceProps {
   messages: ChatMessageType[];
   onSendMessage: (message: string, attachedDocuments?: Document[]) => void;
+  onViewDocument?: (docId: number) => void;
+  onNavigate?: (doc: any) => void;
   loading?: boolean;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   onSendMessage,
+  onViewDocument,
+  onNavigate,
   loading = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -41,7 +45,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ) : (
           messages.map((message, index) => (
-            <ChatMessage key={`message-${message.id}-${index}`} message={message} />
+            <ChatMessage
+              key={`message-${message.id}-${index}`}
+              message={message}
+              onViewDocument={onViewDocument}
+              onNavigate={onNavigate}
+            />
           ))
         )}
         {loading && (
