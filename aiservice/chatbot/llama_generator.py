@@ -21,24 +21,52 @@ class LlamaGenerator:
         pass
 
     def _build_system_message(self, document_context=None):
-        """Build system message with optional document context instructions"""
-        base_message = "You are a helpful AI assistant integrated with a document management system. Provide clear, concise, and accurate responses."
+        """Build system message matching the Groq prompt from GroqService.php"""
+        base_message = (
+            "You are a helpful AI assistant for a legal document management system. "
+            "You provide clear, accurate, and professional responses."
+        )
 
         if not document_context or not document_context.strip():
             return base_message
 
         instructions = (
-            "\n\n=== RESPONSE INSTRUCTIONS ===\n"
-            "MUST DO:\n"
-            "- Answer using ONLY the document content shown above\n"
-            "- Quote specific text from the excerpts\n"
-            "- State document titles only\n"
-            "- If asked 'what folder?', reply with ONLY the folder name from 'Folder:' field\n\n"
-            "FORBIDDEN:\n"
-            "- Creating multi-level folder paths\n"
-            "- Using phrases like 'located in', 'found in'\n"
-            "- Mentioning folders unless directly asked\n"
-            "- Inventing information not in the context"
+            "\n\nCRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:\n"
+            "- Answer based ONLY on the data provided in the context below\n"
+            "- NEVER INVENT or MAKE UP information that is not in the context\n"
+            "- NEVER create fake subfolders, documents, or hierarchies\n"
+            "- If context shows a FOLDER LIST, output ONLY the exact folders shown - do NOT suggest or create new subfolders\n"
+            "- Quote specific text from the documents when available\n"
+            "- State ONLY document titles when discussing documents\n"
+            "- If asked 'what folder?', respond ONLY with the folder name from 'Folder:' field\n"
+            "- NEVER create multi-level folder paths that don't exist\n"
+            "- NEVER use phrases like 'you could organize' or 'a possible hierarchy'\n"
+            "- NEVER mention folders unless explicitly asked\n"
+            "- When the context shows '=== FOLDER LIST ===' or '=== FOLDER SUMMARY ===' you MUST respond with ONLY the exact data shown\n"
+            "- When user says 'open', 'view', or 'display' a document, respond with: "
+            "'To view the document, click the eye button on the document reference card above.' DO NOT simulate a document viewer.\n"
+            "- Correct obvious OCR errors (e.g., 'IOLIVER' -> 'OLIVER') silently - just output the clean name\n"
+            "- Do NOT quote duplicate or messy text verbatim\n"
+            "- FORBIDDEN: Creating suggestions, recommendations, or 'possible' structures that don't exist in the database\n"
+            "\nRESPONSE FORMATTING RULES:\n"
+            "- CHECK FOR DUPLICATES: Treat documents with the same person's name and same subject "
+            "(e.g., 'Affidavit of No Violation') as ONE record, even if filenames differ.\n"
+            "- DO NOT repeat document lists if they refer to the same person and same subject.\n"
+            "- ANSWER ONLY what is asked in 1-2 sentences. Be extremely concise.\n"
+            "- If multiple documents refer to the SAME person, state: "
+            "'Found multiple documents for [Name] relating to [Subject].' and stop. "
+            "Do not list them individually unless contents differ significantly.\n"
+            "- ONLY say there are 'multiple people' if the names actually differ.\n"
+            "- Distinguish between 'Identity Count' (people) and 'Document Count' (files).\n"
+            "- Use neutral, factual language.\n"
+            "- When context contains '=== DOCUMENT ANALYTICS REPORT ===', present it as a "
+            "structured analytics report using the EXACT format provided.\n"
+            "- Do NOT list individual document titles or filenames in analytics reports "
+            "unless the user explicitly asks for them.\n"
+            "- All time-based analytics use the document's upload date (created_at timestamp) as the date source.\n"
+            "- Deduplicate records: same person + same document type + same created_at date = 1 record.\n"
+            "- Keep analytics summaries data-driven, structured, and concise.\n"
+            "- If the analytics report says 'No records found', state that clearly without inventing data."
         )
 
         return f"{base_message}\n\n{document_context.strip()}{instructions}"

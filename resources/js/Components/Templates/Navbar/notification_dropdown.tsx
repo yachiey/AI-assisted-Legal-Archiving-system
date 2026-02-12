@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HiOutlineBell } from "react-icons/hi2";
 import axios from "axios";
 
@@ -19,9 +19,30 @@ const NotificationDropdown: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const maxNotifications = 3;
 
+    // Background polling: keep ref to latest fetchNotifications
+    const fetchNotificationsRef = useRef<(() => void) | undefined>(undefined);
+
+    useEffect(() => {
+        fetchNotificationsRef.current = fetchNotifications;
+    });
+
+    // Initial fetch on mount + polling every 15 seconds for real-time updates
     useEffect(() => {
         fetchNotifications();
+
+        const interval = setInterval(() => {
+            fetchNotificationsRef.current?.();
+        }, 15000);
+
+        return () => clearInterval(interval);
     }, []);
+
+    // Also refresh when dropdown opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchNotifications();
+        }
+    }, [isOpen]);
 
     const fetchNotifications = async () => {
         try {

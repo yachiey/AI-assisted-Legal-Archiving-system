@@ -2,7 +2,10 @@
 flask==2.3.3
 flask-cors==4.0.0
 sentence-transformers>=2.2.0
-torch==2.2.0
+# torch==2.2.0 (Use CPU version to save space: pip install torch --index-url https://download.pytorch.org/whl/cpu)
+torch==2.3.1+cpu
+torchaudio==2.3.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+torchvision==0.18.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 transformers==4.35.0
 accelerate==0.24.1
 sentencepiece==0.1.99

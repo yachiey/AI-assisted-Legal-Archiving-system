@@ -193,6 +193,70 @@ class AIAssistantController extends Controller
                 }
             }
 
+            // COMPARE BY NAME: If user mentions compare + document names, search each name individually
+            if (!$hasExplicitDocuments && empty($allDocumentIds) && preg_match('/\b(compare|comparison|diff|versus|vs|contrast)\b/i', $request->message)) {
+                // Try to extract document names from the message
+                // Match patterns like "2025-08-19-Name-Document" or quoted strings
+                $docNamePatterns = [];
+                
+                // Pattern 1: Date-prefixed document names (e.g., 2025-08-19-MinervaRemedio-Affidavit)
+                if (preg_match_all('/\d{4}-\d{2}-\d{2}-[\w-]+/', $request->message, $matches)) {
+                    $docNamePatterns = array_merge($docNamePatterns, $matches[0]);
+                }
+                
+                // Pattern 2: Quoted document names
+                if (preg_match_all('/"([^"]+)"|\'([^\']+)\'/', $request->message, $matches)) {
+                    $docNamePatterns = array_merge($docNamePatterns, array_filter(array_merge($matches[1], $matches[2])));
+                }
+                
+                // Pattern 3: Split by "and" or "&" to find contrasting parts
+                if (empty($docNamePatterns)) {
+                    // Remove the compare keyword and try splitting by "and"
+                    $cleanedMsg = preg_replace('/\b(compare|comparison|diff|versus|vs|contrast|these|this|two|the|documents?|please|can you|could you)\b/i', '', $request->message);
+                    $parts = preg_split('/\s+and\s+|\s*&\s*/i', $cleanedMsg);
+                    foreach ($parts as $part) {
+                        $part = trim($part);
+                        if (strlen($part) >= 5) {
+                            $docNamePatterns[] = $part;
+                        }
+                    }
+                }
+                
+                if (!empty($docNamePatterns)) {
+                    Log::info('Compare by name: searching for individual document names', ['patterns' => $docNamePatterns]);
+                    
+                    foreach ($docNamePatterns as $namePattern) {
+                        $namePattern = trim($namePattern);
+                        if (strlen($namePattern) < 3) continue;
+                        
+                        // Search by title using LIKE with the full pattern
+                        $foundDocs = Document::where('status', 'active')
+                            ->where('title', 'ILIKE', "%{$namePattern}%")
+                            ->limit(1)
+                            ->get();
+                        
+                        if ($foundDocs->isEmpty()) {
+                            // Try searching with individual significant words from the pattern
+                            $nameWords = array_filter(preg_split('/[-\s]+/', $namePattern), fn($w) => strlen($w) >= 3 && !is_numeric($w));
+                            if (!empty($nameWords)) {
+                                $subQuery = Document::where('status', 'active');
+                                foreach ($nameWords as $w) {
+                                    $subQuery->where('title', 'ILIKE', "%{$w}%");
+                                }
+                                $foundDocs = $subQuery->limit(1)->get();
+                            }
+                        }
+                        
+                        foreach ($foundDocs as $doc) {
+                            $allDocumentIds[] = $doc->doc_id;
+                            Log::info('Compare by name: found document', ['name' => $namePattern, 'doc_id' => $doc->doc_id, 'title' => $doc->title]);
+                        }
+                    }
+                    
+                    $allDocumentIds = array_unique($allDocumentIds);
+                }
+            }
+
             // VALIDATION: If user asks to compare but no documents are selected or found
             if (empty($allDocumentIds) && preg_match('/\b(compare|comparison|diff|versus|vs|contrast)\b/i', $request->message)) {
                 // Create conversation if needed so we can return a session_id
@@ -1128,12 +1192,11 @@ class AIAssistantController extends Controller
                 $query->where('folder_id', $detectedFolderId);
             }
 
-            // Apply Date Filter if present
+            // Apply Date Filter if present (metadata created_at only — never infer from title)
             if (!empty($dateParams['years'])) {
                 $query->where(function($q) use ($dateParams) {
                     foreach ($dateParams['years'] as $year) {
                         $q->orWhereYear('created_at', $year);
-                        $q->orWhere('title', 'LIKE', "%{$year}%");
                     }
                 });
             }
@@ -1482,24 +1545,72 @@ class AIAssistantController extends Controller
     }
     private function extractDateParams(string $message): array
     {
-        $params = ['years' => []];
+        $params = ['years' => [], 'groupBy' => null, 'month' => null, 'dateRange' => null];
         
         // Match 4-digit years starting with 20 or 19 (e.g., 2024, 2023, 1999)
         if (preg_match_all('/\b(20\d{2}|19\d{2})\b/', $message, $matches)) {
             $params['years'] = array_unique($matches[1]);
         }
-        
+
+        // Detect groupBy from message
+        $msgLower = strtolower($message);
+        if (preg_match('/\b(daily|per day|by day|each day|day by day)\b/i', $message)) {
+            $params['groupBy'] = 'daily';
+        } elseif (preg_match('/\b(weekly|per week|by week|each week|week by week)\b/i', $message)) {
+            $params['groupBy'] = 'weekly';
+        } elseif (preg_match('/\b(yearly|per year|by year|each year|year by year|annual)\b/i', $message)) {
+            $params['groupBy'] = 'yearly';
+        } elseif (preg_match('/\b(monthly|per month|by month|each month|month by month)\b/i', $message)) {
+            $params['groupBy'] = 'monthly';
+        }
+
+        // Detect specific month names
+        $months = [
+            'january' => 1, 'february' => 2, 'march' => 3, 'april' => 4,
+            'may' => 5, 'june' => 6, 'july' => 7, 'august' => 8,
+            'september' => 9, 'october' => 10, 'november' => 11, 'december' => 12,
+            'jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4,
+            'jun' => 6, 'jul' => 7, 'aug' => 8, 'sep' => 9,
+            'oct' => 10, 'nov' => 11, 'dec' => 12,
+        ];
+        foreach ($months as $name => $num) {
+            if (preg_match('/\b' . $name . '\b/i', $message)) {
+                $params['month'] = $num;
+                break;
+            }
+        }
+
+        // Detect relative time ranges
+        if (preg_match('/\b(today|this day)\b/i', $message)) {
+            $params['dateRange'] = 'today';
+        } elseif (preg_match('/\b(yesterday)\b/i', $message)) {
+            $params['dateRange'] = 'yesterday';
+        } elseif (preg_match('/\b(this week|current week)\b/i', $message)) {
+            $params['dateRange'] = 'this_week';
+        } elseif (preg_match('/\b(last week|previous week)\b/i', $message)) {
+            $params['dateRange'] = 'last_week';
+        } elseif (preg_match('/\b(this month|current month)\b/i', $message)) {
+            $params['dateRange'] = 'this_month';
+        } elseif (preg_match('/\b(last month|previous month)\b/i', $message)) {
+            $params['dateRange'] = 'last_month';
+        } elseif (preg_match('/\b(this year|current year)\b/i', $message)) {
+            $params['dateRange'] = 'this_year';
+        } elseif (preg_match('/\b(last year|previous year)\b/i', $message)) {
+            $params['dateRange'] = 'last_year';
+        }
+
         return $params;
     }
 
     /**
-     * Generate analytics statistics based on user query
+     * Generate structured analytics report based on user query
+     * Produces 📊 Document Analytics Report with trend analysis
      */
     private function getAnalyticsStats(string $message, int $userId): string
     {
         try {
             // Check if analytics are requested
-            $isAnalyticsQuery = preg_match('/(analytics|stats|statistics|breakdown|report|trend|summary|count|how many)/i', $message);
+            $isAnalyticsQuery = preg_match('/(analytics|stats|statistics|breakdown|report|trend|summary|count|how many|daily|weekly|monthly|yearly|annual)/i', $message);
             
             if (!$isAnalyticsQuery) {
                 return '';
@@ -1510,47 +1621,44 @@ class AIAssistantController extends Controller
             $folderId = $detectedFolder['id'] ?? null;
             $folderName = $detectedFolder['name'] ?? null;
             
-            // CRITICAL CHECK:
-            // If the user is asking for stats ("how many") but we DID NOT detect a folder,
-            // we should only return global stats (Total Active Documents) if the query refers to "documents" or "files" generally.
-            // If they asked for "how many [specific term]" and we didn't find a folder for [specific term], 
-            // DO NOT return global stats, because "Total Active Documents: 13" is misleading for "How many Apples?".
+            // Collect significant search terms from the query (terms that aren't analytics keywords)
+            // These will be used to filter documents by title when no folder is detected
+            $searchTerms = [];
+            $cleanMessage = preg_replace('/[[:punct:]]+/', ' ', $message);
+            $words = preg_split('/\s+/', $cleanMessage);
             
-            if (!$folderId) {
-                // Check if message has specific search terms (words >= 3 chars not in stoplist)
-                $cleanMessage = preg_replace('/[[:punct:]]+/', ' ', $message);
-                $words = preg_split('/\s+/', $cleanMessage);
-                $hasSignificantTerms = false;
-                
-                foreach ($words as $word) {
-                    $wordLower = strtolower($word);
-                    if (strlen($wordLower) >= 3 && !in_array($wordLower, $this->stopWords)) {
-                        $hasSignificantTerms = true;
-                        break;
-                    }
-                }
-                
-                // If the user entered specific terms (like "MOA" which didn't match a folder alias yet, or "Contracts"),
-                // and we didn't find a folder, then return EMPTY analytics.
-                // This forces the system to rely on Metadata Search or Semantic Search results instead.
-                if ($hasSignificantTerms) {
-                    return ''; 
+            // Extended analytics stopwords — include time-related words so they don't become search filters
+            $analyticsStopWords = array_merge($this->stopWords, [
+                'analytics', 'stats', 'statistics', 'breakdown', 'report', 'trend', 'summary',
+                'daily', 'weekly', 'monthly', 'yearly', 'annual', 'per', 'day', 'week', 'month', 'year',
+                'today', 'yesterday', 'last', 'this', 'current', 'previous', 'january', 'february',
+                'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+                'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+                'count', 'number', 'total', 'provide', 'give', 'show', 'list', 'many', 'much',
+                'can', 'you', 'please', 'want', 'need', 'get',
+            ]);
+
+            foreach ($words as $word) {
+                $wordLower = strtolower($word);
+                // Skip years (4-digit numbers)
+                if (preg_match('/^\d{4}$/', $word)) continue;
+                if (strlen($wordLower) >= 3 && !in_array($wordLower, $analyticsStopWords)) {
+                    $searchTerms[] = $wordLower;
                 }
             }
 
-            $context = "\n=== DATABASE ANALYTICS & STATISTICS ===\n";
-            
-            // Detect grouping
-            $groupBy = 'month'; // Default
-            if (stripos($message, 'yearly') !== false || stripos($message, 'by year') !== false) {
-                $groupBy = 'year';
-            } elseif (stripos($message, 'weekly') !== false || stripos($message, 'by week') !== false) {
-                $groupBy = 'week';
-            }
+            // Extract date params for grouping & filtering
+            $dateParams = $this->extractDateParams($message);
+            $groupBy = $dateParams['groupBy'] ?? 'monthly'; // Default to monthly
+            $filterMonth = $dateParams['month'] ?? null;
+            $dateRange = $dateParams['dateRange'] ?? null;
+            $filterYears = $dateParams['years'] ?? [];
 
-            if ($folderId) {
-                $context .= "Filter: Folder '{$folderName}'\n";
-            }
+            // Determine document type label
+            $documentType = $folderName ? $folderName : (!empty($searchTerms) ? implode(' ', $searchTerms) : 'All Documents');
+
+            // Build time range label
+            $timeRangeLabel = $this->buildTimeRangeLabel($groupBy, $filterYears, $filterMonth, $dateRange);
 
             // Base Query
             $query = Document::where('status', 'active');
@@ -1558,56 +1666,251 @@ class AIAssistantController extends Controller
                 $query->where('folder_id', $folderId);
             }
 
-            // 1. Total Count
-            $totalCount = $query->count();
-            
-            // If filtering by folder, say "Documents in [Folder]: X". Else "Total Active Documents: X"
-            if ($folderId) {
-                $context .= "Documents in '{$folderName}': {$totalCount}\n\n";
-            } else {
-                $context .= "Total Active Documents: {$totalCount}\n\n";
+            // Apply title search filters when no folder detected but search terms exist
+            if (!$folderId && !empty($searchTerms)) {
+                $query->where(function($q) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $q->where('title', 'ILIKE', "%{$term}%");
+                    }
+                });
             }
 
-            $needsBreakdown = preg_match('/(analytics|stats|breakdown|report|trend|summary|monthly|yearly|weekly)/i', $message);
+            // Apply date range filters
+            $this->applyDateFilters($query, $filterYears, $filterMonth, $dateRange);
 
-            if ($needsBreakdown || $totalCount > 0) {
-                $context .= "Breakdown by " . ucfirst($groupBy) . ":\n";
+            // Total count (after filters) — deduplicated by title + upload date
+            $totalCount = (clone $query)
+                ->selectRaw("COUNT(DISTINCT CONCAT(title, '|', DATE(created_at))) as total")
+                ->value('total') ?? 0;
+
+            if ($totalCount === 0) {
+                $context = "\n=== DOCUMENT ANALYTICS REPORT ===\n";
+                $context .= "📊 Document Analytics Report\n";
+                $context .= "Document Type: {$documentType}\n";
+                $context .= "Data Source: Upload date (created_at)\n";
+                $context .= "Time Range: {$timeRangeLabel}\n\n";
+                $context .= "No records found for the selected period.\n";
+                $context .= "\n=== RESPONSE INSTRUCTIONS ===\n";
+                $context .= "Present this report EXACTLY as shown above. State clearly that no records were found.\n";
+                return $context;
+            }
+
+            // Get period breakdown stats (deduplicated)
+            $stats = $this->getPeriodBreakdown(clone $query, $groupBy);
+
+            // Build the structured report
+            $context = "\n=== DOCUMENT ANALYTICS REPORT ===\n";
+            $context .= "📊 Document Analytics Report\n";
+            $context .= "Document Type: {$documentType}\n";
+            $context .= "Data Source: Document metadata (created_at)\n";
+            $context .= "Time Range: {$timeRangeLabel}\n\n";
+
+            // Period Breakdown
+            $context .= "Period Breakdown:\n";
+            foreach ($stats as $stat) {
+                $period = trim($stat->period);
+                $context .= "- {$period}: {$stat->count} document(s)\n";
+            }
+
+            $context .= "\nTotal Documents: {$totalCount}\n\n";
+
+            // Trend Analysis
+            if ($stats->count() >= 2) {
+                $counts = $stats->pluck('count')->toArray();
+                $periods = $stats->pluck('period')->map(fn($p) => trim($p))->toArray();
+
+                $maxCount = max($counts);
+                $minCount = min($counts);
+                $maxIdx = array_search($maxCount, $counts);
+                $minIdx = array_search($minCount, $counts);
+
+                // Determine trend direction (compare first vs last period in chronological order)
+                $firstCount = end($counts);  // stats ordered desc, so last = earliest
+                $lastCount = reset($counts); // first = most recent
                 
-                $stats = [];
-                if ($groupBy === 'year') {
-                    // PostgreSQL Year
-                    $stats = $query->selectRaw("EXTRACT(YEAR FROM created_at) as period, count(*) as count")
-                        ->groupBy('period')
-                        ->orderBy('period', 'desc')
-                        ->get();
-                } elseif ($groupBy === 'week') {
-                    // PostgreSQL Week
-                    $stats = $query->selectRaw("TO_CHAR(created_at, 'YYYY-IW') as period, count(*) as count")
-                        ->groupBy('period')
-                        ->orderBy('period', 'desc')
-                        ->limit(12)
-                        ->get();
+                if ($lastCount > $firstCount) {
+                    $trendDirection = 'Increasing';
+                } elseif ($lastCount < $firstCount) {
+                    $trendDirection = 'Decreasing';
                 } else {
-                    // PostgreSQL Month (Default)
-                    $stats = $query->selectRaw("TO_CHAR(created_at, 'Month YYYY') as period, count(*) as count")
-                         ->selectRaw("MAX(created_at) as sort_date") // For sorting
-                        ->groupBy('period')
-                        ->orderBy('sort_date', 'desc')
-                        ->limit(12)
-                        ->get();
+                    $trendDirection = 'Stable';
                 }
 
-                foreach ($stats as $stat) {
-                    $period = trim($stat->period); // Postgres TO_CHAR might add padding
-                    $context .= "- {$period}: {$stat->count} documents\n";
+                // Percentage change
+                $percentChange = $firstCount > 0 
+                    ? round((($lastCount - $firstCount) / $firstCount) * 100, 1) 
+                    : 0;
+                $percentSign = $percentChange >= 0 ? '+' : '';
+
+                $context .= "Trend Analysis:\n";
+                $context .= "- Highest Period: {$periods[$maxIdx]} ({$maxCount} documents)\n";
+                $context .= "- Lowest Period: {$periods[$minIdx]} ({$minCount} documents)\n";
+                $context .= "- Trend Direction: {$trendDirection}\n";
+                $context .= "- Percentage Change: {$percentSign}{$percentChange}%\n";
+
+                // Average per period
+                $avgPerPeriod = round(array_sum($counts) / count($counts), 1);
+                $context .= "\nAdditional Insights:\n";
+                $context .= "- Average per period: {$avgPerPeriod} document(s)\n";
+
+                // Notable spike or drop (if any period is 2x or more above/below average)
+                foreach ($counts as $idx => $count) {
+                    if ($count >= $avgPerPeriod * 2 && $avgPerPeriod > 0) {
+                        $context .= "- Notable spike in {$periods[$idx]}: {$count} documents (significantly above average)\n";
+                        break;
+                    }
+                    if ($count <= $avgPerPeriod * 0.5 && $avgPerPeriod > 0 && $count > 0) {
+                        $context .= "- Notable drop in {$periods[$idx]}: {$count} documents (significantly below average)\n";
+                        break;
+                    }
                 }
             }
             
-            return $context . "\n";
+            $context .= "\n=== RESPONSE INSTRUCTIONS ===\n";
+            $context .= "Present this analytics report EXACTLY as shown above using the structured format.\n";
+            $context .= "Do NOT list individual document titles or filenames.\n";
+            $context .= "Do NOT invent or add data not shown above.\n";
+            $context .= "Keep the response professional, data-driven, and concise.\n";
+
+            return $context;
 
         } catch (\Exception $e) {
             Log::error('Analytics generation failed', ['error' => $e->getMessage()]);
             return "\n[Analytics error: could not generate statistics]\n";
+        }
+    }
+
+    /**
+     * Build a human-readable label for the time range
+     */
+    private function buildTimeRangeLabel(string $groupBy, array $years, ?int $month, ?string $dateRange): string
+    {
+        $groupLabel = ucfirst($groupBy);
+        $monthNames = [
+            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December',
+        ];
+
+        if ($dateRange) {
+            $rangeLabels = [
+                'today' => 'Today',
+                'yesterday' => 'Yesterday',
+                'this_week' => 'This Week',
+                'last_week' => 'Last Week',
+                'this_month' => 'This Month',
+                'last_month' => 'Last Month',
+                'this_year' => 'This Year',
+                'last_year' => 'Last Year',
+            ];
+            return $groupLabel . ' – ' . ($rangeLabels[$dateRange] ?? $dateRange);
+        }
+
+        $suffix = '';
+        if ($month && !empty($years)) {
+            $suffix = $monthNames[$month] . ' ' . implode(', ', $years);
+        } elseif ($month) {
+            $suffix = $monthNames[$month];
+        } elseif (!empty($years)) {
+            $suffix = implode(', ', $years);
+        } else {
+            $suffix = 'All Time';
+        }
+
+        return $groupLabel . ' – ' . $suffix;
+    }
+
+    /**
+     * Apply date range filters to a query.
+     * Uses created_at (upload date) as the date source.
+     */
+    private function applyDateFilters($query, array $years, ?int $month, ?string $dateRange): void
+    {
+        $now = now();
+
+        if ($dateRange) {
+            switch ($dateRange) {
+                case 'today':
+                    $query->whereDate('created_at', $now->toDateString());
+                    break;
+                case 'yesterday':
+                    $query->whereDate('created_at', $now->copy()->subDay()->toDateString());
+                    break;
+                case 'this_week':
+                    $query->whereBetween('created_at', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+                    break;
+                case 'last_week':
+                    $query->whereBetween('created_at', [$now->copy()->subWeek()->startOfWeek(), $now->copy()->subWeek()->endOfWeek()]);
+                    break;
+                case 'this_month':
+                    $query->whereYear('created_at', $now->year)->whereMonth('created_at', $now->month);
+                    break;
+                case 'last_month':
+                    $lastMonth = $now->copy()->subMonth();
+                    $query->whereYear('created_at', $lastMonth->year)->whereMonth('created_at', $lastMonth->month);
+                    break;
+                case 'this_year':
+                    $query->whereYear('created_at', $now->year);
+                    break;
+                case 'last_year':
+                    $query->whereYear('created_at', $now->year - 1);
+                    break;
+            }
+            return;
+        }
+
+        if (!empty($years)) {
+            $query->where(function($q) use ($years) {
+                foreach ($years as $year) {
+                    $q->orWhereYear('created_at', $year);
+                }
+            });
+        }
+
+        if ($month) {
+            $query->whereMonth('created_at', $month);
+        }
+    }
+
+    /**
+     * Get period breakdown statistics grouped by the requested interval.
+     * Deduplicates by title + upload date (same title + same upload date = 1 record).
+     * Uses created_at (upload date) for grouping.
+     */
+    private function getPeriodBreakdown($query, string $groupBy)
+    {
+        // Deduplicate: COUNT(DISTINCT title||date) ensures same document on same date = 1
+        $countExpr = "COUNT(DISTINCT CONCAT(title, '|', DATE(created_at))) as count";
+
+        switch ($groupBy) {
+            case 'daily':
+                return $query->selectRaw("TO_CHAR(created_at, 'YYYY-MM-DD') as period, {$countExpr}")
+                    ->groupBy('period')
+                    ->orderBy('period', 'desc')
+                    ->limit(31)
+                    ->get();
+
+            case 'weekly':
+                return $query->selectRaw("TO_CHAR(created_at, 'YYYY-\"W\"IW') as period, {$countExpr}")
+                    ->groupBy('period')
+                    ->orderBy('period', 'desc')
+                    ->limit(12)
+                    ->get();
+
+            case 'yearly':
+                return $query->selectRaw("EXTRACT(YEAR FROM created_at)::text as period, {$countExpr}")
+                    ->groupBy('period')
+                    ->orderBy('period', 'desc')
+                    ->get();
+
+            case 'monthly':
+            default:
+                return $query->selectRaw("TO_CHAR(created_at, 'Month YYYY') as period, {$countExpr}")
+                    ->selectRaw("MAX(created_at) as sort_date")
+                    ->groupBy('period')
+                    ->orderBy('sort_date', 'desc')
+                    ->limit(12)
+                    ->get();
         }
     }
 

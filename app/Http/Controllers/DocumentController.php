@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use App\Services\DocumentProcessingService;
 use App\Services\AIAnalysisService;
 use App\Services\DocumentStorageService;
@@ -261,6 +261,15 @@ class DocumentController extends Controller
                 'title' => $document->title,
                 'file_path' => $document->file_path,
             ]);
+
+            // Log scanner upload activity
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_UPLOADED,
+                $document,
+                $systemUserId,
+                'Document scanned and uploaded: ' . ActivityLogger::resolveTitle($document),
+                ['source' => 'scanner']
+            );
 
             // Dispatch background job for processing
             ProcessDocumentJob::dispatch(
@@ -628,6 +637,15 @@ class DocumentController extends Controller
 
             $document->update($validated);
 
+            // Log document metadata edit
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_METADATA_UPDATED,
+                $document,
+                $user->user_id,
+                'Document metadata updated: ' . ActivityLogger::resolveTitle($document),
+                ['updated_fields' => array_keys($validated)]
+            );
+
             Log::info('Document metadata updated by AI', [
                 'doc_id' => $id,
                 'updated_fields' => array_keys($validated),
@@ -757,13 +775,12 @@ class DocumentController extends Controller
                 return response()->json(['success' => false, 'error' => 'Document not found'], 404);
             }
 
-            ActivityLog::create([
-                'user_id' => $user->user_id,
-                'doc_id' => $document->doc_id,
-                'activity_type' => 'download',
-                'activity_time' => now(),
-                'activity_details' => 'Downloaded document: ' . $document->title,
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_DOWNLOADED,
+                $document,
+                $user->user_id,
+                'Downloaded document: ' . ActivityLogger::resolveTitle($document)
+            );
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -810,13 +827,12 @@ class DocumentController extends Controller
             }
 
             // Log the activity BEFORE deleting
-            ActivityLog::create([
-                'user_id' => auth()->id(),
-                'doc_id' => $docId,
-                'activity_type' => 'delete',
-                'activity_time' => now(),
-                'activity_details' => 'Document deleted: ' . $document->title
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_DELETED,
+                $document,
+                auth()->id(),
+                'Document deleted: ' . ActivityLogger::resolveTitle($document)
+            );
 
             // Delete physical file and embeddings
             $this->storageService->deleteDocument($document);
@@ -867,13 +883,12 @@ class DocumentController extends Controller
                 $document = Document::find($docId);
                 if ($document) {
                     // Log before deletion
-                    ActivityLog::create([
-                        'user_id' => auth()->id(),
-                        'doc_id' => $docId,
-                        'activity_type' => 'delete',
-                        'activity_time' => now(),
-                        'activity_details' => "Document '{$document->title}' deleted (bulk operation)"
-                    ]);
+                    ActivityLogger::log(
+                        ActivityLogger::DOCUMENT_DELETED,
+                        $document,
+                        auth()->id(),
+                        'Document deleted (bulk): ' . ActivityLogger::resolveTitle($document)
+                    );
 
                     // Delete file and embeddings
                     $this->storageService->deleteDocument($document);
@@ -927,13 +942,12 @@ class DocumentController extends Controller
             }
 
             // Log the download activity
-            ActivityLog::create([
-                'user_id' => $user->user_id,
-                'doc_id' => $document->doc_id,
-                'activity_type' => 'download',
-                'activity_time' => now(),
-                'activity_details' => 'Downloaded document: ' . $document->title,
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_DOWNLOADED,
+                $document,
+                $user->user_id,
+                'Downloaded document: ' . ActivityLogger::resolveTitle($document)
+            );
 
             $fullPath = Storage::disk('documents')->path($document->file_path);
             $extension = pathinfo($document->file_path, PATHINFO_EXTENSION);

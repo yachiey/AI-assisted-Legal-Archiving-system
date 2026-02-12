@@ -35,8 +35,12 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
 
         if (!menuOpen) {
             const rect = event.currentTarget.getBoundingClientRect();
+            const menuHeight = 180; // Approximate menu height (4 items × ~40px + padding)
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - rect.bottom;
+
             setMenuPosition({
-                top: rect.bottom,
+                top: spaceBelow < menuHeight ? rect.top - menuHeight : rect.bottom,
                 left: rect.right - 160
             });
         }

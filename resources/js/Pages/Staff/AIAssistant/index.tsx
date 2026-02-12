@@ -294,7 +294,7 @@ function StaffAIAssistant() {
 
 // Apply Staff Layout wrapper with fullScreen and hideSidebar props
 StaffAIAssistant.layout = (page: React.ReactNode) => (
-    <StaffLayout fullScreen hideSidebar>{page}</StaffLayout>
+    <StaffLayout fullScreen hideSidebar hideChatWidget>{page}</StaffLayout>
 );
 
 export default StaffAIAssistant;

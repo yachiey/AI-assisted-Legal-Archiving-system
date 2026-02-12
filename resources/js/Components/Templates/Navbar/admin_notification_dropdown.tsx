@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HiOutlineBell } from "react-icons/hi2";
 import { Check, X, Loader2, Shield } from "lucide-react";
 import axios from "axios";
@@ -34,6 +34,32 @@ const AdminNotificationDropdown: React.FC = () => {
     const [processingId, setProcessingId] = useState<number | null>(null);
     const maxNotifications = 3;
 
+    // Background polling: fetch notifications & requests every 15 seconds
+    // so the badge updates in real-time without page refresh
+    const fetchNotificationsRef = useRef<(() => void) | undefined>(undefined);
+    const fetchPendingRequestsRef = useRef<(() => void) | undefined>(undefined);
+
+    useEffect(() => {
+        fetchNotificationsRef.current = fetchNotifications;
+        fetchPendingRequestsRef.current = fetchPendingRequests;
+    });
+
+    // Initial fetch on mount + polling interval
+    useEffect(() => {
+        // Fetch immediately on mount
+        fetchNotifications();
+        fetchPendingRequests();
+
+        // Poll every 15 seconds for real-time updates
+        const interval = setInterval(() => {
+            fetchNotificationsRef.current?.();
+            fetchPendingRequestsRef.current?.();
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Also refresh when dropdown opens (for instant fresh data)
     useEffect(() => {
         if (isOpen) {
             fetchNotifications();

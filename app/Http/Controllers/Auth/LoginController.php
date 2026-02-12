@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 
 class LoginController extends Controller
 {
@@ -72,13 +72,12 @@ class LoginController extends Controller
             ]);
 
             // Log login activity
-            ActivityLog::create([
-                'user_id' => $user->user_id,
-                'doc_id' => null,
-                'activity_type' => 'login',
-                'activity_time' => now(),
-                'activity_details' => 'User logged in',
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::AUTH_LOGIN,
+                null,
+                $user->user_id,
+                'User logged in'
+            );
 
             // Redirect based on user role
             $redirect = $user->role === 'admin' ? '/admin/dashboard' : '/staff/dashboard';
@@ -111,13 +110,12 @@ class LoginController extends Controller
         Log::info('Logout attempt', ['user_id' => $user->getKey()]);
 
         // Log logout activity
-        ActivityLog::create([
-            'user_id' => $user->user_id,
-            'doc_id' => null,
-            'activity_type' => 'logout',
-            'activity_time' => now(),
-            'activity_details' => 'User logged out',
-        ]);
+        ActivityLogger::log(
+            ActivityLogger::AUTH_LOGOUT,
+            null,
+            $user->user_id,
+            'User logged out'
+        );
 
         $deletedCount = $user->tokens()->count();
         $user->tokens()->delete();

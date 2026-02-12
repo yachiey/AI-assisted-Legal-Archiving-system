@@ -15,9 +15,10 @@ interface AdminLayoutProps {
     fullScreen?: boolean;
     hideSidebar?: boolean;
     noPadding?: boolean;
+    hideChatWidget?: boolean;
 }
 
-export default function AdminLayout({ children, fullScreen = false, hideSidebar = false, noPadding = false }: AdminLayoutProps) {
+export default function AdminLayout({ children, fullScreen = false, hideSidebar = false, noPadding = false, hideChatWidget = false }: AdminLayoutProps) {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -36,7 +37,7 @@ export default function AdminLayout({ children, fullScreen = false, hideSidebar 
             <ChatProvider>
                 <ModalProvider>
                     <InnerLayout isMobile={isMobile} fullScreen={fullScreen} hideSidebar={hideSidebar} noPadding={noPadding}>{children}</InnerLayout>
-                    <ChatWidget />
+                    {!hideChatWidget && <ChatWidget />}
                 </ModalProvider>
             </ChatProvider>
         </DashboardContextProvider>

@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\ActivityLog;
 use App\Models\Folder;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Exports\ReportExport;
@@ -111,23 +112,25 @@ class ReportController extends Controller
     }
 
     /**
-     * Format activity type for display
+     * Format activity type for display — delegates to ActivityLogger.
      */
     private function formatActivityType($type)
     {
-        $types = [
-            'upload' => 'Document Uploaded',
-            'download' => 'Document Downloaded',
-            'view' => 'Document Viewed',
-            'update' => 'Document Updated',
-            'delete' => 'Document Deleted',
-            'process' => 'Document Processed',
-            'share' => 'Document Shared',
-            'login' => 'User Login',
-            'logout' => 'User Logout',
-        ];
+        return ActivityLogger::formatLabel($type);
+    }
 
-        return $types[$type] ?? ucfirst($type);
+    /**
+     * Check if an activity type is an auth event (login/logout).
+     */
+    private function isAuthActivity(string $type): bool
+    {
+        return in_array($type, [
+            ActivityLogger::AUTH_LOGIN,
+            ActivityLogger::AUTH_LOGOUT,
+            // Legacy support
+            'login',
+            'logout',
+        ]);
     }
 
     /**
@@ -334,10 +337,9 @@ class ReportController extends Controller
             ->limit($limit)
             ->get()
             ->map(function ($log) {
-                // For login/logout activities, document is empty
-                $documentTitle = in_array($log->activity_type, ['login', 'logout'])
+                $documentTitle = $this->isAuthActivity($log->activity_type)
                     ? ''
-                    : ($log->document ? $log->document->title : 'Unknown Document');
+                    : $log->display_title;
 
                 return [
                     'action' => $this->formatActivityType($log->activity_type),
@@ -384,10 +386,9 @@ class ReportController extends Controller
 
         $activityLogs = $query->get()
             ->map(function ($log) {
-                // For login/logout activities, document is empty
-                $documentTitle = in_array($log->activity_type, ['login', 'logout'])
+                $documentTitle = $this->isAuthActivity($log->activity_type)
                     ? ''
-                    : ($log->document ? $log->document->title : 'Unknown Document');
+                    : $log->display_title;
 
                 return [
                     'activity_type' => $this->formatActivityType($log->activity_type),
@@ -500,12 +501,9 @@ class ReportController extends Controller
             ->map(function ($log) {
                 $activityTime = Carbon::parse($log->activity_time);
 
-                // For login/logout activities, show empty string (no document)
-                if (in_array($log->activity_type, ['login', 'logout'])) {
-                    $documentTitle = '';
-                } else {
-                    $documentTitle = $log->document ? $log->document->title : 'Unknown Document';
-                }
+                $documentTitle = $this->isAuthActivity($log->activity_type)
+                    ? ''
+                    : $log->display_title;
 
                 return [
                     'action' => $this->formatActivityType($log->activity_type),
@@ -513,7 +511,7 @@ class ReportController extends Controller
                     'user' => $log->user
                         ? $log->user->firstname . ' ' . $log->user->lastname
                         : 'Unknown User',
-                    'user_id' => $log->user_id, // Added for potential client-side use
+                    'user_id' => $log->user_id,
                     'time' => $activityTime->diffForHumans()
                 ];
             });

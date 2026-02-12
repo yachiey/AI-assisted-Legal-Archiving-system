@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Document;
 use App\Models\Folder;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -67,16 +68,16 @@ class AdminController extends Controller
             ->map(function ($log) {
                 $activityTime = \Carbon\Carbon::parse($log->activity_time);
                 
-                // For login/logout activities, document is empty
-                if (in_array($log->activity_type, ['login', 'logout'])) {
-                    $documentTitle = '';
-                } else {
-                    $documentTitle = $log->document ? $log->document->title : 'Unknown Document';
-                }
+                // For auth activities, document is empty
+                $isAuth = in_array($log->activity_type, [
+                    ActivityLogger::AUTH_LOGIN,
+                    ActivityLogger::AUTH_LOGOUT,
+                    'login', 'logout', // legacy support
+                ]);
                 
                 return [
-                    'action' => ucfirst(str_replace('_', ' ', $log->activity_type)),
-                    'document' => $documentTitle,
+                    'action' => ActivityLogger::formatLabel($log->activity_type),
+                    'document' => $isAuth ? '' : $log->display_title,
                     'user' => $log->user ? $log->user->firstname . ' ' . $log->user->lastname : 'Unknown User',
                     'time' => $activityTime->diffForHumans(),
                 ];

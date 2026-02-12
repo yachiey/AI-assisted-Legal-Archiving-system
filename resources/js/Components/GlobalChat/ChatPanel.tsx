@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { Send, Minimize2, X, Bot, User, Maximize2, RefreshCw } from 'lucide-react';
+import { Send, Minimize2, X, Bot, User, Maximize2, RefreshCw, FileText, Eye } from 'lucide-react';
 import { useChat } from '../../Context/ChatContext';
+import DocumentViewer from '../../Pages/Admin/Document/components/DocumentViewer/DocumentViewer';
+import { Document as FullDocument } from '../../Pages/Admin/Document/types/types';
 
 export const ChatPanel = () => {
     const {
@@ -15,6 +17,10 @@ export const ChatPanel = () => {
 
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Document viewer state
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,6 +41,48 @@ export const ChatPanel = () => {
 
     const handleNewChat = () => {
         resetChat();
+    };
+
+    const handleViewDocument = async (docId: number) => {
+        try {
+            const response = await fetch(`/api/documents/${docId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const responseData = await response.json();
+                setSelectedDocument(responseData.success ? responseData.data : responseData);
+                setIsViewerOpen(true);
+            }
+        } catch (error) {
+            console.error('Error fetching document:', error);
+        }
+    };
+
+    const handleNavigateToDocument = (doc: any) => {
+        const params: Record<string, string> = { from: 'ai' };
+        if (doc.folder_id) {
+            params.folder = String(doc.folder_id);
+        }
+        if (doc.doc_id) {
+            params.highlight = String(doc.doc_id);
+        }
+
+        // Get user role to navigate to the correct documents page
+        const storedUser = sessionStorage.getItem("currentUser");
+        let role = 'admin';
+        if (storedUser) {
+            try {
+                role = (JSON.parse(storedUser).role || 'admin').toLowerCase();
+            } catch (e) { }
+        }
+
+        const basePath = role === 'staff' ? '/staff/documents' : '/admin/documents';
+        router.visit(basePath, { data: params });
+        toggleChat();
     };
 
     const handleFullscreen = () => {
@@ -136,28 +184,66 @@ export const ChatPanel = () => {
                         key={msg.id}
                         className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                        <div className={`flex gap-3 max-w-[85%] ${msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex gap-2 max-w-[85%] ${msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                             <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm
+                                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm
                   ${msg.type === 'user' ? 'bg-gray-100' : 'bg-green-100'}`}
                             >
                                 {msg.type === 'user' ? (
-                                    <User className="w-4 h-4 text-gray-600" />
+                                    <User className="w-3.5 h-3.5 text-gray-600" />
                                 ) : (
-                                    <Bot className="w-4 h-4 text-green-600" />
+                                    <Bot className="w-3.5 h-3.5 text-green-600" />
                                 )}
                             </div>
 
-                            <div className={`space-y-1 ${msg.type === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                            <div className={`min-w-0 flex-1 flex flex-col ${msg.type === 'user' ? 'items-end' : 'items-start'}`}>
                                 <div
-                                    className={`p-3 rounded-2xl text-sm shadow-sm
+                                    className={`p-2.5 rounded-2xl text-[13px] shadow-sm w-full overflow-hidden
                     ${msg.type === 'user'
                                             ? 'bg-gray-900 text-white rounded-tr-none'
                                             : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}
                                 >
-                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{msg.content}</p>
+
+                                    {/* Document Reference Cards */}
+                                    {msg.type !== 'user' && msg.documents && msg.documents.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 overflow-hidden">
+                                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                                📎 References
+                                            </p>
+                                            {msg.documents.map((doc) => (
+                                                <div
+                                                    key={doc.doc_id}
+                                                    className="flex items-center gap-1 px-1.5 py-1 bg-green-50 rounded border border-green-200 text-[11px] overflow-hidden"
+                                                >
+                                                    <button
+                                                        onClick={() => handleNavigateToDocument(doc)}
+                                                        className="flex-shrink-0 p-0.5 hover:bg-green-200 rounded transition-colors text-green-700"
+                                                        title="Go to document location"
+                                                    >
+                                                        <FileText size={11} />
+                                                    </button>
+                                                    <span className="truncate flex-1 min-w-0 font-medium text-green-800 text-left">
+                                                        {doc.title}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleViewDocument(doc.doc_id)}
+                                                        className="p-0.5 rounded bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0"
+                                                        title={`View "${doc.title}"`}
+                                                    >
+                                                        <Eye size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {msg.more_documents_count && msg.more_documents_count > 0 && (
+                                                <p className="text-[10px] italic text-gray-400">
+                                                    ...and {msg.more_documents_count} more
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-[10px] text-gray-400 px-1">
+                                <span className="text-[10px] text-gray-400 px-1 mt-0.5">
                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
@@ -187,14 +273,6 @@ export const ChatPanel = () => {
             {/* Input Area */}
             <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-100 shrink-0">
                 <div className="relative flex items-center gap-2">
-                    {/* <button
-            type="button"
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Attach file"
-          >
-            <Paperclip className="w-5 h-5" />
-          </button> */}
-
                     <input
                         type="text"
                         value={input}
@@ -213,6 +291,15 @@ export const ChatPanel = () => {
                     </button>
                 </div>
             </form>
+            {/* Document Viewer Modal (portal - renders above everything) */}
+            <DocumentViewer
+                isOpen={isViewerOpen}
+                onClose={() => {
+                    setIsViewerOpen(false);
+                    setSelectedDocument(null);
+                }}
+                document={selectedDocument}
+            />
         </div>
     );
 };

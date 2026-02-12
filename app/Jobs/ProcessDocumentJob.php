@@ -10,7 +10,7 @@ use App\Models\Document;
 use App\Services\DocumentProcessingService;
 use App\Services\AIAnalysisService;
 use App\Services\FolderMatchingService;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -104,6 +104,19 @@ class ProcessDocumentJob implements ShouldQueue
                     $updateData['status'] = 'active';
                     $document->update($updateData);
 
+                    // Log AI processing completed
+                    ActivityLogger::log(
+                        ActivityLogger::DOCUMENT_AI_PROCESSED,
+                        $document,
+                        $this->userId,
+                        'AI analysis completed: ' . ActivityLogger::resolveTitle($document),
+                        [
+                            'ai_title' => $aiAnalysis['title'] ?? null,
+                            'ai_description' => $aiAnalysis['description'] ?? null,
+                            'ai_suggested_folder' => $aiAnalysis['suggested_folder'] ?? null,
+                        ]
+                    );
+
                 } catch (\Exception $aiError) {
                     Log::warning('AI auto-fill failed', ['error' => $aiError->getMessage()]);
                     // Still mark as active even if AI failed
@@ -115,13 +128,12 @@ class ProcessDocumentJob implements ShouldQueue
             }
 
             // Log successful upload activity
-            ActivityLog::create([
-                'user_id' => $this->userId,
-                'doc_id' => $document->doc_id,
-                'activity_type' => 'upload',
-                'activity_time' => now(),
-                'activity_details' => 'Document processed successfully: ' . $document->title
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_UPLOADED,
+                $document,
+                $this->userId,
+                'Document processed successfully: ' . ActivityLogger::resolveTitle($document)
+            );
 
             Log::info('Job finished: Document processed', ['doc_id' => $this->docId]);
 

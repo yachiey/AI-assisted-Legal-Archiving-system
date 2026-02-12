@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 
 class LogoutController extends Controller
 {
@@ -18,13 +18,12 @@ class LogoutController extends Controller
             $user = $request->user();
 
             // Log logout activity before deleting token
-            ActivityLog::create([
-                'user_id' => $user->user_id,
-                'doc_id' => null,
-                'activity_type' => 'logout',
-                'activity_time' => now(),
-                'activity_details' => 'User logged out',
-            ]);
+            ActivityLogger::log(
+                ActivityLogger::AUTH_LOGOUT,
+                null,
+                $user->user_id,
+                'User logged out'
+            );
 
             // Delete the current access token
             $user->currentAccessToken()->delete();

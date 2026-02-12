@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\Folder;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -132,9 +133,51 @@ class FolderController extends Controller
             'folder_type' => 'sometimes|string',
         ]);
 
-        $folder->update($validated);
+        try {
+            DB::beginTransaction();
 
-        return response()->json($folder->load(self::DEFAULT_RELATIONS));
+            // If folder_name changed, sync path, physical dir, children, and documents
+            if (isset($validated['folder_name']) && $validated['folder_name'] !== $folder->folder_name) {
+                $oldName = $folder->folder_name;
+                $oldPath = $folder->folder_path;
+                $newPath = preg_replace('/' . preg_quote($oldName, '/') . '$/', $validated['folder_name'], $oldPath);
+
+                // 1. Rename physical directory
+                if (File::exists($oldPath) && $oldPath !== $newPath) {
+                    File::move($oldPath, $newPath);
+                }
+
+                // 2. Update this folder's path
+                $validated['folder_path'] = $newPath;
+
+                // 3. Update all descendant folder paths
+                Folder::where('folder_path', 'LIKE', $oldPath . '/%')
+                    ->update([
+                        'folder_path' => DB::raw("REPLACE(folder_path, '" . addslashes($oldPath) . "', '" . addslashes($newPath) . "')")
+                    ]);
+
+                // 4. Update ai_suggested_folder on documents
+                Document::where('ai_suggested_folder', $oldName)
+                    ->update(['ai_suggested_folder' => $validated['folder_name']]);
+
+                // 5. Update file_path on documents in this folder and subfolders
+                Document::where('file_path', 'LIKE', addslashes($oldName) . '/%')
+                    ->update([
+                        'file_path' => DB::raw("REPLACE(file_path, '" . addslashes($oldName) . "/', '" . addslashes($validated['folder_name']) . "/')")
+                    ]);
+            }
+
+            $folder->update($validated);
+
+            DB::commit();
+
+            return response()->json($folder->load(self::DEFAULT_RELATIONS));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Folder update failed', ['error' => $e->getMessage(), 'folder_id' => $id]);
+            return response()->json(['message' => 'Failed to update folder', 'error' => $e->getMessage()], 500);
+        }
     }
 
     /**

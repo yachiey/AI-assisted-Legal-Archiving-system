@@ -180,7 +180,13 @@ class GroqService
                       "- If multiple documents refer to the SAME person, state: 'Found multiple documents for [Name] relating to [Subject].' and stop. Do not list them individually unless contents differ significantly.\n" .
                       "- ONLY say there are 'multiple people' if the names actually differ.\n" .
                       "- Distinguish between 'Identity Count' (people) and 'Document Count' (files).\n" .
-                      "- Use neutral, factual language.";
+                      "- Use neutral, factual language.\n" .
+                      "- When context contains '=== DOCUMENT ANALYTICS REPORT ===', present it as a structured analytics report using the EXACT format provided.\n" .
+                      "- Do NOT list individual document titles or filenames in analytics reports unless the user explicitly asks for them.\n" .
+                      "- All time-based analytics use the document's upload date (created_at timestamp) as the date source.\n" .
+                      "- Deduplicate records: same person + same document type + same created_at date = 1 record.\n" .
+                      "- Keep analytics summaries data-driven, structured, and concise.\n" .
+                      "- If the analytics report says 'No records found', state that clearly without inventing data.";
         }
 
         return $prompt;

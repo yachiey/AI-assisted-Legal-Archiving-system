@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Document;
 use App\Models\Folder;
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
 use App\Services\DocumentStorageService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -284,14 +284,14 @@ class ManualProcessController extends Controller
                 'folder_id_in_update' => $updateData['folder_id'] ?? 'not included'
             ]);
 
-            // Log the activity
-            ActivityLog::create([
-                'user_id' => auth()->id(),
-                'doc_id' => $document->doc_id,
-                'activity_type' => 'update',
-                'activity_time' => now(),
-                'activity_details' => 'Manual update: ' . implode(', ', $changes)
-            ]);
+            // Log the activity — this is a metadata confirmation, not a generic update
+            ActivityLogger::log(
+                ActivityLogger::DOCUMENT_METADATA_CONFIRMED,
+                $document,
+                auth()->id(),
+                'Metadata confirmed: ' . ActivityLogger::resolveTitle($document),
+                ['changes' => $changes]
+            );
 
             \Log::info('Document updated via manual processing', [
                 'doc_id' => $document->doc_id,

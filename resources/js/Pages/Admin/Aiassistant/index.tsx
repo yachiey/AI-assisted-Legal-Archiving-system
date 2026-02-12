@@ -386,7 +386,7 @@ function Aiassistant() {
 
 // Apply Admin Layout wrapper with fullScreen and hideSidebar props
 Aiassistant.layout = (page: React.ReactNode) => (
-  <AdminLayout fullScreen hideSidebar>{page}</AdminLayout>
+  <AdminLayout fullScreen hideSidebar hideChatWidget>{page}</AdminLayout>
 );
 
 export default Aiassistant;

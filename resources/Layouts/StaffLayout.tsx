@@ -10,9 +10,10 @@ interface StaffLayoutProps {
     fullScreen?: boolean;
     hideSidebar?: boolean;
     noPadding?: boolean;
+    hideChatWidget?: boolean;
 }
 
-const StaffLayout: FC<StaffLayoutProps> = ({ children, fullScreen = false, hideSidebar = false, noPadding = false }) => {
+const StaffLayout: FC<StaffLayoutProps> = ({ children, fullScreen = false, hideSidebar = false, noPadding = false, hideChatWidget = false }) => {
     const savedCollapseState = localStorage.getItem("sidebarCollapse");
     const initialCollapse = savedCollapseState
         ? JSON.parse(savedCollapseState)
@@ -99,7 +100,7 @@ const StaffLayout: FC<StaffLayoutProps> = ({ children, fullScreen = false, hideS
                         </main>
                     </div>
                 </div>
-                <ChatWidget />
+                {!hideChatWidget && <ChatWidget />}
             </ChatProvider>
         </DashboardContext.Provider>
     );

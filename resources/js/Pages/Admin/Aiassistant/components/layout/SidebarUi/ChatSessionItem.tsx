@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import { ChatSessionDropdown } from './ChatSessionDropdown';
 
@@ -28,6 +29,44 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
   onDelete,
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggleDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (showDropdown) {
+      setShowDropdown(false);
+      setDropdownPos(null);
+      return;
+    }
+
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const menuHeight = 110; // 2 items
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+
+      // Position logic: if space below < menu height, go above.
+      // Align right edge of menu with right edge of button (approx)
+      setDropdownPos({
+        top: spaceBelow < menuHeight ? rect.top - menuHeight : rect.bottom + 4,
+        left: rect.right - 130,
+      });
+      setShowDropdown(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    const close = () => { setShowDropdown(false); setDropdownPos(null); };
+    document.addEventListener('click', close);
+    // Use capture for scroll to catch scroll events in any container
+    window.addEventListener('scroll', close, true);
+    return () => {
+      document.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [showDropdown]);
 
   return (
     <div className="relative mb-3 group" onClick={onSelect}>
@@ -39,8 +78,8 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
       {/* Glass session card */}
       <div
         className={`relative cursor-pointer transition-all duration-300 rounded-2xl ${isSelected
-            ? "backdrop-blur-xl bg-white/20 shadow-xl border-2 border-white/40"
-            : "backdrop-blur-md bg-white/5 hover:bg-white/10 border-2 border-white/10 hover:border-white/20 hover:shadow-lg"
+          ? "backdrop-blur-xl bg-white/20 shadow-xl border-2 border-white/40"
+          : "backdrop-blur-md bg-white/5 hover:bg-white/10 border-2 border-white/10 hover:border-white/20 hover:shadow-lg"
           }`}
       >
         {/* Inner highlight */}
@@ -76,10 +115,8 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
           {/* More options button */}
           <div className="relative flex-shrink-0">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDropdown(!showDropdown);
-              }}
+              ref={btnRef}
+              onClick={handleToggleDropdown}
               className="p-2 backdrop-blur-md bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/20"
               aria-label="More options"
             >
@@ -89,9 +126,17 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
         </div>
       </div>
 
-      {/* Dropdown positioned outside the card */}
-      {showDropdown && (
-        <div className="absolute right-0 top-full mt-1 z-50">
+      {/* Dropdown via portal to escape sidebar overflow */}
+      {typeof window !== 'undefined' && showDropdown && dropdownPos && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: `${dropdownPos.top}px`,
+            left: `${dropdownPos.left}px`,
+            zIndex: 10000,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <ChatSessionDropdown
             isStarred={isStarred}
             onStar={onStar}
@@ -99,7 +144,8 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
             onDelete={onDelete}
             onClose={() => setShowDropdown(false)}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
