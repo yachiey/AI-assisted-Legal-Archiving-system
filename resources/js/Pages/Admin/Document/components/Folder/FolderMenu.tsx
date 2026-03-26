@@ -1,6 +1,10 @@
 // FolderMenu.tsx
 import React from "react";
 import { Edit2, Trash2, Info } from "lucide-react";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../../hooks/useDashboardTheme";
 
 interface FolderMenuProps {
   onRename: () => void;
@@ -9,6 +13,9 @@ interface FolderMenuProps {
 }
 
 const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onProperties }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
   const handleMenuClick = (e: React.MouseEvent, action: () => void) => {
     e.preventDefault();
     e.stopPropagation();
@@ -17,21 +24,32 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
 
   return (
     <div
-      className="absolute right-0 mt-2 w-40 rounded-xl shadow-lg z-50 overflow-hidden"
-      style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
-        boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
-      }}
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className={`absolute right-0 mt-2 w-40 rounded-xl z-50 overflow-hidden ${
+        isDashboardThemeEnabled
+          ? "border border-base-300/80 bg-base-100/95 text-base-content shadow-2xl backdrop-blur-xl"
+          : "shadow-lg"
+      }`}
+      style={
+        isDashboardThemeEnabled
+          ? undefined
+          : {
+              background: "white",
+              border: "1px solid rgba(0, 0, 0, 0.1)",
+              boxShadow: "0 10px 40px 0 rgba(100, 116, 139, 0.2)",
+            }
+      }
       onClick={(e) => e.stopPropagation()}
     >
       <ul className="py-1 text-sm">
         <li>
           <button
             onClick={(e) => handleMenuClick(e, onProperties)}
-            className="w-full text-left px-4 py-2 hover:bg-white/30 flex items-center gap-2 text-gray-900 hover:text-[#228B22] transition-all font-medium"
+            className={`flex w-full items-center gap-2 px-4 py-2 text-left font-medium transition-all ${
+              isDashboardThemeEnabled
+                ? "text-base-content hover:bg-base-200/90 hover:text-primary"
+                : "text-gray-900 hover:bg-white/30 hover:text-[#228B22]"
+            }`}
           >
             <Info className="w-4 h-4" />
             Properties
@@ -40,7 +58,11 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
         <li>
           <button
             onClick={(e) => handleMenuClick(e, onRename)}
-            className="w-full text-left px-4 py-2 hover:bg-white/30 flex items-center gap-2 text-gray-900 hover:text-[#228B22] transition-all font-medium"
+            className={`flex w-full items-center gap-2 px-4 py-2 text-left font-medium transition-all ${
+              isDashboardThemeEnabled
+                ? "text-base-content hover:bg-base-200/90 hover:text-primary"
+                : "text-gray-900 hover:bg-white/30 hover:text-[#228B22]"
+            }`}
           >
             <Edit2 className="w-4 h-4" />
             Rename
@@ -49,7 +71,11 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
         <li>
           <button
             onClick={(e) => handleMenuClick(e, onDelete)}
-            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600 hover:text-red-700 flex items-center gap-2 transition-all font-medium"
+            className={`flex w-full items-center gap-2 px-4 py-2 text-left font-medium transition-all ${
+              isDashboardThemeEnabled
+                ? "text-error hover:bg-error/10 hover:text-error"
+                : "text-red-600 hover:bg-red-50 hover:text-red-700"
+            }`}
           >
             <Trash2 className="w-4 h-4" />
             Delete

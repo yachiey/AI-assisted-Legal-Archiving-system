@@ -84,11 +84,8 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) => {
 
     return (
         <div className="rounded-2xl shadow-lg p-6" style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)',
-            backdropFilter: 'blur(40px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.2)'
+            background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
+            border: '1px solid rgba(34, 139, 34, 0.2)',
         }}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -139,7 +136,6 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) => {
                     value={selectedFilter}
                     onChange={(e) => handleFilterChange(e.target.value)}
                     className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white/85 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-green-500/50 hover:bg-white/20 transition-all duration-200"
-                    style={{ backdropFilter: 'blur(10px)' }}
                 >
                     {activityTypes.map((type) => (
                         <option key={type} value={type} className="bg-gray-800 text-white">

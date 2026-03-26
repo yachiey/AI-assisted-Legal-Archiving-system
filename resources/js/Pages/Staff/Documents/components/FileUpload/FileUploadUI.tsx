@@ -60,10 +60,8 @@ const FileUploadUI: React.FC<FileUploadUIProps> = ({
 
   return (
     <div className="w-full rounded-2xl" style={{
-      background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)',
-      backdropFilter: 'blur(20px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-      border: '1px solid rgba(255, 255, 255, 0.3)',
+      background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
+      border: '1px solid rgba(34, 139, 34, 0.2)',
     }}>
       {/* Header */}
       <div className="px-8 py-5 border-b border-white/30 rounded-t-2xl">

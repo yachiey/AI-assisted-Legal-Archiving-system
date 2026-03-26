@@ -8,6 +8,10 @@ import AddUserModal from "./components/AddUserModal";
 import EditUserModal from "./components/EditUserModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import UserDocumentsModal from "./components/UserDocumentsModal";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from "../../../hooks/useDashboardTheme";
 
 interface User {
     user_id: number;
@@ -49,6 +53,8 @@ const AccountManagement = () => {
     const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
     const [userDocuments, setUserDocuments] = useState([]);
     const [documentsLoading, setDocumentsLoading] = useState(false);
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
     // Fetch users on mount
     useEffect(() => {
@@ -137,7 +143,6 @@ const AccountManagement = () => {
         } catch (error: any) {
             console.error('Error updating user status:', error);
             showToast(error.response?.data?.message || 'Failed to update user', 'error');
-            showToast(error.response?.data?.message || 'Failed to update user', 'error');
         }
     };
 
@@ -157,7 +162,15 @@ const AccountManagement = () => {
     };
 
     return (
-        <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`min-h-screen p-6 ${isDashboardThemeEnabled ? 'bg-transparent text-base-content' : ''}`}
+            style={
+                isDashboardThemeEnabled
+                    ? undefined
+                    : { background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }
+            }
+        >
             <AccountHeader
                 totalUsers={users.length}
                 activeUsers={users.filter(u => u.status?.toLowerCase() === 'active').length}
@@ -166,25 +179,48 @@ const AccountManagement = () => {
 
             {/* Toast Notification */}
             {toast && (
-                <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white z-50 animate-fade-in ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-                    }`}>
+                <div
+                    className={`fixed top-4 right-4 z-50 rounded-2xl px-6 py-3 shadow-lg animate-fade-in ${
+                        toast.type === 'success'
+                            ? isDashboardThemeEnabled
+                                ? 'bg-success text-success-content shadow-success/20'
+                                : 'bg-green-500 text-white'
+                            : isDashboardThemeEnabled
+                                ? 'bg-error text-error-content shadow-error/20'
+                                : 'bg-red-500 text-white'
+                    }`}
+                >
                     {toast.message}
                 </div>
             )}
 
             {/* Search and Filter */}
-            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            <div
+                className={`mb-6 flex flex-col gap-4 sm:flex-row ${
+                    isDashboardThemeEnabled
+                        ? 'rounded-2xl border border-base-300 bg-base-100/90 p-4 shadow-xl shadow-base-content/5 backdrop-blur-sm'
+                        : ''
+                }`}
+            >
                 <input
                     type="text"
                     placeholder="Search by name or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className={`flex-1 px-4 py-3 outline-none transition-all ${
+                        isDashboardThemeEnabled
+                            ? 'rounded-xl border border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            : 'rounded-lg border border-gray-300 focus:border-transparent focus:ring-2 focus:ring-green-500'
+                    }`}
                 />
                 <select
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
-                    className="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                    className={`px-4 py-3 outline-none transition-all ${
+                        isDashboardThemeEnabled
+                            ? 'rounded-xl border border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-2 focus:ring-primary/20'
+                            : 'rounded-lg border border-gray-300 bg-white focus:border-transparent focus:ring-2 focus:ring-green-500'
+                    }`}
                 >
                     <option value="all">All Roles</option>
                     <option value="admin">Admin</option>

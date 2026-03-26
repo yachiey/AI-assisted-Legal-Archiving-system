@@ -3,6 +3,8 @@ import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, AlertCircle } from 'l
 
 interface UploadDocumentViewerUIProps {
   fileName: string;
+  theme?: string;
+  isDashboardThemeEnabled?: boolean;
   loading: boolean;
   error: string | null;
   fileContent: string | null;
@@ -21,6 +23,8 @@ interface UploadDocumentViewerUIProps {
 
 const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
   fileName,
+  theme,
+  isDashboardThemeEnabled = false,
   loading,
   error,
   fileContent,
@@ -37,15 +41,33 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
   onRetry
 }) => {
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden" style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
-      }}>
+    <div
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+    >
+      <div
+        className={`relative h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl shadow-2xl ${
+          isDashboardThemeEnabled
+            ? 'border border-base-300 bg-base-100 text-base-content'
+            : ''
+        }`}
+        style={
+          isDashboardThemeEnabled
+            ? undefined
+            : {
+                background: 'white',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+              }
+        }
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-500 to-green-600">
+        <div
+          className={`flex items-center justify-between border-b px-6 py-4 ${
+            isDashboardThemeEnabled
+              ? 'border-base-300 bg-primary text-primary-content'
+              : 'border-gray-200 bg-gradient-to-r from-green-500 to-green-600'
+          }`}
+        >
           <div className="flex items-center space-x-3">
             <FileText className="w-6 h-6 text-white" />
             <div>
@@ -108,12 +130,20 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
         </div>
 
         {/* Content */}
-        <div className="h-[calc(100%-80px)] overflow-auto bg-gray-100">
+        <div
+          className={`h-[calc(100%-80px)] overflow-auto ${
+            isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+          }`}
+        >
           {loading && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-                <p className="mt-4 text-gray-600 font-medium">Loading document...</p>
+                <div
+                  className={`inline-block h-12 w-12 animate-spin rounded-full border-4 border-t-transparent ${
+                    isDashboardThemeEnabled ? 'border-primary' : 'border-green-500'
+                  }`}
+                ></div>
+                <p className={`mt-4 font-medium ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'}`}>Loading document...</p>
               </div>
             </div>
           )}
@@ -122,11 +152,13 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md p-6">
                 <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Failed to Load Document</h3>
-                <p className="text-gray-600">{error}</p>
+                <h3 className={`mb-2 text-lg font-bold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>Failed to Load Document</h3>
+                <p className={isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-600'}>{error}</p>
                 <button
                   onClick={onRetry}
-                  className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
+                  className={`mt-4 rounded-lg px-6 py-2 font-medium text-white transition-colors ${
+                    isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : 'bg-green-500 hover:bg-green-600'
+                  }`}
                 >
                   Retry
                 </button>
@@ -139,7 +171,9 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
               {isPDF && (
                 <iframe
                   src={fileContent}
-                  className="w-full h-full min-h-[600px] rounded-lg shadow-lg border border-gray-300"
+                  className={`h-full min-h-[600px] w-full rounded-lg shadow-lg ${
+                    isDashboardThemeEnabled ? 'border border-base-300' : 'border border-gray-300'
+                  }`}
                   style={{
                     transform: `scale(${zoom / 100})`,
                     transformOrigin: 'top center',
@@ -161,7 +195,11 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
               )}
 
               {isText && (
-                <pre className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg border border-gray-300 text-sm font-mono overflow-auto"
+                <pre className={`w-full max-w-4xl overflow-auto rounded-lg p-6 text-sm font-mono shadow-lg ${
+                  isDashboardThemeEnabled
+                    ? 'border border-base-300 bg-base-100 text-base-content'
+                    : 'border border-gray-300 bg-white'
+                }`}
                   style={{
                     fontSize: `${zoom}%`,
                   }}>
@@ -172,10 +210,12 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
               {!isPDF && !isImage && !isText && (
                 <div className="text-center">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Preview not available for this file type</p>
+                  <p className={isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-600'}>Preview not available for this file type</p>
                   <button
                     onClick={onDownload}
-                    className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium inline-flex items-center gap-2"
+                    className={`mt-4 inline-flex items-center gap-2 rounded-lg px-6 py-2 font-medium text-white transition-colors ${
+                      isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : 'bg-green-500 hover:bg-green-600'
+                    }`}
                   >
                     <Download className="w-4 h-4" />
                     Download to View

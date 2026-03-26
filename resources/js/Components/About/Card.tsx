@@ -11,15 +11,12 @@ const Card = ({ title, des, icon }) => {
                 boxShadow: "0 25px 60px -15px rgba(21, 128, 61, 0.15)"
             }}
             whileTap={{ scale: 0.98 }}
-            className="w-full px-8 py-12 rounded-[2.5rem] bg-white border border-gray-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] transition-all duration-300 group cursor-pointer"
+            className="w-full px-8 py-12 rounded-[2.5rem] bg-white border border-gray-100 shadow-[0_4px_25px_rgba(0,0,0,0.03)] transition-all duration-300 group"
         >
             <div className="flex flex-col h-full justify-between gap-8">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start">
                     <div className="w-20 h-20 flex items-center justify-center rounded-3xl bg-green-50 text-green-800 text-4xl group-hover:bg-yellow-500 group-hover:text-green-950 transition-all duration-500 shadow-sm">
                         {icon}
-                    </div>
-                    <div className="opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-4 transition-all duration-500">
-                        <span className="text-3xl text-yellow-600 font-light">→</span>
                     </div>
                 </div>
 

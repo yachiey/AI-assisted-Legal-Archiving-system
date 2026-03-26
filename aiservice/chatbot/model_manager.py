@@ -6,9 +6,9 @@ import logging
 import traceback
 from llama_cpp import Llama
 try:
-    from .config import MODEL_PATH, N_CTX, N_THREADS, N_GPU_LAYERS
+    from .config import MODEL_PATH, N_BATCH, N_CTX, N_THREADS, N_GPU_LAYERS
 except ImportError:
-    from config import MODEL_PATH, N_CTX, N_THREADS, N_GPU_LAYERS
+    from config import MODEL_PATH, N_BATCH, N_CTX, N_THREADS, N_GPU_LAYERS
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ class ModelManager:
                 model_path=MODEL_PATH,
                 n_ctx=N_CTX,  # Context window
                 n_threads=N_THREADS,  # Number of threads for your Ryzen 7
+                n_batch=N_BATCH,  # Faster prompt ingestion on CPU
                 verbose=False,
                 n_gpu_layers=N_GPU_LAYERS,  # Force CPU usage
             )

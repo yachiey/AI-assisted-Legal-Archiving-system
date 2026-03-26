@@ -15,9 +15,15 @@ import StaffLeaderboard from "./components/StaffLeaderboard";
 import { usePage } from '@inertiajs/react';
 import { DashboardProps } from './types/dashboard';
 import { FileText, Upload, FolderOpen, Users, TrendingUp } from 'lucide-react';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../hooks/useDashboardTheme';
 
 export default function AdminDashboard() {
   const { props } = usePage<DashboardProps>();
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   const stats = props.stats || { totalDocuments: 0, totalFolders: 0, totalUsers: 0, uploadedToday: 0 };
   const recentFiles = props.recentFiles || [];
 
@@ -84,31 +90,37 @@ export default function AdminDashboard() {
     <>
       <DashboardHeader onUploadClick={() => setIsUploadModalOpen(true)} />
 
-      <div className="px-6 py-6">
+      <div className={`px-6 py-6 ${isDashboardThemeEnabled ? 'text-base-content' : ''}`}>
         {/* Stat Cards - Forest Green & Yellow Design */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Total Documents Card - Forest Green */}
-          <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
-            style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-black/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+          <div
+            className={`group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1 ${
+              isDashboardThemeEnabled
+                ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-primary/10'
+                : ''
+            }`}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}
+          >
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-primary/10 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
+            <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-primary/10' : 'bg-white/10'}`}></div>
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full group-hover:scale-125 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-base-content/5' : 'bg-black/5'}`}></div>
 
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <FileText className="w-5 h-5 text-white" strokeWidth={2.5} />
+                <div className={`p-2.5 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-primary/20 to-secondary/10' : 'bg-gradient-to-br from-white/30 to-white/10'}`}>
+                  <FileText className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-primary' : 'text-white'}`} strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
-                  <TrendingUp className="w-3.5 h-3.5 text-white/70 opacity-70" />
+                  <TrendingUp className={`w-3.5 h-3.5 opacity-70 ${isDashboardThemeEnabled ? 'text-primary/70' : 'text-white/70'}`} />
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[0.65rem] font-bold text-white/90 uppercase tracking-[0.1em] leading-tight"
+                <p className={`text-[0.65rem] font-bold uppercase tracking-[0.1em] leading-tight ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-white/90'}`}
                   style={{ letterSpacing: '0.1em' }}>
                   Total Documents
                 </p>
-                <p className="text-3xl font-black text-white tracking-tight leading-none"
+                <p className={`text-3xl font-black tracking-tight leading-none ${isDashboardThemeEnabled ? 'text-base-content' : 'text-white'}`}
                   style={{ fontFamily: "'Inter', sans-serif" }}>
                   {stats.totalDocuments}
                 </p>
@@ -117,27 +129,33 @@ export default function AdminDashboard() {
           </div>
 
           {/* Total Folders Card - Yellow */}
-          <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
-            style={{ background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-black/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+          <div
+            className={`group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1 ${
+              isDashboardThemeEnabled
+                ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-secondary/10'
+                : ''
+            }`}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}
+          >
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-secondary/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
+            <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-secondary/10' : 'bg-white/10'}`}></div>
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full group-hover:scale-125 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-base-content/5' : 'bg-black/5'}`}></div>
 
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <FolderOpen className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
+                <div className={`p-2.5 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-secondary/20 to-accent/10' : 'bg-gradient-to-br from-white/30 to-white/10'}`}>
+                  <FolderOpen className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-secondary' : 'text-gray-900'}`} strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
-                  <TrendingUp className="w-3.5 h-3.5 text-gray-700 opacity-50" />
+                  <TrendingUp className={`w-3.5 h-3.5 opacity-60 ${isDashboardThemeEnabled ? 'text-secondary/80' : 'text-gray-700'}`} />
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[0.65rem] font-bold text-gray-700 uppercase tracking-[0.1em] leading-tight"
+                <p className={`text-[0.65rem] font-bold uppercase tracking-[0.1em] leading-tight ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'}`}
                   style={{ letterSpacing: '0.1em' }}>
                   Total Folders
                 </p>
-                <p className="text-3xl font-black text-gray-900 tracking-tight leading-none"
+                <p className={`text-3xl font-black tracking-tight leading-none ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}
                   style={{ fontFamily: "'Inter', sans-serif" }}>
                   {stats.totalFolders || 0}
                 </p>
@@ -146,27 +164,33 @@ export default function AdminDashboard() {
           </div>
 
           {/* All Staff Card - Forest Green */}
-          <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
-            style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-black/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+          <div
+            className={`group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1 ${
+              isDashboardThemeEnabled
+                ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-accent/10'
+                : ''
+            }`}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}
+          >
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-accent/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
+            <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-accent/10' : 'bg-white/10'}`}></div>
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full group-hover:scale-125 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-base-content/5' : 'bg-black/5'}`}></div>
 
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <Users className="w-5 h-5 text-white" strokeWidth={2.5} />
+                <div className={`p-2.5 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-accent/20 to-primary/10' : 'bg-gradient-to-br from-white/30 to-white/10'}`}>
+                  <Users className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-accent' : 'text-white'}`} strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
-                  <TrendingUp className="w-3.5 h-3.5 text-white/70 opacity-70" />
+                  <TrendingUp className={`w-3.5 h-3.5 opacity-70 ${isDashboardThemeEnabled ? 'text-accent/80' : 'text-white/70'}`} />
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[0.65rem] font-bold text-white/90 uppercase tracking-[0.1em] leading-tight"
+                <p className={`text-[0.65rem] font-bold uppercase tracking-[0.1em] leading-tight ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-white/90'}`}
                   style={{ letterSpacing: '0.1em' }}>
                   All Staff
                 </p>
-                <p className="text-3xl font-black text-white tracking-tight leading-none"
+                <p className={`text-3xl font-black tracking-tight leading-none ${isDashboardThemeEnabled ? 'text-base-content' : 'text-white'}`}
                   style={{ fontFamily: "'Inter', sans-serif" }}>
                   {stats.totalUsers}
                 </p>
@@ -175,27 +199,33 @@ export default function AdminDashboard() {
           </div>
 
           {/* Recent Uploaded Today Card - Yellow */}
-          <div className="group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1"
-            style={{ background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-black/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+          <div
+            className={`group relative rounded-3xl shadow-md hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-1 ${
+              isDashboardThemeEnabled
+                ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-warning/10'
+                : ''
+            }`}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}
+          >
+            <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-warning/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
+            <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-warning/10' : 'bg-white/10'}`}></div>
+            <div className={`absolute -bottom-4 -left-4 w-24 h-24 rounded-full group-hover:scale-125 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-base-content/5' : 'bg-black/5'}`}></div>
 
             <div className="relative p-4">
               <div className="flex items-start justify-between mb-4">
-                <div className="p-2.5 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                  <Upload className="w-5 h-5 text-gray-900" strokeWidth={2.5} />
+                <div className={`p-2.5 backdrop-blur-sm rounded-xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-warning/20 to-accent/10' : 'bg-gradient-to-br from-white/30 to-white/10'}`}>
+                  <Upload className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-warning' : 'text-gray-900'}`} strokeWidth={2.5} />
                 </div>
                 <div className="flex flex-col items-end">
-                  <TrendingUp className="w-3.5 h-3.5 text-gray-700 opacity-50" />
+                  <TrendingUp className={`w-3.5 h-3.5 opacity-60 ${isDashboardThemeEnabled ? 'text-warning/80' : 'text-gray-700'}`} />
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-[0.65rem] font-bold text-gray-700 uppercase tracking-[0.1em] leading-tight"
+                <p className={`text-[0.65rem] font-bold uppercase tracking-[0.1em] leading-tight ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'}`}
                   style={{ letterSpacing: '0.1em' }}>
                   Uploaded Today
                 </p>
-                <p className="text-3xl font-black text-gray-900 tracking-tight leading-none"
+                <p className={`text-3xl font-black tracking-tight leading-none ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}
                   style={{ fontFamily: "'Inter', sans-serif" }}>
                   {stats.uploadedToday || 0}
                 </p>

@@ -1,26 +1,41 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { router } from '@inertiajs/react';
-import { Send, Minimize2, X, Bot, User, Maximize2, RefreshCw, FileText, Eye } from 'lucide-react';
+import { router, usePage } from '@inertiajs/react';
+import {
+    Send,
+    X,
+    Bot,
+    User,
+    Maximize2,
+    RefreshCw,
+    FileText,
+    Eye,
+} from 'lucide-react';
 import { useChat } from '../../Context/ChatContext';
 import DocumentViewer from '../../Pages/Admin/Document/components/DocumentViewer/DocumentViewer';
 import { Document as FullDocument } from '../../Pages/Admin/Document/types/types';
+import {
+    DEFAULT_DASHBOARD_THEME,
+    getDashboardThemeScopeForComponent,
+    isThemedComponentForScope,
+    useDashboardTheme,
+} from '../../hooks/useDashboardTheme';
 
 export const ChatPanel = () => {
-    const {
-        messages,
-        sendMessage,
-        isLoading,
-        toggleChat,
-        minimizeChat,
-        resetChat
-    } = useChat();
+    const { messages, sendMessage, isLoading, toggleChat, resetChat } = useChat();
+    const { component } = usePage();
+    const scope = getDashboardThemeScopeForComponent(component);
+    const { theme } = useDashboardTheme(scope);
+    const isDashboardThemeEnabled =
+        isThemedComponentForScope(component, scope) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
 
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Document viewer state
     const [isViewerOpen, setIsViewerOpen] = useState(false);
-    const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
+    const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(
+        null
+    );
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,8 +62,8 @@ export const ChatPanel = () => {
         try {
             const response = await fetch(`/api/documents/${docId}`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                    'Accept': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+                    Accept: 'application/json',
                 },
             });
 
@@ -71,13 +86,14 @@ export const ChatPanel = () => {
             params.highlight = String(doc.doc_id);
         }
 
-        // Get user role to navigate to the correct documents page
-        const storedUser = sessionStorage.getItem("currentUser");
+        const storedUser = sessionStorage.getItem('currentUser');
         let role = 'admin';
         if (storedUser) {
             try {
                 role = (JSON.parse(storedUser).role || 'admin').toLowerCase();
-            } catch (e) { }
+            } catch (e) {
+                console.error('Error parsing user data for navigation', e);
+            }
         }
 
         const basePath = role === 'staff' ? '/staff/documents' : '/admin/documents';
@@ -86,8 +102,7 @@ export const ChatPanel = () => {
     };
 
     const handleFullscreen = () => {
-        // Get user role
-        const storedUser = sessionStorage.getItem("currentUser");
+        const storedUser = sessionStorage.getItem('currentUser');
         let role = 'admin';
         let parsed: any = {};
 
@@ -97,11 +112,10 @@ export const ChatPanel = () => {
                 parsed = userObj;
                 role = (userObj.role || 'admin').toLowerCase();
             } catch (e) {
-                console.error("Error parsing user data for navigation", e);
+                console.error('Error parsing user data for navigation', e);
             }
         }
 
-        // Sync state to the target page's expected keys
         const userId = parsed.id || parsed.user_id || 'guest';
         const storagePrefix = `global_chat_${userId}_`;
 
@@ -109,32 +123,154 @@ export const ChatPanel = () => {
         const globalSessionId = sessionStorage.getItem(`${storagePrefix}sessionId`);
 
         if (role === 'staff') {
-            // Staff/AIAssistant/index.tsx uses 'ai_chatMessages' and 'ai_selectedSessionId'
             if (globalMessages) sessionStorage.setItem('ai_chatMessages', globalMessages);
-            if (globalSessionId) sessionStorage.setItem('ai_selectedSessionId', globalSessionId);
+            if (globalSessionId) {
+                sessionStorage.setItem('ai_selectedSessionId', globalSessionId);
+            }
             router.visit('/staff/ai-assistant');
         } else {
-            // Admin/Aiassistant/index.tsx uses 'admin_ai_chatMessages' and 'admin_ai_selectedSessionId'
-            if (globalMessages) sessionStorage.setItem('admin_ai_chatMessages', globalMessages);
-            if (globalSessionId) sessionStorage.setItem('admin_ai_selectedSessionId', globalSessionId);
+            if (globalMessages) {
+                sessionStorage.setItem('admin_ai_chatMessages', globalMessages);
+            }
+            if (globalSessionId) {
+                sessionStorage.setItem('admin_ai_selectedSessionId', globalSessionId);
+            }
             router.visit('/admin/ai-assistant');
         }
 
-        toggleChat(); // Close the bubble when moving to full page
+        toggleChat();
     };
 
+    const panelClass = isDashboardThemeEnabled
+        ? 'border border-base-300 bg-base-100 text-base-content shadow-2xl shadow-primary/10'
+        : 'border border-gray-200 bg-white';
+
+    const headerClass = isDashboardThemeEnabled
+        ? 'bg-gradient-to-r from-primary to-secondary text-primary-content'
+        : 'bg-gradient-to-r from-green-700 to-green-600 text-white';
+
+    const headerIconClass = isDashboardThemeEnabled
+        ? 'bg-primary-content/15 text-primary-content'
+        : 'bg-white/20 text-white';
+
+    const headerMetaTextClass = isDashboardThemeEnabled
+        ? 'text-primary-content/80'
+        : 'text-green-100';
+
+    const headerMetaDotClass = isDashboardThemeEnabled
+        ? 'bg-primary-content/60'
+        : 'bg-green-300';
+
+    const headerActionClass = isDashboardThemeEnabled
+        ? 'hover:bg-primary-content/10'
+        : 'hover:bg-white/20';
+
+    const messagesAreaClass = isDashboardThemeEnabled
+        ? 'bg-base-200/50'
+        : 'bg-gray-50/50';
+
+    const emptyIconClass = isDashboardThemeEnabled
+        ? 'bg-primary/12 text-primary'
+        : 'bg-green-50 text-green-600';
+
+    const emptyTitleClass = isDashboardThemeEnabled
+        ? 'text-base-content'
+        : 'text-gray-900';
+
+    const emptyTextClass = isDashboardThemeEnabled
+        ? 'text-base-content/60'
+        : 'text-gray-500';
+
+    const userAvatarClass = isDashboardThemeEnabled
+        ? 'border border-base-300 bg-base-200 text-base-content'
+        : 'bg-gray-100';
+
+    const assistantAvatarClass = isDashboardThemeEnabled
+        ? 'border border-primary/15 bg-primary/12 text-primary'
+        : 'bg-green-100';
+
+    const userIconClass = isDashboardThemeEnabled
+        ? 'text-base-content/70'
+        : 'text-gray-600';
+
+    const assistantIconClass = isDashboardThemeEnabled
+        ? 'text-primary'
+        : 'text-green-600';
+
+    const userBubbleClass = isDashboardThemeEnabled
+        ? 'rounded-tr-none bg-primary text-primary-content shadow-md shadow-primary/20'
+        : 'rounded-tr-none bg-gray-900 text-white';
+
+    const assistantBubbleClass = isDashboardThemeEnabled
+        ? 'rounded-tl-none border border-primary/15 bg-gradient-to-br from-base-100 to-primary/5 text-base-content shadow-md shadow-primary/10'
+        : 'rounded-tl-none border border-gray-100 bg-white text-gray-800';
+
+    const referenceDividerClass = isDashboardThemeEnabled
+        ? 'border-primary/10'
+        : 'border-gray-100';
+
+    const referenceLabelClass = isDashboardThemeEnabled
+        ? 'text-base-content/55'
+        : 'text-gray-500';
+
+    const referenceCardClass = isDashboardThemeEnabled
+        ? 'border border-primary/12 bg-base-200/80 text-base-content'
+        : 'border border-green-200 bg-green-50 text-[11px]';
+
+    const referenceNavigateButtonClass = isDashboardThemeEnabled
+        ? 'text-primary hover:bg-primary/10'
+        : 'text-green-700 hover:bg-green-200';
+
+    const referenceTitleClass = isDashboardThemeEnabled
+        ? 'text-base-content'
+        : 'text-green-800';
+
+    const referenceViewButtonClass = isDashboardThemeEnabled
+        ? 'bg-primary text-primary-content hover:bg-secondary'
+        : 'bg-green-600 text-white hover:bg-green-700';
+
+    const moreDocsTextClass = isDashboardThemeEnabled
+        ? 'text-base-content/45'
+        : 'text-gray-400';
+
+    const timestampClass = isDashboardThemeEnabled
+        ? 'text-base-content/45'
+        : 'text-gray-400';
+
+    const loadingBubbleClass = isDashboardThemeEnabled
+        ? 'border border-primary/15 bg-gradient-to-br from-base-100 to-primary/5'
+        : 'border border-gray-100 bg-white';
+
+    const loadingDotClass = isDashboardThemeEnabled
+        ? 'bg-primary'
+        : 'bg-green-400';
+
+    const inputWrapperClass = isDashboardThemeEnabled
+        ? 'border-base-300 bg-base-100'
+        : 'border-gray-100 bg-white';
+
+    const inputClass = isDashboardThemeEnabled
+        ? 'border-base-300 bg-base-200 text-base-content placeholder:text-base-content/45 focus:border-primary focus:ring-primary/20'
+        : 'border-gray-200 bg-gray-50 focus:border-green-500 focus:ring-green-500/20';
+
+    const submitButtonClass = isDashboardThemeEnabled
+        ? 'bg-primary text-primary-content shadow-sm shadow-primary/15 hover:bg-secondary'
+        : 'bg-green-600 text-white shadow-sm hover:bg-green-700 hover:shadow-md';
+
     return (
-        <div className="w-96 h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-green-700 to-green-600 p-4 flex items-center justify-between text-white shrink-0 cursor-default" onPointerDown={(e) => e.stopPropagation()}>
+        <div className={`flex h-[600px] max-h-[80vh] w-96 flex-col overflow-hidden rounded-2xl ${panelClass}`}>
+            <div
+                className={`flex shrink-0 cursor-default items-center justify-between p-4 ${headerClass}`}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-white/20 rounded-lg">
-                        <Bot className="w-5 h-5 text-white" />
+                    <div className={`rounded-lg p-1.5 ${headerIconClass}`}>
+                        <Bot className="h-5 w-5" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm">AI Assistant</h3>
-                        <p className="text-xs text-green-100 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse"></span>
+                        <h3 className="text-sm font-semibold">AI Assistant</h3>
+                        <p className={`flex items-center gap-1 text-xs ${headerMetaTextClass}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${headerMetaDotClass}`}></span>
                             Online
                         </p>
                     </div>
@@ -142,39 +278,41 @@ export const ChatPanel = () => {
                 <div className="flex items-center gap-1">
                     <button
                         onClick={handleNewChat}
-                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                        className={`rounded-lg p-1.5 transition-colors ${headerActionClass}`}
                         title="New Chat"
                     >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className="h-4 w-4" />
                     </button>
                     <button
                         onClick={handleFullscreen}
-                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                        className={`rounded-lg p-1.5 transition-colors ${headerActionClass}`}
                         title="Full Screen"
                     >
-                        <Maximize2 className="w-4 h-4" />
+                        <Maximize2 className="h-4 w-4" />
                     </button>
-
                     <button
                         onClick={toggleChat}
-                        className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                        className={`rounded-lg p-1.5 transition-colors ${headerActionClass}`}
                         title="Close"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+            <div className={`flex-1 space-y-4 overflow-y-auto p-4 ${messagesAreaClass}`}>
                 {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-6 space-y-3">
-                        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
-                            <Bot className="w-8 h-8 text-green-600" />
+                    <div className={`flex h-full flex-col items-center justify-center space-y-3 p-6 text-center ${emptyTextClass}`}>
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-full ${emptyIconClass}`}>
+                            <Bot className="h-8 w-8" />
                         </div>
                         <div>
-                            <p className="font-medium text-gray-900">How can I help you today?</p>
-                            <p className="text-sm mt-1">Ask me anything about your documents or the application.</p>
+                            <p className={`font-medium ${emptyTitleClass}`}>
+                                How can I help you today?
+                            </p>
+                            <p className="mt-1 text-sm">
+                                Ask me anything about your documents or the application.
+                            </p>
                         </div>
                     </div>
                 )}
@@ -184,67 +322,93 @@ export const ChatPanel = () => {
                         key={msg.id}
                         className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                        <div className={`flex gap-2 max-w-[85%] ${msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div
+                            className={`flex max-w-[85%] gap-2 ${
+                                msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'
+                            }`}
+                        >
                             <div
-                                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 shadow-sm
-                  ${msg.type === 'user' ? 'bg-gray-100' : 'bg-green-100'}`}
+                                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-sm ${
+                                    msg.type === 'user' ? userAvatarClass : assistantAvatarClass
+                                }`}
                             >
                                 {msg.type === 'user' ? (
-                                    <User className="w-3.5 h-3.5 text-gray-600" />
+                                    <User className={`h-3.5 w-3.5 ${userIconClass}`} />
                                 ) : (
-                                    <Bot className="w-3.5 h-3.5 text-green-600" />
+                                    <Bot className={`h-3.5 w-3.5 ${assistantIconClass}`} />
                                 )}
                             </div>
 
-                            <div className={`min-w-0 flex-1 flex flex-col ${msg.type === 'user' ? 'items-end' : 'items-start'}`}>
+                            <div
+                                className={`flex min-w-0 flex-1 flex-col ${
+                                    msg.type === 'user' ? 'items-end' : 'items-start'
+                                }`}
+                            >
                                 <div
-                                    className={`p-2.5 rounded-2xl text-[13px] shadow-sm w-full overflow-hidden
-                    ${msg.type === 'user'
-                                            ? 'bg-gray-900 text-white rounded-tr-none'
-                                            : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'}`}
+                                    className={`w-full overflow-hidden rounded-2xl p-2.5 text-[13px] shadow-sm ${
+                                        msg.type === 'user'
+                                            ? userBubbleClass
+                                            : assistantBubbleClass
+                                    }`}
                                 >
-                                    <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{msg.content}</p>
+                                    <p
+                                        className="whitespace-pre-wrap break-words"
+                                        style={{ overflowWrap: 'anywhere' }}
+                                    >
+                                        {msg.content}
+                                    </p>
 
-                                    {/* Document Reference Cards */}
-                                    {msg.type !== 'user' && msg.documents && msg.documents.length > 0 && (
-                                        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 overflow-hidden">
-                                            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
-                                                📎 References
-                                            </p>
-                                            {msg.documents.map((doc) => (
-                                                <div
-                                                    key={doc.doc_id}
-                                                    className="flex items-center gap-1 px-1.5 py-1 bg-green-50 rounded border border-green-200 text-[11px] overflow-hidden"
+                                    {msg.type !== 'user' &&
+                                        msg.documents &&
+                                        msg.documents.length > 0 && (
+                                            <div
+                                                className={`mt-2 space-y-1 overflow-hidden border-t pt-2 ${referenceDividerClass}`}
+                                            >
+                                                <p
+                                                    className={`text-[10px] font-semibold uppercase tracking-wide ${referenceLabelClass}`}
                                                 >
-                                                    <button
-                                                        onClick={() => handleNavigateToDocument(doc)}
-                                                        className="flex-shrink-0 p-0.5 hover:bg-green-200 rounded transition-colors text-green-700"
-                                                        title="Go to document location"
-                                                    >
-                                                        <FileText size={11} />
-                                                    </button>
-                                                    <span className="truncate flex-1 min-w-0 font-medium text-green-800 text-left">
-                                                        {doc.title}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleViewDocument(doc.doc_id)}
-                                                        className="p-0.5 rounded bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0"
-                                                        title={`View "${doc.title}"`}
-                                                    >
-                                                        <Eye size={10} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {msg.more_documents_count && msg.more_documents_count > 0 && (
-                                                <p className="text-[10px] italic text-gray-400">
-                                                    ...and {msg.more_documents_count} more
+                                                    References
                                                 </p>
-                                            )}
-                                        </div>
-                                    )}
+                                                {msg.documents.map((doc) => (
+                                                    <div
+                                                        key={doc.doc_id}
+                                                        className={`flex items-center gap-1 overflow-hidden rounded border px-1.5 py-1 text-[11px] ${referenceCardClass}`}
+                                                    >
+                                                        <button
+                                                            onClick={() => handleNavigateToDocument(doc)}
+                                                            className={`flex-shrink-0 rounded p-0.5 transition-colors ${referenceNavigateButtonClass}`}
+                                                            title="Go to document location"
+                                                        >
+                                                            <FileText size={11} />
+                                                        </button>
+                                                        <span
+                                                            className={`min-w-0 flex-1 truncate text-left font-medium ${referenceTitleClass}`}
+                                                        >
+                                                            {doc.title}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => handleViewDocument(doc.doc_id)}
+                                                            className={`flex-shrink-0 rounded p-0.5 transition-colors ${referenceViewButtonClass}`}
+                                                            title={`View "${doc.title}"`}
+                                                        >
+                                                            <Eye size={10} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {msg.more_documents_count &&
+                                                    msg.more_documents_count > 0 && (
+                                                        <p className={`text-[10px] italic ${moreDocsTextClass}`}>
+                                                            ...and {msg.more_documents_count} more
+                                                        </p>
+                                                    )}
+                                            </div>
+                                        )}
                                 </div>
-                                <span className="text-[10px] text-gray-400 px-1 mt-0.5">
-                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                <span className={`mt-0.5 px-1 text-[10px] ${timestampClass}`}>
+                                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                    })}
                                 </span>
                             </div>
                         </div>
@@ -253,15 +417,23 @@ export const ChatPanel = () => {
 
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="flex gap-3 max-w-[85%]">
-                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                <Bot className="w-4 h-4 text-green-600" />
+                        <div className="flex max-w-[85%] gap-3">
+                            <div
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${assistantAvatarClass}`}
+                            >
+                                <Bot className={`h-4 w-4 ${assistantIconClass}`} />
                             </div>
-                            <div className="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-none shadow-sm">
+                            <div className={`rounded-2xl rounded-tl-none p-4 shadow-sm ${loadingBubbleClass}`}>
                                 <div className="flex gap-1.5">
-                                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce"></div>
+                                    <div
+                                        className={`h-1.5 w-1.5 rounded-full animate-bounce [animation-delay:-0.3s] ${loadingDotClass}`}
+                                    ></div>
+                                    <div
+                                        className={`h-1.5 w-1.5 rounded-full animate-bounce [animation-delay:-0.15s] ${loadingDotClass}`}
+                                    ></div>
+                                    <div
+                                        className={`h-1.5 w-1.5 rounded-full animate-bounce ${loadingDotClass}`}
+                                    ></div>
                                 </div>
                             </div>
                         </div>
@@ -270,28 +442,30 @@ export const ChatPanel = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-100 shrink-0">
+            <form
+                onSubmit={handleSubmit}
+                className={`shrink-0 border-t p-4 ${inputWrapperClass}`}
+            >
                 <div className="relative flex items-center gap-2">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1 py-2.5 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-sm"
+                        className={`flex-1 rounded-xl border px-4 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 ${inputClass}`}
                         disabled={isLoading}
                     />
 
                     <button
                         type="submit"
                         disabled={!input.trim() || isLoading}
-                        className="p-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+                        className={`rounded-xl p-2.5 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${submitButtonClass}`}
                     >
-                        <Send className="w-4 h-4" />
+                        <Send className="h-4 w-4" />
                     </button>
                 </div>
             </form>
-            {/* Document Viewer Modal (portal - renders above everything) */}
+
             <DocumentViewer
                 isOpen={isViewerOpen}
                 onClose={() => {

@@ -9,7 +9,8 @@ _current_dir = os.path.dirname(__file__)  # chatbot directory
 _aiservice_dir = os.path.dirname(_current_dir)  # aiservice directory
 _project_root = os.path.dirname(_aiservice_dir)  # Legal_Arch_aiu directory
 MODEL_PATH = os.path.join(_project_root, "storage", "app", "models", "Llama-3.2-3B-Instruct-Q8_0-GGUF", "llama-3.2-3b-instruct-q8_0.gguf")
-MAX_TOKENS = 500
+# Favor shorter local responses so CPU generation stays responsive.
+MAX_TOKENS = 256
 TEMPERATURE = 0.7
 TOP_P = 0.9
 
@@ -19,8 +20,9 @@ PORT = 5000
 DEBUG = False
 
 # Model loading configuration
-N_CTX = 4096  # Balanced context window - enough for documents but faster processing
-N_THREADS = 4  # Number of threads for your Ryzen 7
+N_CTX = 3072  # Slightly smaller context keeps local chat faster without heavily cutting recall
+N_THREADS = max(4, min(8, (os.cpu_count() or 4) // 2))  # Good default for mid-range CPUs
+N_BATCH = 256  # Prompt ingestion tuning for llama-cpp on CPU
 N_GPU_LAYERS = 0  # Force CPU usage
 
 # Conversation limits

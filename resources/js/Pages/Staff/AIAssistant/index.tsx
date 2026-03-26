@@ -10,8 +10,14 @@ import { ChatSession, ChatMessage, Document, DocumentReference } from './types';
 import { Sidebar } from './components/layout/SidebarUi/Sidebar';
 import DocumentViewer from '../Documents/components/DocumentViewer/DocumentViewer';
 import { Document as FullDocument } from '../Documents/types/types';
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from '../../../hooks/useDashboardTheme';
 
 function StaffAIAssistant() {
+    const { theme } = useDashboardTheme('staff');
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
         // Restore from sessionStorage on mount
         if (typeof window !== 'undefined') {
@@ -241,8 +247,22 @@ function StaffAIAssistant() {
     };
 
     return (
-        <div className="h-screen overflow-hidden bg-gray-50">
-            <div className="h-full flex">
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`relative h-screen overflow-hidden ${
+                isDashboardThemeEnabled ? 'bg-base-200 text-base-content' : 'bg-gray-50'
+            }`}
+        >
+            {isDashboardThemeEnabled && (
+                <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                        background:
+                            'radial-gradient(circle at top right, oklch(var(--s) / 0.14), transparent 25%), radial-gradient(circle at bottom left, oklch(var(--p) / 0.1), transparent 30%)',
+                    }}
+                />
+            )}
+            <div className="relative z-10 h-full flex">
                 {/* Sidebar */}
                 <div className="flex-shrink-0">
                     <Sidebar

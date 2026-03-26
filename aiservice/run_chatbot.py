@@ -9,7 +9,11 @@ import logging
 chatbot_dir = os.path.join(os.path.dirname(__file__), 'chatbot')
 sys.path.insert(0, chatbot_dir)
 
-# Configure logging
+# Apply Windows fixes BEFORE any logging or model loading
+from windows_fix import fix_windows_streams
+fix_windows_streams()
+
+# NOW configure logging safely
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,13 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logger.info("Chatbot Service stopped by user")
     except Exception as e:
-        logger.error(f"Error running chatbot service: {str(e)}")
+        # Handle Windows Error 6 specifically for better debugging
+        if "Windows error 6" in str(e) or "[WinError 6]" in str(e):
+            logger.error("DANGER: Windows Invalid Handle (Error 6) detected despite stream redirection.")
+            logger.error("This usually means a library is trying to access the console directly.")
+            logger.error("Try running the service in a standard CMD window instead of a background/hidden one.")
+        else:
+            logger.error(f"Error running chatbot service: {str(e)}")
     finally:
         # Restore original working directory
         os.chdir(original_cwd)

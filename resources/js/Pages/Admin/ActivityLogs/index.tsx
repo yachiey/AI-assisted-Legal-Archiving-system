@@ -4,6 +4,10 @@ import { usePage, router } from '@inertiajs/react';
 import axios from "axios";
 import ActivityLogsHeader from "./components/ActivityLogsHeader";
 import ActivityLogsCard from "./components/ActivityLogsCard";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from "../../../hooks/useDashboardTheme";
 
 interface Activity {
     action: string;
@@ -39,6 +43,8 @@ const ActivityLogs = () => {
     const [selectedDate, setSelectedDate] = useState<string>('');
     const dateInputRef = useRef<HTMLInputElement>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
     const itemsPerPage = 10;
 
@@ -165,7 +171,15 @@ const ActivityLogs = () => {
     };
 
     return (
-        <div className="min-h-screen p-6" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`min-h-screen p-6 ${isDashboardThemeEnabled ? 'bg-transparent text-base-content' : ''}`}
+            style={
+                isDashboardThemeEnabled
+                    ? undefined
+                    : { background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }
+            }
+        >
             <ActivityLogsHeader
                 dateInputRef={dateInputRef}
                 selectedDate={selectedDate}

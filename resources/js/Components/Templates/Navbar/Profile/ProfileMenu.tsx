@@ -1,19 +1,30 @@
-// Components/ProfileDropdown/ProfileMenu.tsx
 import React, { useState } from "react";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
+import { UserIcon } from "lucide-react";
 import UserInfoHeader from "./UserInfoHeader";
 import MenuItem from "./MenuItem";
-import { SettingsIcon, UserIcon } from "lucide-react";
 import { LogoutIcon } from "./Icons";
 import { ProfileMenuProps } from "../../../../Types/profile_types";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    getDashboardThemeScopeForComponent,
+    isThemedComponentForScope,
+    useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 const ProfileMenu: React.FC<ProfileMenuProps> = ({
     userData,
     onViewProfile,
     onSettings,
-    onLogout, // This prop is now optional since we handle logout internally
+    onLogout,
 }) => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const { component } = usePage();
+    const scope = getDashboardThemeScopeForComponent(component);
+    const { theme } = useDashboardTheme(scope);
+    const isDashboardThemeEnabled =
+        isThemedComponentForScope(component, scope) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
 
     const handleLogout = async () => {
         if (isLoggingOut) return;
@@ -21,50 +32,40 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
         setIsLoggingOut(true);
 
         try {
-            // Get the stored token
-            const token = sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
+            const token =
+                sessionStorage.getItem("auth_token") ||
+                localStorage.getItem("auth_token");
 
             const response = await fetch("/api/logout", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Accept: "application/json",
-                    // Add the Bearer token for Sanctum authentication
-                    ...(token && { "Authorization": `Bearer ${token}` }),
-                    // You can remove CSRF token for API routes with Sanctum
-                    // "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "",
+                    ...(token && { Authorization: `Bearer ${token}` }),
                 },
             });
 
             const data = await response.json();
 
             if (data.success) {
-                // Clear all stored authentication data
                 sessionStorage.removeItem("currentUser");
                 sessionStorage.removeItem("adminLoaded");
                 sessionStorage.removeItem("tenantLoaded");
                 sessionStorage.removeItem("auth_token");
                 localStorage.removeItem("auth_token");
 
-                console.log("Logout successful, redirecting to home...");
-
-                // Call the onLogout prop if provided (for cleanup)
                 if (onLogout) {
                     onLogout();
                 }
 
-                // Redirect to home page
                 router.visit("/");
             } else {
-                console.error("Logout failed:", data.message);
-                // Force redirect anyway and clear tokens
                 sessionStorage.removeItem("auth_token");
                 localStorage.removeItem("auth_token");
                 router.visit("/");
             }
         } catch (error) {
             console.error("Logout error:", error);
-            // Force redirect anyway and clear tokens
             sessionStorage.removeItem("auth_token");
             localStorage.removeItem("auth_token");
             router.visit("/");
@@ -73,7 +74,6 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
         }
     };
 
-    // Conditional handlers to prevent actions during logout
     const handleViewProfile = () => {
         if (!isLoggingOut) {
             onViewProfile();
@@ -88,14 +88,18 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
 
     return (
         <div
-            className={`absolute right-0 top-full rounded-xl w-64 p-2 mt-2 z-[10000] bg-white shadow-xl border border-gray-100 ${isLoggingOut ? "pointer-events-none opacity-75" : ""}`}
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`absolute right-0 top-full z-[10000] mt-2 w-64 rounded-xl p-2 ${
+                isLoggingOut ? "pointer-events-none opacity-75" : ""
+            } ${
+                isDashboardThemeEnabled
+                    ? "border border-base-300 bg-base-100 shadow-2xl shadow-base-content/10"
+                    : "border border-gray-100 bg-white shadow-xl"
+            }`}
         >
-            {/* User Info Header */}
             <UserInfoHeader userData={userData} />
 
-            {/* Menu Items */}
             <ul className="space-y-1">
-                {/* View Profile */}
                 <li>
                     <MenuItem
                         icon={<UserIcon />}
@@ -104,16 +108,20 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
                     />
                 </li>
 
-                {/* Divider */}
-                <li className="border-t border-white/30 my-2"></li>
+                <li
+                    className={`my-2 border-t ${
+                        isDashboardThemeEnabled
+                            ? "border-base-300"
+                            : "border-white/30"
+                    }`}
+                ></li>
 
-                {/* Logout */}
                 <li>
                     <MenuItem
                         icon={<LogoutIcon />}
                         label={isLoggingOut ? "Logging out..." : "Logout"}
                         onClick={handleLogout}
-                    // variant="danger"
+                        variant="danger"
                     />
                 </li>
             </ul>

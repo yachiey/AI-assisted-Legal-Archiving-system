@@ -54,7 +54,6 @@ class DocumentController extends Controller
             'folder_id' => 'nullable|integer',
             'title' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'category_id' => 'nullable|integer',
         ]);
 
         $user = $request->user();
@@ -408,13 +407,8 @@ class DocumentController extends Controller
         ]);
     }
 
-    /**
-     * Get categories for AI suggestions
-     * Note: Categories system was removed - returning empty array for compatibility
-     */
     public function getAICategories()
     {
-        // Categories system removed - folders act as categories now
         return response()->json([
             'success' => true,
             'data' => []
@@ -592,7 +586,6 @@ class DocumentController extends Controller
                     'updated_at' => $document->updated_at,
                     'remarks' => $document->remarks,
                     'description' => $document->description,
-                    'category' => $document->category,
                     'folder' => $document->folder,
                     'suggestedLocation' => $document->ai_suggested_folder, // Added missing field for AI suggestion
                 ]
@@ -621,7 +614,6 @@ class DocumentController extends Controller
             $validated = $request->validate([
                 'title' => 'sometimes|string|max:255',
                 'description' => 'sometimes|string|max:1000',
-                'category_id' => 'sometimes|integer|exists:categories,category_id',
                 'folder_id' => 'sometimes|integer|exists:folders,folder_id',
                 'remarks' => 'sometimes|string|max:1000',
                 'file_path' => 'sometimes|string|max:500',
@@ -657,7 +649,6 @@ class DocumentController extends Controller
                 'document' => [
                     'doc_id' => $document->doc_id,
                     'title' => $document->title,
-                    'category_id' => $document->category_id,
                     'folder_id' => $document->folder_id,
                     'status' => $document->status,
                     'remarks' => $document->remarks

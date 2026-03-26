@@ -3,6 +3,10 @@ import { usePage, router } from '@inertiajs/react';
 import { DashboardContext } from '../../../../Context/DashboardContext';
 import { FileText, Download, Upload, Loader2, Calendar, X, User } from 'lucide-react';
 import axios from 'axios';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../hooks/useDashboardTheme';
 
 interface User {
   firstname?: string;
@@ -48,6 +52,8 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   isLoading,
   showUserFilter = false
 }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   const [rangeType, setRangeType] = useState<DateRangeType>('month');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -127,19 +133,46 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm ${
+        isDashboardThemeEnabled ? 'bg-base-content/30' : 'bg-black/50'
+      }`}
+    >
+      <div
+        className={`mx-4 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ${
+          isDashboardThemeEnabled
+            ? 'border border-base-300 bg-base-100 text-base-content'
+            : 'bg-white'
+        }`}
+      >
         {/* Header */}
-        <div className="p-5 border-b flex items-center justify-between" style={{
-          background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)'
-        }}>
+        <div
+          className={`flex items-center justify-between border-b p-5 ${
+            isDashboardThemeEnabled
+              ? 'border-base-300 bg-primary text-primary-content'
+              : ''
+          }`}
+          style={
+            isDashboardThemeEnabled
+              ? undefined
+              : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+          }
+        >
           <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-[#FBEC5D]" />
-            <h3 className="text-lg font-bold text-white">{title}</h3>
+            <Calendar className={`w-5 h-5 ${
+              isDashboardThemeEnabled ? 'text-primary-content' : 'text-[#FBEC5D]'
+            }`} />
+            <h3 className={`text-lg font-bold ${
+              isDashboardThemeEnabled ? 'text-primary-content' : 'text-white'
+            }`}>{title}</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-white/70 hover:text-white transition-colors p-1"
+            className={`rounded-lg p-1 transition-colors ${
+              isDashboardThemeEnabled
+                ? 'text-primary-content/80 hover:bg-white/10 hover:text-primary-content'
+                : 'text-white/70 hover:text-white'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -147,7 +180,9 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 
         {/* Content */}
         <div className="p-5 space-y-4">
-          <p className="text-sm text-gray-600">Select the date range for your export:</p>
+          <p className={`text-sm ${
+            isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+          }`}>Select the date range for your export:</p>
 
           {/* Quick Options */}
           <div className="grid grid-cols-3 gap-2">
@@ -155,13 +190,20 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
               <button
                 key={type}
                 onClick={() => setRangeType(type)}
-                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all duration-300 uppercase tracking-wider ${rangeType === type
-                  ? 'text-gray-900 shadow-lg scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                style={rangeType === type ? {
-                  background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
-                } : {}}
+                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all duration-300 uppercase tracking-wider ${
+                  rangeType === type
+                    ? isDashboardThemeEnabled
+                      ? 'bg-primary text-primary-content shadow-lg scale-105'
+                      : 'text-gray-900 shadow-lg scale-105'
+                    : isDashboardThemeEnabled
+                      ? 'bg-base-200 text-base-content/70 hover:bg-base-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                style={
+                  rangeType === type && !isDashboardThemeEnabled
+                    ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                    : {}
+                }
               >
                 {type === 'today' ? 'Today' : type === 'week' ? 'This Week' : 'This Month'}
               </button>
@@ -169,16 +211,25 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
           </div>
 
           {/* Custom Date Option */}
-          <div className="border-t pt-4">
+          <div className={`border-t pt-4 ${
+            isDashboardThemeEnabled ? 'border-base-300' : ''
+          }`}>
             <button
               onClick={() => setRangeType('custom')}
-              className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all duration-300 uppercase tracking-wider ${rangeType === 'custom'
-                ? 'text-gray-900 shadow-lg'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              style={rangeType === 'custom' ? {
-                background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
-              } : {}}
+              className={`w-full px-4 py-3 rounded-xl text-xs font-bold transition-all duration-300 uppercase tracking-wider ${
+                rangeType === 'custom'
+                  ? isDashboardThemeEnabled
+                    ? 'bg-primary text-primary-content shadow-lg'
+                    : 'text-gray-900 shadow-lg'
+                  : isDashboardThemeEnabled
+                    ? 'bg-base-200 text-base-content/70 hover:bg-base-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              style={
+                rangeType === 'custom' && !isDashboardThemeEnabled
+                  ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                  : {}
+              }
             >
               Custom Date Range
             </button>
@@ -187,21 +238,33 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
               <div className="mt-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                    <label className={`mb-1 block text-xs font-semibold ${
+                      isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                    }`}>Start Date</label>
                     <input
                       type="date"
                       value={customStartDate}
                       onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none ${
+                        isDashboardThemeEnabled
+                          ? 'border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          : 'border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
+                    <label className={`mb-1 block text-xs font-semibold ${
+                      isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                    }`}>End Date</label>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm transition-all outline-none ${
+                        isDashboardThemeEnabled
+                          ? 'border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-2 focus:ring-primary/20'
+                          : 'border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                      }`}
                     />
                   </div>
                 </div>
@@ -211,16 +274,26 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 
           {/* User Filter (only for logs) */}
           {showUserFilter && (
-            <div className="border-t pt-4">
+            <div className={`border-t pt-4 ${
+              isDashboardThemeEnabled ? 'border-base-300' : ''
+            }`}>
               <div className="flex items-center gap-2 mb-2">
-                <User className="w-4 h-4 text-gray-500" />
-                <label className="block text-xs font-semibold text-gray-700">Filter by User</label>
+                <User className={`w-4 h-4 ${
+                  isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-500'
+                }`} />
+                <label className={`block text-xs font-semibold ${
+                  isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                }`}>Filter by User</label>
               </div>
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 disabled={loadingUsers}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent cursor-pointer bg-white"
+                className={`w-full cursor-pointer rounded-xl border px-3 py-2.5 text-sm transition-all outline-none ${
+                  isDashboardThemeEnabled
+                    ? 'border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-2 focus:ring-primary/20'
+                    : 'border-gray-300 bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                }`}
               >
                 <option value="all">All Users</option>
                 {users.map((user) => (
@@ -231,33 +304,65 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
 
               </select>
               {loadingUsers && (
-                <p className="text-xs text-gray-400 mt-1">Loading users...</p>
+                <p className={`mt-1 text-xs ${
+                  isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-400'
+                }`}>Loading users...</p>
               )}
             </div>
           )}
 
           {/* Format Selection */}
-          <div className="border-t pt-4">
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Export Format Options</label>
+          <div className={`border-t pt-4 ${
+            isDashboardThemeEnabled ? 'border-base-300' : ''
+          }`}>
+            <label className={`mb-2 block text-xs font-semibold ${
+              isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+            }`}>Export Format Options</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setExportFormat('pdf')}
-                className={`flex-1 py-2 px-3 rounded-xl border-2 text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${exportFormat === 'pdf'
-                  ? 'border-red-500 bg-red-50 text-red-700'
-                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                  }`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-3 py-2 text-xs font-bold transition-all duration-300 ${
+                  exportFormat === 'pdf'
+                    ? isDashboardThemeEnabled
+                      ? 'border-error bg-error/10 text-error shadow-sm'
+                      : 'border-red-500 bg-red-50 text-red-700'
+                    : isDashboardThemeEnabled
+                      ? 'border-base-300 text-base-content/60 hover:border-base-content/30 hover:bg-base-200'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
               >
-                <span className={`w-3 h-3 rounded-full border ${exportFormat === 'pdf' ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}></span>
+                <span className={`w-3 h-3 rounded-full border ${
+                  exportFormat === 'pdf'
+                    ? isDashboardThemeEnabled
+                      ? 'border-error bg-error'
+                      : 'bg-red-500 border-red-500'
+                    : isDashboardThemeEnabled
+                      ? 'border-base-300'
+                      : 'border-gray-300'
+                }`}></span>
                 PDF Document
               </button>
               <button
                 onClick={() => setExportFormat('excel')}
-                className={`flex-1 py-2 px-3 rounded-xl border-2 text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2 ${exportFormat === 'excel'
-                  ? 'border-green-500 bg-green-50 text-green-700'
-                  : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                  }`}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 px-3 py-2 text-xs font-bold transition-all duration-300 ${
+                  exportFormat === 'excel'
+                    ? isDashboardThemeEnabled
+                      ? 'border-success bg-success/10 text-success shadow-sm'
+                      : 'border-green-500 bg-green-50 text-green-700'
+                    : isDashboardThemeEnabled
+                      ? 'border-base-300 text-base-content/60 hover:border-base-content/30 hover:bg-base-200'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
               >
-                <span className={`w-3 h-3 rounded-full border ${exportFormat === 'excel' ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}></span>
+                <span className={`w-3 h-3 rounded-full border ${
+                  exportFormat === 'excel'
+                    ? isDashboardThemeEnabled
+                      ? 'border-success bg-success'
+                      : 'bg-green-500 border-green-500'
+                    : isDashboardThemeEnabled
+                      ? 'border-base-300'
+                      : 'border-gray-300'
+                }`}></span>
                 Excel / CSV
               </button>
             </div>
@@ -265,20 +370,34 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t bg-gray-50 flex justify-end gap-3">
+        <div className={`flex justify-end gap-3 border-t p-5 ${
+          isDashboardThemeEnabled
+            ? 'border-base-300 bg-base-200/80'
+            : 'bg-gray-50'
+        }`}>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors"
+            className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors ${
+              isDashboardThemeEnabled
+                ? 'text-base-content/70 hover:bg-base-100'
+                : 'text-gray-600 hover:bg-gray-200'
+            }`}
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={isLoading || (rangeType === 'custom' && (!customStartDate || !customEndDate))}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-900 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg"
-            style={{
-              background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
-            }}
+            className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg ${
+              isDashboardThemeEnabled
+                ? 'bg-primary text-primary-content shadow-primary/20'
+                : 'text-gray-900'
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? undefined
+                : { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+            }
           >
             {isLoading ? (
               <>
@@ -302,8 +421,12 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
   const dashboardContext = useContext(DashboardContext);
   const collapsed = dashboardContext?.collapse;
   const pageData = usePage<PageProps>();
+  const { theme } = useDashboardTheme();
   const user = pageData.props.user || pageData.props.auth?.user;
   const userName = user?.firstname || user?.name || 'User';
+  const isDashboardThemeEnabled =
+    pageData.component === 'Admin/Dashboard/index' &&
+    theme !== DEFAULT_DASHBOARD_THEME;
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportingActivityLogs, setIsExportingActivityLogs] = useState(false);
@@ -459,30 +582,39 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
 
   return (
     <>
-      <div className="w-full shadow-lg rounded-b-3xl" style={{
-        background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)'
-      }}>
+      <div
+        className={`w-full shadow-lg rounded-b-3xl ${isDashboardThemeEnabled
+          ? 'bg-gradient-to-br from-primary via-primary to-secondary text-primary-content'
+          : ''
+          }`}
+        style={isDashboardThemeEnabled ? undefined : {
+          background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)'
+        }}
+      >
         <div className={`transition-all duration-300 ${collapsed ? 'px-4 py-5' : 'px-8 py-6'
           }`}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex-shrink-0">
               <div className="relative">
-                <h1 className={`font-bold text-white mb-2 transition-all duration-300 tracking-wide ${collapsed ? 'text-2xl' : 'text-3xl'
+                <h1 className={`font-bold mb-2 transition-all duration-300 tracking-wide ${collapsed ? 'text-2xl' : 'text-3xl'
+                  } ${isDashboardThemeEnabled ? 'text-primary-content' : 'text-white'
                   }`}
                   style={{
                     textShadow: '0 2px 4px rgba(0,0,0,0.1)'
                   }}>
                   HELLO, {userName.toUpperCase()}!
                 </h1>
-                <div className={`h-1 bg-gradient-to-r from-yellow-400 to-transparent rounded-full transition-all duration-300 ${collapsed ? 'w-40' : 'w-64'
+                <div className={`h-1 rounded-full transition-all duration-300 ${collapsed ? 'w-40' : 'w-64'
+                  } ${isDashboardThemeEnabled ? 'bg-gradient-to-r from-accent to-transparent' : 'bg-gradient-to-r from-yellow-400 to-transparent'
                   }`}></div>
               </div>
-              <p className={`text-white/90 font-medium mt-3 transition-all duration-300 ${collapsed ? 'text-sm' : 'text-base'
+              <p className={`font-medium mt-3 transition-all duration-300 ${collapsed ? 'text-sm' : 'text-base'
+                } ${isDashboardThemeEnabled ? 'text-primary-content/85' : 'text-white/90'
                 }`}
                 style={{
                   letterSpacing: '0.05em'
                 }}>
-                WELCOME BACK TO YOUR <span className="font-bold text-yellow-300">DASHBOARD</span>
+                WELCOME BACK TO YOUR <span className={`font-bold ${isDashboardThemeEnabled ? 'text-accent' : 'text-yellow-300'}`}>DASHBOARD</span>
               </p>
             </div>
           </div>
@@ -492,7 +624,10 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
             {/* Upload Document Button */}
             <button
               onClick={handleNavigateToDocuments}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg ${isDashboardThemeEnabled
+                ? 'bg-primary-content/15 text-primary-content hover:bg-primary-content/22'
+                : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
             >
               <Upload className="w-4 h-4" />
               <span>UPLOAD DOCUMENT</span>
@@ -502,7 +637,10 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
             <button
               onClick={() => setShowReportModal(true)}
               disabled={isGenerating}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${isDashboardThemeEnabled
+                ? 'bg-primary-content/15 text-primary-content hover:bg-primary-content/22'
+                : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
             >
               {isGenerating ? (
                 <>
@@ -521,7 +659,10 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
             <button
               onClick={() => setShowLogsModal(true)}
               disabled={isExportingActivityLogs}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${isDashboardThemeEnabled
+                ? 'bg-primary-content/15 text-primary-content hover:bg-primary-content/22'
+                : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
             >
               {isExportingActivityLogs ? (
                 <>

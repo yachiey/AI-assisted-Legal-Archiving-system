@@ -28,7 +28,6 @@ class UploadController extends Controller
             // Validate the request
             $validator = Validator::make($request->all(), [
                 'file' => 'required|file|max:10240', // 10MB max
-                'category_id' => 'required|exists:categories,category_id',
                 'folder_id' => 'nullable|exists:folders,folder_id',
                 'title' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:1000',
@@ -66,7 +65,6 @@ class UploadController extends Controller
                 'file_path' => $path,
                 'created_by' => $createdByName,
                 'status' => 'active',
-                'category_id' => $request->category_id,
                 'folder_id' => $request->folder_id,
                 'remarks' => $request->remarks,
             ];
@@ -90,7 +88,6 @@ class UploadController extends Controller
                     'file_path' => $document->file_path,
                     'created_by' => $document->created_by,
                     'status' => $document->status,
-                    'category_id' => $document->category_id,
                     'folder_id' => $document->folder_id,
                     'remarks' => $document->remarks,
                     'created_at' => $document->created_at,

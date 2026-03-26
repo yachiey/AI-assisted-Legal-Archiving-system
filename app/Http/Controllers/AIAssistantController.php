@@ -780,9 +780,9 @@ class AIAssistantController extends Controller
 
             // Use moderate limits for Groq to avoid rate limits on free tier (12K tokens/min)
             // Groq: ~8K chars ≈ 2K tokens, leaving room for prompt + response (est. 4 chars/token)
-            // Local: 15 chunks, 6000 chars for comparison queries
-            $maxChunks = $useGroqLimits ? 12 : 15;
-            $maxContextLength = $useGroqLimits ? 8000 : 6000;
+            // Local: keep a tighter context budget so CPU inference stays responsive
+            $maxChunks = $useGroqLimits ? 12 : 10;
+            $maxContextLength = $useGroqLimits ? 8000 : 4500;
             
             // Variable to track which documents we've already added a header for in the current block
             // Since we're interleaving, we might switch back and forth.

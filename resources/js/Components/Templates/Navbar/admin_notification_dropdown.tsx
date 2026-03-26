@@ -1,7 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import { HiOutlineBell } from "react-icons/hi2";
-import { Check, X, Loader2, Shield } from "lucide-react";
+import { Check, Loader2, Shield, X } from "lucide-react";
 import axios from "axios";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    isThemedAdminComponent,
+    useDashboardTheme,
+} from "../../../hooks/useDashboardTheme";
 
 interface Notification {
     id: number;
@@ -14,10 +20,8 @@ interface Notification {
 
 interface PendingRequest {
     id: number;
-    user_id: number;
     user_name: string;
     user_email: string;
-    permissions: Record<string, boolean>;
     permission_labels: string[];
     reason: string | null;
     created_at: string;
@@ -25,41 +29,36 @@ interface PendingRequest {
 
 const AdminNotificationDropdown: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'notifications' | 'requests'>('notifications');
+    const [activeTab, setActiveTab] = useState<"notifications" | "requests">("notifications");
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
     const [showAll, setShowAll] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
     const [loading, setLoading] = useState(false);
     const [processingId, setProcessingId] = useState<number | null>(null);
-    const maxNotifications = 3;
-
-    // Background polling: fetch notifications & requests every 15 seconds
-    // so the badge updates in real-time without page refresh
+    const { component } = usePage();
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled =
+        isThemedAdminComponent(component) && theme !== DEFAULT_DASHBOARD_THEME;
     const fetchNotificationsRef = useRef<(() => void) | undefined>(undefined);
     const fetchPendingRequestsRef = useRef<(() => void) | undefined>(undefined);
+    const maxNotifications = 3;
 
     useEffect(() => {
         fetchNotificationsRef.current = fetchNotifications;
         fetchPendingRequestsRef.current = fetchPendingRequests;
     });
 
-    // Initial fetch on mount + polling interval
     useEffect(() => {
-        // Fetch immediately on mount
         fetchNotifications();
         fetchPendingRequests();
-
-        // Poll every 15 seconds for real-time updates
         const interval = setInterval(() => {
             fetchNotificationsRef.current?.();
             fetchPendingRequestsRef.current?.();
         }, 15000);
-
         return () => clearInterval(interval);
     }, []);
 
-    // Also refresh when dropdown opens (for instant fresh data)
     useEffect(() => {
         if (isOpen) {
             fetchNotifications();
@@ -70,10 +69,8 @@ const AdminNotificationDropdown: React.FC = () => {
     const fetchNotifications = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/admin/notifications');
-            if (response.data.success) {
-                setNotifications(response.data.notifications);
-            }
+            const response = await axios.get("/admin/notifications");
+            if (response.data.success) setNotifications(response.data.notifications);
         } catch (error) {
             console.error("Failed to fetch notifications", error);
         } finally {
@@ -83,10 +80,8 @@ const AdminNotificationDropdown: React.FC = () => {
 
     const fetchPendingRequests = async () => {
         try {
-            const response = await axios.get('/admin/permission-requests/pending');
-            if (response.data.success) {
-                setPendingRequests(response.data.requests);
-            }
+            const response = await axios.get("/admin/permission-requests/pending");
+            if (response.data.success) setPendingRequests(response.data.requests);
         } catch (error) {
             console.error("Failed to fetch pending requests", error);
         }
@@ -95,7 +90,7 @@ const AdminNotificationDropdown: React.FC = () => {
     const markAsRead = async (id: number) => {
         try {
             await axios.put(`/admin/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
         } catch (error) {
             console.error("Failed to mark notification as read", error);
         }
@@ -103,158 +98,179 @@ const AdminNotificationDropdown: React.FC = () => {
 
     const markAllAsRead = async () => {
         try {
-            await axios.put('/admin/notifications/read-all');
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            await axios.put("/admin/notifications/read-all");
+            setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
         } catch (error) {
             console.error("Failed to mark all as read", error);
         }
     };
 
-    const handleAccept = async (requestId: number, e: React.MouseEvent) => {
+    const handleRequestAction = async (
+        requestId: number,
+        action: "accept" | "decline",
+        e: React.MouseEvent
+    ) => {
         e.stopPropagation();
         setProcessingId(requestId);
         try {
-            await axios.post(`/admin/permission-requests/${requestId}/accept`);
-            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-            fetchNotifications(); // Refresh notifications
-        } catch (error) {
-            console.error("Failed to accept request", error);
-        } finally {
-            setProcessingId(null);
-        }
-    };
-
-    const handleDecline = async (requestId: number, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setProcessingId(requestId);
-        try {
-            await axios.post(`/admin/permission-requests/${requestId}/decline`);
-            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+            await axios.post(`/admin/permission-requests/${requestId}/${action}`);
+            setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
             fetchNotifications();
         } catch (error) {
-            console.error("Failed to decline request", error);
+            console.error(`Failed to ${action} request`, error);
         } finally {
             setProcessingId(null);
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const unreadCount = notifications.filter((n) => !n.is_read).length;
     const totalBadge = unreadCount + pendingRequests.length;
+    const panelClass = isDashboardThemeEnabled
+        ? "border border-base-300 bg-base-100 text-base-content shadow-2xl shadow-base-content/10"
+        : "text-black";
+    const mutedText = isDashboardThemeEnabled ? "text-base-content/60" : "text-gray-500";
+    const strongText = isDashboardThemeEnabled ? "text-base-content" : "text-gray-900";
 
     return (
-        <div className="relative">
+        <div data-theme={isDashboardThemeEnabled ? theme : undefined} className="relative">
             <button
-                className={`relative p-2 rounded-xl transition-all ml-2 ${isOpen
-                    ? "text-green-800"
-                    : "text-green-700 hover:text-green-600"
-                    }`}
-                style={{
-                    background: 'rgba(255, 255, 255, 0.4)',
-                    backdropFilter: 'blur(15px)',
-                    WebkitBackdropFilter: 'blur(15px)',
-                    borderColor: 'rgba(255, 255, 255, 0.5)',
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.5)'
-                }}
+                className={`relative ml-2 rounded-xl p-2 transition-all ${
+                    isDashboardThemeEnabled
+                        ? "border border-base-300/80 bg-base-100 text-base-content shadow-lg shadow-base-content/5 hover:text-primary"
+                        : isOpen
+                          ? "text-green-800"
+                          : "text-green-700 hover:text-green-600"
+                }`}
+                style={
+                    isDashboardThemeEnabled
+                        ? undefined
+                        : {
+                              background: "rgba(255, 255, 255, 0.4)",
+                              backdropFilter: "blur(15px)",
+                              WebkitBackdropFilter: "blur(15px)",
+                              border: "1px solid rgba(255, 255, 255, 0.5)",
+                              boxShadow: "0 4px 15px rgba(0, 0, 0, 0.05)",
+                          }
+                }
                 title="Notifications"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <HiOutlineBell size={25} />
                 {totalBadge > 0 && (
-                    <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
-                        {totalBadge > 9 ? '9+' : totalBadge}
+                    <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                        {totalBadge > 9 ? "9+" : totalBadge}
                     </span>
                 )}
             </button>
 
             {isOpen && (
                 <div
-                    className="absolute right-0 sm:w-[420px] w-[85vw] max-w-lg text-black rounded-xl shadow-xl max-h-[36rem] overflow-hidden z-[30]"
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.98)',
-                        backdropFilter: 'blur(25px)',
-                        WebkitBackdropFilter: 'blur(25px)',
-                        border: '1px solid rgba(255, 255, 255, 0.6)',
-                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)'
-                    }}
+                    className={`absolute right-0 z-[30] max-h-[36rem] w-[85vw] max-w-lg overflow-hidden rounded-xl sm:w-[420px] ${panelClass}`}
+                    style={
+                        isDashboardThemeEnabled
+                            ? undefined
+                            : {
+                                  background: "rgba(255, 255, 255, 0.98)",
+                                  backdropFilter: "blur(25px)",
+                                  WebkitBackdropFilter: "blur(25px)",
+                                  border: "1px solid rgba(255, 255, 255, 0.6)",
+                                  boxShadow: "0 8px 30px rgba(0, 0, 0, 0.15)",
+                              }
+                    }
                 >
-                    {/* Tabs */}
-                    <div className="flex border-b border-gray-200">
+                    <div className={`flex border-b ${isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"}`}>
                         <button
-                            onClick={() => setActiveTab('notifications')}
-                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'notifications'
-                                ? 'text-green-700 border-b-2 border-green-600'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                            onClick={() => setActiveTab("notifications")}
+                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                activeTab === "notifications"
+                                    ? isDashboardThemeEnabled
+                                        ? "border-b-2 border-primary text-primary"
+                                        : "border-b-2 border-green-600 text-green-700"
+                                    : isDashboardThemeEnabled
+                                      ? "text-base-content/60 hover:text-base-content"
+                                      : "text-gray-500 hover:text-gray-700"
+                            }`}
                         >
                             Notifications {unreadCount > 0 && `(${unreadCount})`}
                         </button>
                         <button
-                            onClick={() => setActiveTab('requests')}
-                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'requests'
-                                ? 'text-amber-700 border-b-2 border-amber-600'
-                                : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                            onClick={() => setActiveTab("requests")}
+                            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                                activeTab === "requests"
+                                    ? isDashboardThemeEnabled
+                                        ? "border-b-2 border-warning text-warning"
+                                        : "border-b-2 border-amber-600 text-amber-700"
+                                    : isDashboardThemeEnabled
+                                      ? "text-base-content/60 hover:text-base-content"
+                                      : "text-gray-500 hover:text-gray-700"
+                            }`}
                         >
                             <span className="flex items-center justify-center gap-2">
-                                <Shield className="w-4 h-4" />
+                                <Shield className="h-4 w-4" />
                                 Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
                             </span>
                         </button>
                     </div>
 
-                    <div className="overflow-y-auto max-h-[28rem] p-4">
-                        {activeTab === 'notifications' ? (
+                    <div className="max-h-[28rem] overflow-y-auto p-4">
+                        {activeTab === "notifications" ? (
                             <>
-                                {/* Notifications Header */}
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-sm font-medium text-gray-600">Recent Notifications</span>
+                                <div className="mb-3 flex items-center justify-between">
+                                    <span className={`text-sm font-medium ${mutedText}`}>Recent Notifications</span>
                                     {unreadCount > 0 && (
                                         <button
                                             onClick={markAllAsRead}
-                                            className="text-xs text-green-600 hover:text-green-700 font-medium hover:underline"
+                                            className={`text-xs font-medium hover:underline ${
+                                                isDashboardThemeEnabled
+                                                    ? "text-primary hover:text-primary/80"
+                                                    : "text-green-600 hover:text-green-700"
+                                            }`}
                                         >
                                             Mark all as Read
                                         </button>
                                     )}
                                 </div>
 
-                                {notifications.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500 text-sm">
-                                        No notifications
+                                {loading && notifications.length === 0 ? (
+                                    <div className={`flex items-center justify-center gap-2 p-8 text-sm ${mutedText}`}>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading notifications...
                                     </div>
+                                ) : notifications.length === 0 ? (
+                                    <div className={`p-8 text-center text-sm ${mutedText}`}>No notifications</div>
                                 ) : (
                                     (showAll ? notifications : notifications.slice(0, maxNotifications)).map((notif, index) => (
                                         <div
                                             key={notif.id}
-                                            className={`relative flex items-start gap-3 p-3 rounded-lg transition-all duration-300 cursor-pointer mb-2 ${!notif.is_read ? 'bg-green-50' : 'hover:bg-gray-50'
-                                                } ${notif.type === 'permission_request' ? 'border-l-4 border-amber-400' : ''}`}
+                                            className={`relative mb-2 flex cursor-pointer items-start gap-3 rounded-lg p-3 transition-all ${
+                                                !notif.is_read
+                                                    ? isDashboardThemeEnabled
+                                                        ? "bg-primary/10"
+                                                        : "bg-green-50"
+                                                    : isDashboardThemeEnabled
+                                                      ? "hover:bg-base-200/70"
+                                                      : "hover:bg-gray-50"
+                                            } ${notif.type === "permission_request" ? (isDashboardThemeEnabled ? "border-l-4 border-warning" : "border-l-4 border-amber-400") : ""}`}
                                             onClick={() => {
                                                 setExpandedIndex(expandedIndex === index ? null : index);
                                                 if (!notif.is_read) markAsRead(notif.id);
                                             }}
                                         >
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-center">
-                                                    <p className={`font-medium text-sm ${!notif.is_read ? 'text-black' : 'text-gray-600'}`}>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <p className={`text-sm font-medium ${!notif.is_read ? strongText : mutedText}`}>
                                                         {notif.title}
                                                     </p>
-                                                    <span className="text-xs text-gray-400 ml-2">
+                                                    <span className={`ml-2 text-xs ${isDashboardThemeEnabled ? "text-base-content/40" : "text-gray-400"}`}>
                                                         {new Date(notif.created_at).toLocaleDateString()}
                                                     </span>
                                                 </div>
-                                                {expandedIndex === index ? (
-                                                    <p className="text-sm text-gray-600 break-words mt-1">
-                                                        {notif.message}
-                                                    </p>
-                                                ) : (
-                                                    <p className="text-sm text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap mt-1">
-                                                        {notif.message}
-                                                    </p>
-                                                )}
+                                                <p className={`mt-1 text-sm ${expandedIndex === index ? "" : "overflow-hidden text-ellipsis whitespace-nowrap"} ${isDashboardThemeEnabled ? "text-base-content/65" : "text-gray-600"}`}>
+                                                    {notif.message}
+                                                </p>
                                             </div>
                                             {!notif.is_read && (
-                                                <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
+                                                <div className={`mt-2 h-2 w-2 rounded-full ${isDashboardThemeEnabled ? "bg-primary" : "bg-green-500"}`}></div>
                                             )}
                                         </div>
                                     ))
@@ -262,7 +278,11 @@ const AdminNotificationDropdown: React.FC = () => {
 
                                 {notifications.length > maxNotifications && (
                                     <button
-                                        className="block w-full text-center text-green-600 hover:text-green-700 font-medium text-sm py-2 hover:underline"
+                                        className={`block w-full py-2 text-center text-sm font-medium hover:underline ${
+                                            isDashboardThemeEnabled
+                                                ? "text-primary hover:text-primary/80"
+                                                : "text-green-600 hover:text-green-700"
+                                        }`}
                                         onClick={() => setShowAll(!showAll)}
                                     >
                                         {showAll ? "Show Less" : "Show More"}
@@ -271,38 +291,42 @@ const AdminNotificationDropdown: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                {/* Permission Requests */}
                                 <div className="mb-3">
-                                    <span className="text-sm font-medium text-gray-600">Pending Permission Requests</span>
+                                    <span className={`text-sm font-medium ${mutedText}`}>Pending Permission Requests</span>
                                 </div>
-
                                 {pendingRequests.length === 0 ? (
-                                    <div className="p-8 text-center text-gray-500 text-sm">
-                                        No pending requests
-                                    </div>
+                                    <div className={`p-8 text-center text-sm ${mutedText}`}>No pending requests</div>
                                 ) : (
                                     pendingRequests.map((request) => (
                                         <div
                                             key={request.id}
-                                            className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-3"
+                                            className={`mb-3 rounded-lg border p-4 ${
+                                                isDashboardThemeEnabled
+                                                    ? "border-base-300 bg-base-200/60"
+                                                    : "border-amber-200 bg-amber-50"
+                                            }`}
                                         >
-                                            <div className="flex justify-between items-start mb-2">
+                                            <div className="mb-2 flex items-start justify-between">
                                                 <div>
-                                                    <p className="font-medium text-gray-900">{request.user_name}</p>
-                                                    <p className="text-xs text-gray-500">{request.user_email}</p>
+                                                    <p className={`font-medium ${strongText}`}>{request.user_name}</p>
+                                                    <p className={`text-xs ${mutedText}`}>{request.user_email}</p>
                                                 </div>
-                                                <span className="text-xs text-gray-400">
+                                                <span className={`text-xs ${isDashboardThemeEnabled ? "text-base-content/40" : "text-gray-400"}`}>
                                                     {new Date(request.created_at).toLocaleDateString()}
                                                 </span>
                                             </div>
 
                                             <div className="mb-3">
-                                                <p className="text-xs font-medium text-gray-600 mb-1">Requested Permissions:</p>
+                                                <p className={`mb-1 text-xs font-medium ${mutedText}`}>Requested Permissions:</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {request.permission_labels.map((label, idx) => (
                                                         <span
                                                             key={idx}
-                                                            className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs rounded-full"
+                                                            className={`rounded-full px-2 py-0.5 text-xs ${
+                                                                isDashboardThemeEnabled
+                                                                    ? "bg-warning/15 text-warning"
+                                                                    : "bg-amber-100 text-amber-800"
+                                                            }`}
                                                         >
                                                             {label}
                                                         </span>
@@ -312,39 +336,44 @@ const AdminNotificationDropdown: React.FC = () => {
 
                                             {request.reason && (
                                                 <div className="mb-3">
-                                                    <p className="text-xs font-medium text-gray-600 mb-1">Reason:</p>
-                                                    <p className="text-sm text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                                    <p className={`mb-1 text-xs font-medium ${mutedText}`}>Reason:</p>
+                                                    <p
+                                                        className={`rounded border p-2 text-sm ${
+                                                            isDashboardThemeEnabled
+                                                                ? "border-base-300 bg-base-100 text-base-content/75"
+                                                                : "border-gray-200 bg-white text-gray-700"
+                                                        }`}
+                                                    >
                                                         {request.reason}
                                                     </p>
                                                 </div>
                                             )}
 
-                                            {/* Action Buttons */}
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={(e) => handleAccept(request.id, e)}
+                                                    onClick={(e) => handleRequestAction(request.id, "accept", e)}
                                                     disabled={processingId === request.id}
-                                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                                    className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-success px-3 py-2 text-sm font-medium text-success-content transition-colors hover:bg-success/90 disabled:opacity-50"
                                                 >
                                                     {processingId === request.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
                                                     ) : (
                                                         <>
-                                                            <Check className="w-4 h-4" />
+                                                            <Check className="h-4 w-4" />
                                                             Accept
                                                         </>
                                                     )}
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleDecline(request.id, e)}
+                                                    onClick={(e) => handleRequestAction(request.id, "decline", e)}
                                                     disabled={processingId === request.id}
-                                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                                                    className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-error px-3 py-2 text-sm font-medium text-error-content transition-colors hover:bg-error/90 disabled:opacity-50"
                                                 >
                                                     {processingId === request.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
                                                     ) : (
                                                         <>
-                                                            <X className="w-4 h-4" />
+                                                            <X className="h-4 w-4" />
                                                             Decline
                                                         </>
                                                     )}

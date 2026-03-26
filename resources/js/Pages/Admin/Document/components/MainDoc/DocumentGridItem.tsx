@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, MoreVertical } from 'lucide-react';
-import { DocumentListItemProps, Document } from '../../types/types';
+import { MoreVertical } from 'lucide-react';
+import { DocumentListItemProps } from '../../types/types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import DocumentMenu from './DocumentMenu';
 import DocumentPropertiesModal from './DocumentPropertiesModal';
 import EditDocumentModal from './EditDocumentModal';
 import DeleteDocumentDialog from './DeleteDocumentDialog';
-import realDocumentService from '../../services/realDocumentService';
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 // Reusing types from DocumentListItemProps as they are identical
 const DocumentGridItem: React.FC<DocumentListItemProps> = ({
@@ -25,6 +28,8 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
     const handleDocumentClick = (): void => {
         setIsViewerOpen(true);
@@ -119,17 +124,42 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     return (
         <>
             <div
-                className={`group relative bg-white border border-gray-100 rounded-2xl p-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-green-100/50 transition-all duration-300 cursor-pointer flex flex-col items-center text-center h-[240px] w-full backdrop-blur-sm justify-between ${isHighlighted ? 'bg-green-100 ring-2 ring-green-500 animate-pulse' : ''
+                className={`group relative flex h-[240px] w-full cursor-pointer flex-col items-center justify-between rounded-2xl p-4 text-center backdrop-blur-sm transition-all duration-300 ${
+                    isDashboardThemeEnabled
+                        ? `border border-base-300/80 bg-base-100 shadow-lg shadow-base-content/5 hover:border-primary/35 hover:shadow-2xl hover:shadow-primary/10 ${
+                              isHighlighted
+                                  ? 'bg-primary/10 ring-1 ring-primary/45 animate-pulse'
+                                  : ''
+                          }`
+                        : `border border-gray-100 bg-white hover:border-green-100/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
+                              isHighlighted
+                                  ? 'bg-green-100 ring-2 ring-green-500 animate-pulse'
+                                  : ''
+                          }`
                     }`}
                 onClick={handleDocumentClick}
                 title={document.title}
             >
                 {/* Modern Hover Glow Effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-green-50/0 via-green-50/0 to-green-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+                <div
+                    className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                    style={
+                        isDashboardThemeEnabled
+                            ? {
+                                  background:
+                                      'linear-gradient(135deg, oklch(var(--p) / 0.02) 0%, transparent 45%, oklch(var(--s) / 0.08) 100%)',
+                              }
+                            : undefined
+                    }
+                />
 
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 z-20 transform translate-y-[-4px] group-hover:translate-y-0">
                     <button
-                        className="p-1.5 rounded-xl hover:bg-white/80 text-gray-400 hover:text-gray-700 bg-white/50 backdrop-blur-md shadow-sm border border-gray-100/50 transition-all"
+                        className={`rounded-xl p-1.5 backdrop-blur-md shadow-sm transition-all ${
+                            isDashboardThemeEnabled
+                                ? 'border border-base-300/80 bg-base-100/75 text-base-content/60 hover:bg-base-200 hover:text-primary'
+                                : 'border border-gray-100/50 bg-white/50 text-gray-400 hover:bg-white/80 hover:text-gray-700'
+                        }`}
                         onClick={handleMenuClick}
                         type="button"
                     >
@@ -139,8 +169,20 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
 
                 <div className="flex-1 flex flex-col items-center justify-start pt-2 w-full mt-1 relative z-10 gap-2">
                     <div className="relative flex-shrink-0">
-                        <div className="absolute inset-0 bg-green-200 blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 rounded-full" />
-                        <div className="relative w-14 h-14 bg-red-50 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-300 border border-red-100 shadow-sm">
+                        <div
+                            className={`absolute inset-0 rounded-full blur-xl transition-opacity duration-500 ${
+                                isDashboardThemeEnabled
+                                    ? 'bg-primary/20 opacity-20 group-hover:opacity-45'
+                                    : 'bg-green-200 opacity-20 group-hover:opacity-40'
+                            }`}
+                        />
+                        <div
+                            className={`relative flex h-14 w-14 items-center justify-center rounded-lg border shadow-sm transition-transform duration-300 group-hover:scale-105 ${
+                                isDashboardThemeEnabled
+                                    ? 'border-error/20 bg-error/10'
+                                    : 'border-red-100 bg-red-50'
+                            }`}
+                        >
                             <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M7 3C5.34315 3 4 4.34315 4 6V18C4 19.6569 5.34315 21 7 21H17C18.6569 21 20 19.6569 20 18V9.82843C20 9.29799 19.7893 8.78929 19.4142 8.41421L14.5858 3.58579C14.2107 3.21071 13.702 3 13.1716 3H7Z" fillOpacity="0.1" />
                                 <path d="M14 3V8C14 8.55228 14.4477 9 15 9H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -148,11 +190,25 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                                 <rect x="7" y="13" width="10" height="2" rx="1" fill="currentColor" opacity="0.5" />
                                 <rect x="7" y="16" width="7" height="2" rx="1" fill="currentColor" opacity="0.5" />
                             </svg>
-                            <div className="absolute top-2 right-2 bg-red-100 text-red-600 text-[9px] font-bold px-1.5 py-0.5 rounded">PDF</div>
+                            <div
+                                className={`absolute right-2 top-2 rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                                    isDashboardThemeEnabled
+                                        ? 'bg-error/15 text-error'
+                                        : 'bg-red-100 text-red-600'
+                                }`}
+                            >
+                                PDF
+                            </div>
                         </div>
                     </div>
 
-                    <h4 className="text-[13px] font-semibold text-gray-700 w-full px-4 max-w-full leading-relaxed tracking-tight group-hover:text-green-800 transition-colors line-clamp-4 overflow-hidden text-ellipsis flex-1 flex items-center justify-center break-words text-wrap">
+                    <h4
+                        className={`flex max-w-full flex-1 items-center justify-center overflow-hidden px-4 text-[13px] font-semibold leading-relaxed tracking-tight text-ellipsis break-words text-wrap line-clamp-4 transition-colors ${
+                            isDashboardThemeEnabled
+                                ? 'text-base-content group-hover:text-primary'
+                                : 'text-gray-700 group-hover:text-green-800'
+                        }`}
+                    >
                         {document.title}
                     </h4>
 
@@ -160,7 +216,13 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                         const ext = getFileExtension(document.title);
                         return (ext && ext !== 'FILE' && ext.length <= 4) ? (
                             <div className="flex-shrink-0">
-                                <span className="text-[10px] tracking-wider text-gray-400 font-semibold bg-gray-50/80 px-2.5 py-1 rounded-lg border border-gray-100 uppercase group-hover:border-green-100/50 group-hover:text-green-600/70 transition-colors">
+                                <span
+                                    className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                                        isDashboardThemeEnabled
+                                            ? 'border-base-300 bg-base-200/80 text-base-content/55 group-hover:border-primary/30 group-hover:text-primary'
+                                            : 'border-gray-100 bg-gray-50/80 text-gray-400 group-hover:border-green-100/50 group-hover:text-green-600/70'
+                                    }`}
+                                >
                                     {ext}
                                 </span>
                             </div>
@@ -238,7 +300,12 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
 
             {
                 typeof window !== 'undefined' && showToast && createPortal(
-                    <div className="fixed top-6 right-6 z-[10000] bg-green-600 text-white px-6 py-4 rounded-xl shadow-lg">
+                    <div
+                        data-theme={isDashboardThemeEnabled ? theme : undefined}
+                        className={`fixed top-6 right-6 z-[10000] rounded-xl px-6 py-4 text-white shadow-lg ${
+                            isDashboardThemeEnabled ? 'bg-primary' : 'bg-green-600'
+                        }`}
+                    >
                         {toastMessage}
                     </div>,
                     window.document.body

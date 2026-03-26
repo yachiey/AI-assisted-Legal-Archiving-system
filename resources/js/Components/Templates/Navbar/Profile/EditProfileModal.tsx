@@ -113,13 +113,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
     return (
         <div
-            className="fixed inset-0 flex items-center justify-center z-[99999] bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[99999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center sm:p-6"
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden ml-64"
+                className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
-                style={{ marginLeft: "16rem" }}
+                style={{ maxHeight: "min(90vh, 960px)" }}
             >
                 {/* Header */}
                 <div className="relative bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 px-8 py-8">

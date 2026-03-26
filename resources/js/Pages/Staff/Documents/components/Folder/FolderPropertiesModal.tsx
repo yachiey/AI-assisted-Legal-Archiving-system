@@ -38,11 +38,9 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
         className="rounded-2xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+          background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
+          border: '1px solid rgba(34, 139, 34, 0.3)',
+          boxShadow: '0 10px 40px 0 rgba(0, 0, 0, 0.3)'
         }}
       >
         <div className="flex justify-between items-center border-b border-white/30 pb-4 mb-6">

@@ -1,48 +1,92 @@
-// Components/ProfileDropdown/UserInfoHeader.tsx
 import React from "react";
+import { usePage } from "@inertiajs/react";
 import { UserData } from "../../../../Types/profile_types";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    getDashboardThemeScopeForComponent,
+    isThemedComponentForScope,
+    useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 interface UserInfoHeaderProps {
     userData: UserData;
 }
 
 const UserInfoHeader: React.FC<UserInfoHeaderProps> = ({ userData }) => {
-    // Use profile_picture if available, otherwise fall back to avatar or default
+    const { component } = usePage();
+    const scope = getDashboardThemeScopeForComponent(component);
+    const { theme } = useDashboardTheme(scope);
+    const isDashboardThemeEnabled =
+        isThemedComponentForScope(component, scope) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
+
     const profileImageUrl = userData.profile_picture
         ? `/storage/${userData.profile_picture}`
-        : (userData.avatar || `https://i.pravatar.cc/48?u=${userData.email}`);
+        : userData.avatar || `https://i.pravatar.cc/48?u=${userData.email}`;
 
-    // Get initial for fallback display (just first letter)
-    const getInitial = () => {
-        return userData.name.charAt(0).toUpperCase();
-    };
+    const getInitial = () => userData.name.charAt(0).toUpperCase();
 
     return (
-        <div className="px-4 py-3 border-b border-gray-100 mb-2">
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`mb-2 border-b px-4 py-3 ${
+                isDashboardThemeEnabled
+                    ? "border-base-300"
+                    : "border-gray-100"
+            }`}
+        >
             <div className="flex items-center">
                 {userData.profile_picture ? (
                     <img
                         src={profileImageUrl}
                         alt={`${userData.name}'s Profile`}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                        className={`h-12 w-12 rounded-full object-cover border-2 ${
+                            isDashboardThemeEnabled
+                                ? "border-base-300"
+                                : "border-gray-200"
+                        }`}
                         onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = `https://i.pravatar.cc/48?u=${userData.email}`;
                         }}
                     />
                 ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-center text-white text-xl font-bold border-2 border-gray-200">
+                    <div
+                        className={`flex h-12 w-12 items-center justify-center rounded-full border-2 text-xl font-bold ${
+                            isDashboardThemeEnabled
+                                ? "border-base-300 bg-primary text-primary-content"
+                                : "border-gray-200 bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+                        }`}
+                    >
                         {getInitial()}
                     </div>
                 )}
                 <div className="ml-3 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p
+                        className={`truncate text-sm font-medium ${
+                            isDashboardThemeEnabled
+                                ? "text-base-content"
+                                : "text-gray-900"
+                        }`}
+                    >
                         {userData.name}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p
+                        className={`truncate text-xs ${
+                            isDashboardThemeEnabled
+                                ? "text-base-content/55"
+                                : "text-gray-500"
+                        }`}
+                    >
                         {userData.email}
                     </p>
-                    <p className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full inline-block mt-1">
+                    <p
+                        className={`mt-1 inline-block rounded-full px-2 py-1 text-xs ${
+                            isDashboardThemeEnabled
+                                ? "bg-primary/10 text-primary"
+                                : "bg-blue-100 text-blue-800"
+                        }`}
+                    >
                         {userData.role}
                     </p>
                 </div>

@@ -6,9 +6,17 @@ interface ProcessingModalProps {
     isOpen: boolean;
     step: 'extracting' | 'analyzing' | 'processing';
     details?: string;
+    theme?: string;
+    isDashboardThemeEnabled?: boolean;
 }
 
-const ProcessingModal: React.FC<ProcessingModalProps> = ({ isOpen, step, details }) => {
+const ProcessingModal: React.FC<ProcessingModalProps> = ({
+    isOpen,
+    step,
+    details,
+    theme,
+    isDashboardThemeEnabled = false,
+}) => {
     if (!isOpen) return null;
 
     const getStepInfo = () => {
@@ -57,15 +65,30 @@ const ProcessingModal: React.FC<ProcessingModalProps> = ({ isOpen, step, details
 
     const modalContent = (
         <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
             className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/40 backdrop-blur-[4px]"
             style={{ margin: 0, padding: 0 }}
         >
             <div
-                className="bg-white/95 w-full max-w-lg mx-4 overflow-hidden rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20"
+                className={`mx-4 w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl backdrop-blur-xl ${
+                    isDashboardThemeEnabled
+                        ? 'border border-base-300 bg-base-100/95 text-base-content'
+                        : 'border border-white/20 bg-white/95'
+                }`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Animated Header Background */}
-                <div className={`h-2 w-full ${step === 'extracting' ? 'bg-blue-500' : 'bg-green-500'} animate-pulse`}></div>
+                <div
+                    className={`h-2 w-full animate-pulse ${
+                        step === 'extracting'
+                            ? isDashboardThemeEnabled
+                                ? 'bg-info'
+                                : 'bg-blue-500'
+                            : isDashboardThemeEnabled
+                              ? 'bg-primary'
+                              : 'bg-green-500'
+                    }`}
+                ></div>
 
                 <div className="p-10 text-center">
                     {/* Main Icon Container */}
@@ -80,17 +103,37 @@ const ProcessingModal: React.FC<ProcessingModalProps> = ({ isOpen, step, details
                         </div>
                     </div>
 
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
+                    <h3
+                        className={`mb-3 text-2xl font-bold tracking-tight ${
+                            isDashboardThemeEnabled
+                                ? 'text-base-content'
+                                : 'text-gray-900'
+                        }`}
+                    >
                         {info.title}
                     </h3>
 
-                    <p className="text-gray-600 mb-8 max-w-xs mx-auto leading-relaxed">
+                    <p
+                        className={`mx-auto mb-8 max-w-xs leading-relaxed ${
+                            isDashboardThemeEnabled
+                                ? 'text-base-content/65'
+                                : 'text-gray-600'
+                        }`}
+                    >
                         {info.description}
                     </p>
 
                     {/* Detailed Status (Optional) */}
                     {details && (
-                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${info.colorAttributes.bg} border ${info.colorAttributes.border}`}>
+                        <div
+                            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 ${
+                                isDashboardThemeEnabled
+                                    ? step === 'extracting'
+                                        ? 'border-info/20 bg-info/10'
+                                        : 'border-primary/20 bg-primary/10'
+                                    : `${info.colorAttributes.bg} ${info.colorAttributes.border}`
+                            }`}
+                        >
                             <Loader2 className={`w-3 h-3 ${info.colorAttributes.text} animate-spin`} />
                             <span className={`text-xs font-semibold ${info.colorAttributes.text} uppercase tracking-wide`}>
                                 {details}

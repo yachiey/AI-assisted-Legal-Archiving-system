@@ -1,5 +1,9 @@
 import React from "react";
 import { Users, UserPlus } from "lucide-react";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 interface AccountHeaderProps {
     totalUsers: number;
@@ -12,58 +16,190 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
     activeUsers,
     onAddUserClick,
 }) => {
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
     return (
-        <div className="mb-8">
-            <div className="mb-8 rounded-2xl p-6 shadow-lg border border-green-700/20" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-                {/* Title and Action */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className="mb-8"
+        >
+            <div
+                className={`mb-8 rounded-2xl border p-6 ${
+                    isDashboardThemeEnabled
+                        ? "border-base-300/70 bg-base-100/90 shadow-2xl shadow-base-content/5 backdrop-blur-xl"
+                        : "border-green-700/20 shadow-lg"
+                }`}
+                style={
+                    isDashboardThemeEnabled
+                        ? {
+                              boxShadow:
+                                  "0 24px 60px oklch(var(--bc) / 0.06), inset 0 1px 0 oklch(var(--b1) / 0.4)",
+                          }
+                        : {
+                              background:
+                                  "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                          }
+                }
+            >
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight flex items-center gap-3">
-                            <Users className="w-8 h-8 text-yellow-400" />
+                        <h1
+                            className={`mb-2 flex items-center gap-3 text-4xl font-black tracking-tight md:text-5xl ${
+                                isDashboardThemeEnabled
+                                    ? "text-base-content"
+                                    : "text-white"
+                            }`}
+                        >
+                            <Users
+                                className={`h-8 w-8 ${
+                                    isDashboardThemeEnabled
+                                        ? "text-primary"
+                                        : "text-yellow-400"
+                                }`}
+                            />
                             ACCOUNT MANAGEMENT
                         </h1>
-                        <div className="h-1 w-48 bg-gradient-to-r from-yellow-400 to-transparent rounded-full mb-3"></div>
-                        <p className="text-lg text-green-50 font-medium tracking-wide">Manage users, roles, and permissions</p>
+                        <div
+                            className="mb-3 h-1 w-48 rounded-full"
+                            style={{
+                                background: isDashboardThemeEnabled
+                                    ? "linear-gradient(90deg, oklch(var(--p)), transparent)"
+                                    : "linear-gradient(90deg, #facc15, transparent)",
+                            }}
+                        ></div>
+                        <p
+                            className={`text-lg font-medium tracking-wide ${
+                                isDashboardThemeEnabled
+                                    ? "text-base-content/70"
+                                    : "text-green-50"
+                            }`}
+                        >
+                            Manage users, roles, and permissions
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button
                             onClick={onAddUserClick}
-                            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                            className={`group flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+                                isDashboardThemeEnabled
+                                    ? "border border-primary/30 bg-primary text-primary-content shadow-lg shadow-primary/15 hover:bg-primary/90 hover:shadow-xl"
+                                    : "border-2 border-white/30 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20 hover:shadow-lg"
+                            }`}
                         >
-                            <UserPlus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                            <UserPlus className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
                             Add Account
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Total Users */}
-                <div className="rounded-2xl p-6 border border-green-700/30 shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div
+                    className={`rounded-2xl border p-6 transition-all ${
+                        isDashboardThemeEnabled
+                            ? "border-base-300 bg-base-100 shadow-xl shadow-base-content/5"
+                            : "border-green-700/30 shadow-md"
+                    }`}
+                    style={
+                        isDashboardThemeEnabled
+                            ? undefined
+                            : {
+                                  background:
+                                      "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                              }
+                    }
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-white/80 text-sm font-medium mb-1">Total Users</p>
-                            <p className="text-4xl font-bold text-white">{totalUsers}</p>
+                            <p
+                                className={`mb-1 text-sm font-medium ${
+                                    isDashboardThemeEnabled
+                                        ? "text-base-content/65"
+                                        : "text-white/80"
+                                }`}
+                            >
+                                Total Users
+                            </p>
+                            <p
+                                className={`text-4xl font-bold ${
+                                    isDashboardThemeEnabled
+                                        ? "text-base-content"
+                                        : "text-white"
+                                }`}
+                            >
+                                {totalUsers}
+                            </p>
                         </div>
-                        <div className="p-4 bg-white/20 rounded-xl">
-                            <Users className="w-8 h-8 text-white" />
+                        <div
+                            className={`rounded-xl p-4 ${
+                                isDashboardThemeEnabled
+                                    ? "bg-primary/10"
+                                    : "bg-white/20"
+                            }`}
+                        >
+                            <Users
+                                className={`h-8 w-8 ${
+                                    isDashboardThemeEnabled
+                                        ? "text-primary"
+                                        : "text-white"
+                                }`}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Active Users */}
-                <div className="rounded-2xl p-6 border border-yellow-700/30 shadow-md"
-                    style={{ background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}>
+                <div
+                    className={`rounded-2xl border p-6 transition-all ${
+                        isDashboardThemeEnabled
+                            ? "border-base-300 bg-base-100 shadow-xl shadow-base-content/5"
+                            : "border-yellow-700/30 shadow-md"
+                    }`}
+                    style={
+                        isDashboardThemeEnabled
+                            ? undefined
+                            : {
+                                  background:
+                                      "linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)",
+                              }
+                    }
+                >
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-gray-800 text-sm font-medium mb-1">Active Users</p>
-                            <p className="text-4xl font-bold text-gray-900">{activeUsers}</p>
+                            <p
+                                className={`mb-1 text-sm font-medium ${
+                                    isDashboardThemeEnabled
+                                        ? "text-base-content/65"
+                                        : "text-gray-800"
+                                }`}
+                            >
+                                Active Users
+                            </p>
+                            <p
+                                className={`text-4xl font-bold ${
+                                    isDashboardThemeEnabled
+                                        ? "text-base-content"
+                                        : "text-gray-900"
+                                }`}
+                            >
+                                {activeUsers}
+                            </p>
                         </div>
-                        <div className="p-4 bg-white/30 rounded-xl">
-                            <Users className="w-8 h-8 text-gray-900" />
+                        <div
+                            className={`rounded-xl p-4 ${
+                                isDashboardThemeEnabled
+                                    ? "bg-success/10"
+                                    : "bg-white/30"
+                            }`}
+                        >
+                            <Users
+                                className={`h-8 w-8 ${
+                                    isDashboardThemeEnabled
+                                        ? "text-success"
+                                        : "text-gray-900"
+                                }`}
+                            />
                         </div>
                     </div>
                 </div>

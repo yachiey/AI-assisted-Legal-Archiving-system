@@ -7,13 +7,17 @@ interface UploadDocumentViewerProps {
   onClose: () => void;
   docId: number | null;
   fileName: string;
+  theme?: string;
+  isDashboardThemeEnabled?: boolean;
 }
 
 const UploadDocumentViewer: React.FC<UploadDocumentViewerProps> = ({
   isOpen,
   onClose,
   docId,
-  fileName
+  fileName,
+  theme,
+  isDashboardThemeEnabled = false,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +123,8 @@ const UploadDocumentViewer: React.FC<UploadDocumentViewerProps> = ({
   return createPortal(
     <UploadDocumentViewerUI
       fileName={fileName}
+      theme={theme}
+      isDashboardThemeEnabled={isDashboardThemeEnabled}
       loading={loading}
       error={error}
       fileContent={fileContent}

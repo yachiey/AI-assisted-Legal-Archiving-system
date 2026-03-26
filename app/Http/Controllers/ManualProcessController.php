@@ -99,7 +99,6 @@ class ManualProcessController extends Controller
                 'description' => $latestDocument->description,
                 'createdAt' => $latestDocument->created_at->format('Y-m-d'),
                 'createdBy' => $createdByName,
-                'category_id' => $latestDocument->category_id,
                 'folder_id' => $latestDocument->folder_id,
                 'remarks' => $latestDocument->remarks,
                 'physical_location' => $latestDocument->physical_location,

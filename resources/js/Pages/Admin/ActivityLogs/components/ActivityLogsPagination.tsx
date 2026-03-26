@@ -1,5 +1,9 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 interface ActivityLogsPaginationProps {
     currentPage: number;
@@ -22,12 +26,24 @@ const ActivityLogsPagination: React.FC<ActivityLogsPaginationProps> = ({
     onNextPage,
     onGoToPage,
 }) => {
+    const { theme } = useDashboardTheme();
+    const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
     if (totalPages <= 1) return null;
 
     return (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`border-t p-4 ${
+                isDashboardThemeEnabled
+                    ? 'border-base-300 bg-base-200/60'
+                    : 'border-gray-200 bg-gray-50'
+            }`}
+        >
             <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700 font-normal">
+                <div className={`text-sm font-normal ${
+                    isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                }`}>
                     Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems}
                 </div>
 
@@ -35,10 +51,16 @@ const ActivityLogsPagination: React.FC<ActivityLogsPaginationProps> = ({
                     <button
                         onClick={onPrevPage}
                         disabled={currentPage === 1}
-                        className="p-2 rounded-lg border border-gray-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                        className={`rounded-lg border p-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            isDashboardThemeEnabled
+                                ? 'border-base-300 bg-base-100 hover:bg-base-200'
+                                : 'border-gray-300 bg-white hover:bg-white'
+                        }`}
                         aria-label="Previous page"
                     >
-                        <ChevronLeft className="w-4 h-4 text-gray-700" />
+                        <ChevronLeft className={`w-4 h-4 ${
+                            isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                        }`} />
                     </button>
 
                     <div className="flex gap-1">
@@ -60,8 +82,12 @@ const ActivityLogsPagination: React.FC<ActivityLogsPaginationProps> = ({
                                     onClick={() => onGoToPage(page)}
                                     className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-200 ${
                                         currentPage === page
-                                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm'
-                                            : 'border border-gray-300 text-gray-700 hover:bg-white bg-gray-50'
+                                            ? isDashboardThemeEnabled
+                                                ? 'bg-primary text-primary-content shadow-sm'
+                                                : 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm'
+                                            : isDashboardThemeEnabled
+                                                ? 'border border-base-300 bg-base-100 text-base-content/75 hover:bg-base-200'
+                                                : 'border border-gray-300 text-gray-700 hover:bg-white bg-gray-50'
                                     }`}
                                 >
                                     {page}
@@ -73,10 +99,16 @@ const ActivityLogsPagination: React.FC<ActivityLogsPaginationProps> = ({
                     <button
                         onClick={onNextPage}
                         disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg border border-gray-300 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white"
+                        className={`rounded-lg border p-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            isDashboardThemeEnabled
+                                ? 'border-base-300 bg-base-100 hover:bg-base-200'
+                                : 'border-gray-300 bg-white hover:bg-white'
+                        }`}
                         aria-label="Next page"
                     >
-                        <ChevronRight className="w-4 h-4 text-gray-700" />
+                        <ChevronRight className={`w-4 h-4 ${
+                            isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700'
+                        }`} />
                     </button>
                 </div>
             </div>

@@ -230,8 +230,6 @@ const ManualProcessing = ({
   return (
     <div className="min-h-screen p-4" style={{
       background: 'rgba(0, 0, 0, 0.3)',
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)'
     }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -251,11 +249,9 @@ const ManualProcessing = ({
 
         {/* Main Content Card */}
         <div className="rounded-2xl shadow-xl overflow-hidden" style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.4)',
-          boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+          background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
+          border: '1px solid rgba(34, 139, 34, 0.3)',
+          boxShadow: '0 10px 40px 0 rgba(0, 0, 0, 0.3)'
         }}>
           {/* Document Uploaded Section */}
           <div className="px-8 py-6 border-b border-white/30" style={{
@@ -368,9 +364,7 @@ const ManualProcessing = ({
                     <div
                       className="absolute z-[999] w-full mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
-                        backdropFilter: 'blur(40px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+                        background: 'white',
                         border: '1px solid rgba(34, 197, 94, 0.3)',
                         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
                       }}>

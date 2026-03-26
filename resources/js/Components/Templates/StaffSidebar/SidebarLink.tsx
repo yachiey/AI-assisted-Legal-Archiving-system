@@ -1,6 +1,12 @@
 import { FC } from "react";
 import { Link } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 import { ChevronRight } from "lucide-react";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    isThemedStaffComponent,
+    useDashboardTheme,
+} from "../../../hooks/useDashboardTheme";
 
 interface SidebarLinkProps {
     item: {
@@ -15,6 +21,12 @@ interface SidebarLinkProps {
 }
 
 const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst }) => {
+    const { component } = usePage();
+    const { theme } = useDashboardTheme("staff");
+    const isDashboardThemeEnabled =
+        isThemedStaffComponent(component) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
+
     return (
         <li>
             <Link
@@ -27,42 +39,59 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
                     }
                     ${
                         isActive
-                            ? "text-green-900 shadow-lg scale-105"
-                            : "text-white/90 hover:text-white hover:bg-white/10"
+                            ? isDashboardThemeEnabled
+                                ? "bg-base-100/95 text-base-content shadow-lg scale-105"
+                                : "text-green-900 shadow-lg scale-105"
+                            : isDashboardThemeEnabled
+                                ? "text-primary-content/70 hover:text-primary-content hover:bg-primary-content/10"
+                                : "text-white/70 hover:text-white hover:bg-white/10"
                     }
                 `}
-                style={isActive ? {
-                    background: 'linear-gradient(135deg, #FBEC5D 0%, #E6D700 100%)',
-                    boxShadow: '0 4px 12px rgba(251, 236, 93, 0.3)'
-                } : {}}
+                style={
+                    isActive && !isDashboardThemeEnabled
+                        ? {
+                              background:
+                                  "linear-gradient(135deg, #FBEC5D 0%, #E6D700 100%)",
+                              boxShadow: "0 4px 12px rgba(251, 236, 93, 0.3)",
+                          }
+                        : {}
+                }
                 title={collapsed ? item.title : undefined}
             >
                 {/* Active indicator bar */}
                 {isActive && !collapsed && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-green-800 rounded-r-full"></div>
+                    <div
+                        className={`absolute left-0 top-1/2 h-8 w-1 -translate-y-1/2 rounded-r-full ${
+                            isDashboardThemeEnabled
+                                ? "bg-secondary"
+                                : "bg-green-800"
+                        }`}
+                    ></div>
                 )}
 
                 {/* Background hover effect */}
                 {!isActive && (
-                    <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div
+                        className={`absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${
+                            isDashboardThemeEnabled ? "bg-primary-content/5" : "bg-white/5"
+                        }`}
+                    ></div>
                 )}
 
                 {/* Icon */}
-                <span className={`relative z-10 transition-all duration-300 flex items-center justify-center ${
-                    collapsed ? "text-lg" : "text-base"
-                } ${isActive ? "scale-110" : "group-hover:scale-110"}`}>
+                <span className={`relative z-10 transition-all duration-300 flex items-center justify-center ${collapsed ? "text-lg" : "text-base"
+                    } ${isActive ? "scale-110" : "group-hover:scale-110"}`}>
                     {item.icon}
                 </span>
 
                 {/* Title - hidden when collapsed */}
                 {!collapsed && (
-                    <span className={`relative z-10 font-semibold transition-all duration-300 tracking-wide ${
-                        isActive ? "text-sm" : "text-sm group-hover:translate-x-0.5"
-                    }`}
-                    style={{
-                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                        letterSpacing: '0.02em'
-                    }}>
+                    <span className={`relative z-10 font-semibold transition-all duration-300 tracking-wide ${isActive ? "text-sm" : "text-sm group-hover:translate-x-0.5"
+                        }`}
+                        style={{
+                            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                            letterSpacing: '0.02em'
+                        }}>
                         {item.title}
                     </span>
                 )}
@@ -71,25 +100,46 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
                 {isActive && !collapsed && (
                     <ChevronRight
                         size={16}
-                        className="ml-auto relative z-10 animate-pulse text-green-900"
+                        className={`relative z-10 ml-auto animate-pulse ${
+                            isDashboardThemeEnabled
+                                ? "text-primary"
+                                : "text-green-900"
+                        }`}
                     />
                 )}
 
                 {/* Badge */}
                 {item.badge && !collapsed && (
-                    <span className="ml-auto relative z-10 bg-[#FBEC5D] text-green-900 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+                    <span
+                        className={`relative z-10 ml-auto rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
+                            isDashboardThemeEnabled
+                                ? "bg-secondary text-secondary-content"
+                                : "bg-[#FBEC5D] text-green-900"
+                        }`}
+                    >
                         {item.badge}
                     </span>
                 )}
 
                 {/* Tooltip for collapsed state */}
                 {collapsed && (
-                    <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-xl"
-                    style={{
-                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-                    }}>
+                    <div
+                        className={`absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold opacity-0 invisible shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100 ${
+                            isDashboardThemeEnabled
+                                ? "border border-base-300 bg-base-100 text-base-content"
+                                : "bg-gray-900 text-white"
+                        }`}
+                        style={{
+                            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                        }}>
                         {item.title}
-                        <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
+                        <div
+                            className={`absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent ${
+                                isDashboardThemeEnabled
+                                    ? "border-r-base-100"
+                                    : "border-r-gray-900"
+                            }`}
+                        ></div>
                     </div>
                 )}
             </Link>

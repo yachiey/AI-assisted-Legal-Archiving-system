@@ -14,7 +14,6 @@ interface DocumentData {
   description?: string;
   analysis?: string;
   suggestedLocation?: string;
-  suggestedCategory?: string;
   createdBy?: string;
   createdAt?: string;
   status?: string;
@@ -32,9 +31,7 @@ interface AnalysisData {
   suggested_title: string;
   suggested_description: string;
   ai_remarks: string;
-  suggested_category: any;
   suggested_folder: any;
-  category_confidence: number;
   folder_confidence: number;
   analysis_summary: string;
   word_count: number;
@@ -245,9 +242,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({
               suggested_title: updatedDoc.title,
               suggested_description: updatedDoc.description,
               ai_remarks: updatedDoc.remarks || '',
-              suggested_category: updatedDoc.category ? { category_name: updatedDoc.category } : null,
               suggested_folder: updatedDoc.suggestedLocation ? { folder_name: updatedDoc.suggestedLocation } : null,
-              category_confidence: 0.9,
               folder_confidence: 0.9,
               analysis_summary: updatedDoc.description,
               word_count: 0,
@@ -534,9 +529,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({
     suggested_title: document.title || document.fileName || "Legal Document",
     suggested_description: document.description || "Document uploaded for AI processing",
     ai_remarks: document.remarks || "Processing complete",
-    suggested_category: document.suggestedCategory ? { category_name: document.suggestedCategory } : null,
     suggested_folder: document.suggestedLocation ? { folder_name: document.suggestedLocation } : null,
-    category_confidence: 0,
     folder_confidence: 0,
     analysis_summary: document.description || "Document ready for processing",
     word_count: 0,

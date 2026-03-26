@@ -357,11 +357,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
         className="rounded-xl shadow-2xl w-full max-w-6xl mx-4 h-5/6 flex flex-col"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
-          backdropFilter: 'blur(40px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          boxShadow: '0 20px 60px 0 rgba(100, 116, 139, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
+          background: 'white',
+          border: '1px solid rgba(0, 0, 0, 0.1)',
+          boxShadow: '0 20px 60px 0 rgba(100, 116, 139, 0.3)'
         }}
       >
         {/* Header */}

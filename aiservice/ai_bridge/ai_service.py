@@ -2,6 +2,7 @@
 Core AI functionality for document processing - With Groq/Llama fallback
 """
 import os
+import json
 import logging
 import requests
 import re
@@ -155,9 +156,10 @@ class AIBridgeService:
             return []
     
     def analyze_document_content(self, text):
-        """Analyze document content to extract title, description, and generate AI suggestions.
-        Runs all 3 Groq calls in PARALLEL for speed."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        """Analyze document content to extract title, description, and remarks.
+        Local mode uses one Llama pass first to reduce latency; other paths keep the
+        existing per-field generation behavior."""
+        from concurrent.futures import ThreadPoolExecutor
         try:
             # Debug logging
             logger.info(f"analyze_document_content called with text length: {len(text) if text else 0}")
@@ -171,6 +173,14 @@ class AIBridgeService:
                     'suggested_description': 'Insufficient text content extracted from document',
                     'ai_remarks': 'ERROR: No text content available for analysis'
                 }
+
+            if AI_SERVICE_TYPE == 'local' and is_llama_loaded():
+                logger.info("Attempting single local Llama pass for document analysis")
+                local_analysis = self._analyze_document_content_single_pass(text)
+                if local_analysis:
+                    return local_analysis
+
+                logger.warning("Single local Llama pass failed validation, falling back to per-field analysis")
 
             # Run title, description, and remarks generation IN PARALLEL
             title = 'Legal Document'
@@ -213,6 +223,84 @@ class AIBridgeService:
                 'suggested_description': f'DEBUG ERROR: {str(e)}',
                 'ai_remarks': f'Analysis error: {str(e)}'
             }
+
+    def _analyze_document_content_single_pass(self, text):
+        """Generate title, description, and remarks in one local Llama request."""
+        try:
+            llama_model = get_llama_model()
+            if not llama_model:
+                return None
+
+            text_sample = text[:1800] if len(text) > 1800 else text
+
+            prompt = f"""<|start_header_id|>system<|end_header_id|>
+
+You are an expert legal document analyst. Return ONLY valid JSON with exactly these keys:
+"title", "description", "ai_remarks".
+
+Rules:
+- "title" must be in exact format YYYY-MM-DD-FullName-DocumentType
+- Name in title must be PascalCase with no spaces or periods
+- Document type in title must be specific, like AffidavitOfLoss or MemorandumOfAgreement
+- "description" must be 2-3 sentences under 400 characters and include the person's full name in the first sentence
+- "ai_remarks" must stay under 300 characters and focus on dates, deadlines, amounts, names, penalties, or obligations
+- Return JSON only, with double quotes, no markdown and no explanation<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+Analyze this legal document and return the JSON object.
+
+Document:
+{text_sample}
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+"""
+
+            with get_llama_lock():
+                response = llama_model(
+                    prompt,
+                    max_tokens=220,
+                    temperature=0.2,
+                    top_p=0.9,
+                    repeat_penalty=1.1,
+                    stop=["<|eot_id|>", "<|start_header_id|>"]
+                )
+
+            raw_response = response['choices'][0]['text'].strip()
+            if not raw_response:
+                return None
+
+            json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
+            if not json_match:
+                logger.warning(f"Single-pass local analysis returned non-JSON output: {raw_response[:120]}")
+                return None
+
+            analysis = json.loads(json_match.group(0))
+
+            title = str(analysis.get('title', '')).strip()
+            description = str(analysis.get('description', '')).strip().replace('\n', ' ')
+            remarks = str(analysis.get('ai_remarks', analysis.get('remarks', ''))).strip().replace('\n', ' ')
+
+            if not title:
+                title = self._generate_enhanced_title(text)
+            title = self._clean_title_final(title)
+
+            if not description or len(description) < 20:
+                description = self._generate_rule_based_description(text)
+            if len(description) > MAX_DESCRIPTION_LENGTH:
+                cutoff = description[:MAX_DESCRIPTION_LENGTH].rfind(' ')
+                description = description[:cutoff] + "..."
+
+            if not remarks or len(remarks) < 20:
+                remarks = self._generate_rule_based_remarks(text)
+
+            return {
+                'suggested_title': title,
+                'suggested_description': description,
+                'ai_remarks': remarks
+            }
+
+        except Exception as e:
+            logger.error(f"Single-pass local analysis failed: {str(e)}")
+            return None
     
     def _clean_title_final(self, title):
         """Final cleanup: ensure title name is PascalCase with no spaces/hyphens/periods.

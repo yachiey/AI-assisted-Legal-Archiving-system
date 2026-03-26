@@ -1,8 +1,11 @@
-// components/RecentFiles.tsx
-import React, { useState } from 'react';
-import { Link } from '@inertiajs/react';
-import { RecentFile } from '../types/dashboard';
-import UploadDocumentViewer from '../../Document/components/FileUpload/UploadDocumentViewer';
+import React, { useState } from "react";
+import { Link } from "@inertiajs/react";
+import { RecentFile } from "../types/dashboard";
+import UploadDocumentViewer from "../../Document/components/FileUpload/UploadDocumentViewer";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 interface RecentFilesProps {
   files: RecentFile[];
@@ -11,10 +14,12 @@ interface RecentFilesProps {
 export default function RecentFiles({ files }: RecentFilesProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
-  const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   const handleViewDocument = (file: RecentFile) => {
-    if (typeof file.id === 'number') {
+    if (typeof file.id === "number") {
       setSelectedDocId(file.id);
       setSelectedFileName(file.title);
       setViewerOpen(true);
@@ -22,53 +27,168 @@ export default function RecentFiles({ files }: RecentFilesProps) {
   };
 
   return (
-    <div className="rounded-3xl shadow-lg border border-green-100/50 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)' }}>
+    <div
+      className={`rounded-3xl shadow-lg overflow-hidden ${
+        isDashboardThemeEnabled
+          ? "border border-base-300/70 bg-base-100/90"
+          : "border border-green-100/50"
+      }`}
+      style={
+        isDashboardThemeEnabled
+          ? undefined
+          : { background: "linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)" }
+      }
+    >
       <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-white">RECENT ADDED FILES</h2>
-          <span className="text-sm text-gray-200 font-normal">{files.length} files</span>
+        <div className="mb-6 flex items-center justify-between">
+          <h2
+            className={`text-xl font-semibold ${
+              isDashboardThemeEnabled ? "text-base-content" : "text-white"
+            }`}
+          >
+            RECENT ADDED FILES
+          </h2>
+          <span
+            className={`text-sm font-normal ${
+              isDashboardThemeEnabled ? "text-base-content/60" : "text-gray-200"
+            }`}
+          >
+            {files.length} files
+          </span>
         </div>
 
-        <div className={`space-y-4 ${files.length > 2 ? 'max-h-[280px] overflow-y-auto custom-scrollbar pr-2' : ''}`}>
+        <div
+          className={`space-y-4 ${
+            files.length > 2 ? "max-h-[280px] overflow-y-auto custom-scrollbar pr-2" : ""
+          }`}
+        >
           {files.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400 mb-3">
-                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="py-8 text-center">
+              <div
+                className={`mb-3 ${
+                  isDashboardThemeEnabled ? "text-base-content/35" : "text-gray-400"
+                }`}
+              >
+                <svg
+                  className="mx-auto h-16 w-16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-gray-200 font-semibold mb-1">No files added today</h3>
-              <p className="text-sm text-gray-300 font-normal">Files added today will appear here</p>
+              <h3
+                className={`mb-1 font-semibold ${
+                  isDashboardThemeEnabled ? "text-base-content" : "text-gray-200"
+                }`}
+              >
+                No files added today
+              </h3>
+              <p
+                className={`text-sm font-normal ${
+                  isDashboardThemeEnabled ? "text-base-content/60" : "text-gray-300"
+                }`}
+              >
+                Files added today will appear here
+              </p>
             </div>
           ) : (
             files.map((file) => (
-              <div key={file.id} className="group hover:bg-green-900/20 p-4 rounded-lg transition-all duration-200 cursor-pointer border border-green-700/30 hover:border-green-500/50 hover:shadow-sm">
+              <div
+                key={file.id}
+                className={`group cursor-pointer rounded-lg p-4 transition-all duration-200 hover:shadow-sm ${
+                  isDashboardThemeEnabled
+                    ? "border border-base-300/70 bg-base-100 hover:border-primary/25 hover:bg-base-200/80"
+                    : "border border-green-700/30 hover:border-green-500/50 hover:bg-green-900/20"
+                }`}
+              >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-white mb-2 line-clamp-2 group-hover:text-green-300 transition-colors leading-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3
+                      className={`mb-2 line-clamp-2 font-semibold leading-tight transition-colors ${
+                        isDashboardThemeEnabled
+                          ? "text-base-content group-hover:text-primary"
+                          : "text-white group-hover:text-green-300"
+                      }`}
+                    >
                       {file.title}
                     </h3>
-                    <div className="flex items-center flex-wrap gap-2 text-sm">
-                      <span className="bg-green-900/50 text-green-200 px-2.5 py-1 rounded-full text-xs font-medium">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          isDashboardThemeEnabled
+                            ? "bg-primary/10 text-primary"
+                            : "bg-green-900/50 text-green-200"
+                        }`}
+                      >
                         PDF
                       </span>
-                      <span className="text-gray-300 font-normal">{file.timestamp}</span>
-                      <span className="text-gray-600">•</span>
-                      <span className="text-gray-400 font-light">{file.date}</span>
+                      <span
+                        className={`font-normal ${
+                          isDashboardThemeEnabled
+                            ? "text-base-content/65"
+                            : "text-gray-300"
+                        }`}
+                      >
+                        {file.timestamp}
+                      </span>
+                      <span
+                        className={
+                          isDashboardThemeEnabled
+                            ? "text-base-content/25"
+                            : "text-gray-600"
+                        }
+                      >
+                        |
+                      </span>
+                      <span
+                        className={`font-light ${
+                          isDashboardThemeEnabled
+                            ? "text-base-content/45"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        {file.date}
+                      </span>
                     </div>
                   </div>
-                  <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="ml-4 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleViewDocument(file);
                       }}
-                      className="text-gray-400 hover:text-green-300 p-2 rounded-full hover:bg-green-900/30 transition-all"
+                      className={`rounded-full p-2 transition-all ${
+                        isDashboardThemeEnabled
+                          ? "text-base-content/45 hover:bg-primary/10 hover:text-primary"
+                          : "text-gray-400 hover:bg-green-900/30 hover:text-green-300"
+                      }`}
                       title="View document"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -78,20 +198,32 @@ export default function RecentFiles({ files }: RecentFilesProps) {
           )}
         </div>
 
-        <div className="mt-4 pt-4 border-t border-green-700/30">
-          <Link href="/admin/documents" className="text-green-300 hover:text-green-200 text-sm font-medium inline-block">
-            View all files →
+        <div
+          className={`mt-4 border-t pt-4 ${
+            isDashboardThemeEnabled
+              ? "border-base-300/70"
+              : "border-green-700/30"
+          }`}
+        >
+          <Link
+            href="/admin/documents"
+            className={`inline-block text-sm font-medium ${
+              isDashboardThemeEnabled
+                ? "text-primary hover:text-secondary"
+                : "text-green-300 hover:text-green-200"
+            }`}
+          >
+            View all files -&gt;
           </Link>
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
       <UploadDocumentViewer
         isOpen={viewerOpen}
         onClose={() => {
           setViewerOpen(false);
           setSelectedDocId(null);
-          setSelectedFileName('');
+          setSelectedFileName("");
         }}
         docId={selectedDocId}
         fileName={selectedFileName}

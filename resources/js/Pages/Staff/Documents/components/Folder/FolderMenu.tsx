@@ -19,11 +19,9 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
     <div
       className="absolute right-0 mt-2 w-40 rounded-xl shadow-lg z-50 overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
-        boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+        background: 'white',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 10px 40px 0 rgba(100, 116, 139, 0.2)'
       }}
       onClick={(e) => e.stopPropagation()}
     >

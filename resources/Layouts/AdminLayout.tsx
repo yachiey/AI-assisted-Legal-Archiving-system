@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState, ReactNode } from "react";
+import { usePage } from "@inertiajs/react";
 import Navbar from "../js/Components/Templates/Navbar/index";
 import Sidebar from "../js/Components/Templates/AdminSidebar";
 import {
@@ -9,6 +10,11 @@ import { ModalProvider, useModal } from "../js/Components/Modal/ModalContext";
 import Modal from "./ModalLayout";
 import { ChatProvider } from "../js/Context/ChatContext";
 import { ChatWidget } from "../js/Components/GlobalChat/ChatWidget";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    isThemedAdminComponent,
+    useDashboardTheme,
+} from "../js/hooks/useDashboardTheme";
 
 interface AdminLayoutProps {
     children: ReactNode;
@@ -59,19 +65,34 @@ function InnerLayout({
 }) {
     const context = useContext(DashboardContext);
     const { isFilterOpen, closeFilter } = useModal();
+    const { component } = usePage();
+    const { theme } = useDashboardTheme();
 
     if (!context) return null;
 
     const { showMobileSidebar, toggleMobileSidebar } = context;
+    const isDashboardThemeEnabled =
+        isThemedAdminComponent(component) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
 
     return (
-        <div className="flex h-screen overflow-hidden relative bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100/50">
-            {/* Animated background pattern */}
-            <div className="absolute inset-0 opacity-[0.02] pointer-events-none z-0">
-                <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-500 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-yellow-400 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-            </div>
-
+        <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`flex h-screen overflow-hidden relative ${
+                isDashboardThemeEnabled
+                    ? "bg-base-200 text-base-content"
+                    : "bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100/50"
+            }`}
+        >
+            {isDashboardThemeEnabled && (
+                <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                        background:
+                            "radial-gradient(circle at top right, oklch(var(--s) / 0.16), transparent 26%), radial-gradient(circle at bottom left, oklch(var(--p) / 0.12), transparent 28%)",
+                    }}
+                />
+            )}
             {/* Sidebar */}
             {!hideSidebar && (isMobile ? (
                 showMobileSidebar && (
@@ -92,9 +113,9 @@ function InnerLayout({
             ))}
 
             {/* Main content */}
-            <div className={`flex flex-col flex-1 w-full h-full z-0 overflow-hidden`}>
+            <div className={`relative z-0 flex h-full w-full flex-1 flex-col overflow-hidden`}>
                 {!fullScreen && <Navbar hideSidebar={hideSidebar} />}
-                <main className={`flex-1 ${fullScreen ? 'overflow-hidden p-0' : noPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
+                <main className={`relative z-0 flex-1 ${fullScreen ? 'overflow-hidden p-0' : noPadding ? 'overflow-hidden p-0' : 'overflow-auto p-6'}`}>
                     {children}
                 </main>
             </div>

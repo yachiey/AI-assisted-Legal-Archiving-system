@@ -257,12 +257,15 @@ const DocumentManagement: React.FC = () => {
     }
   };
 
-  const loadFolders = async (parentId: number | null = null): Promise<void> => {
+  const loadFolders = async (parentId: number | null = null, searchOverride?: string): Promise<void> => {
     try {
       let foldersData: Folder[];
 
-      if (searchTerm) {
-        foldersData = await folderService.searchFolders(searchTerm);
+      // Use override if provided, otherwise use current state
+      const effectiveSearch = searchOverride !== undefined ? searchOverride : searchTerm;
+
+      if (effectiveSearch) {
+        foldersData = await folderService.searchFolders(effectiveSearch);
       } else {
         foldersData = await folderService.getFoldersByParent(parentId);
       }
@@ -399,7 +402,8 @@ const DocumentManagement: React.FC = () => {
       });
 
 
-      await loadFolders(null);
+      setSidebarRefreshKey(prev => prev + 1);
+      await loadFolders(null, '');
     }
   };
 

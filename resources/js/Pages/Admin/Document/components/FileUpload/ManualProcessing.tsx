@@ -5,6 +5,10 @@ import axios from 'axios';
 import DocumentQueueNavigation from './DocumentQueueNavigation';
 import { useDocumentQueue } from '../../hooks/useDocumentQueue';
 import UploadDocumentViewer from './UploadDocumentViewer';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 interface Folder {
   folder_id: number;
@@ -28,6 +32,8 @@ const ManualProcessing = ({
   onSave = (formData: FormData) => { },
   onCancel = () => { }
 }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   // State for real database data
   const [availableFolders, setAvailableFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,19 +316,55 @@ const ManualProcessing = ({
     }
   };
 
+  const titleTextClass = isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900';
+  const bodyTextClass = isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700';
+  const mutedTextClass = isDashboardThemeEnabled ? 'text-base-content/55' : 'text-gray-500';
+  const sectionBorderClass = isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-100';
+  const fieldSurfaceClass = isDashboardThemeEnabled
+    ? 'rounded-lg border border-base-300 bg-base-200 p-4 shadow-sm'
+    : 'rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm';
+  const dropdownSurfaceClass = isDashboardThemeEnabled
+    ? 'rounded-lg border border-base-300 bg-base-100 shadow-sm'
+    : 'rounded-lg border border-gray-200 bg-white shadow-sm';
+  const accentIconClass = isDashboardThemeEnabled
+    ? 'rounded-lg bg-primary/12 shadow-lg shadow-primary/10'
+    : 'rounded-lg shadow-md';
+  const accentIconStyle = isDashboardThemeEnabled
+    ? undefined
+    : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' };
+  const accentIconTextClass = isDashboardThemeEnabled ? 'text-primary' : 'text-white';
+
   return (
-    <div className="min-h-screen p-4 bg-gray-50">
+    <div
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className={`min-h-screen p-4 ${
+        isDashboardThemeEnabled ? 'bg-base-200 text-base-content' : 'bg-gray-50'
+      }`}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Manual Document Processing</h1>
-          <div className="h-1 w-32 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}></div>
+          <h1 className={`mb-3 text-3xl font-bold tracking-tight ${titleTextClass}`}>Manual Document Processing</h1>
+          <div
+            className={`h-1 w-32 rounded-full shadow-lg ${
+              isDashboardThemeEnabled ? 'bg-primary shadow-primary/25' : ''
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? undefined
+                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+            }
+          ></div>
 
           {/* Status Indicator */}
           <div className="mt-5 flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-[#228B22]" />
-            <span className="text-sm font-medium text-gray-700 tracking-wide">Manual Review Mode</span>
-            <span className="text-xs bg-green-100 text-[#228B22] px-3 py-1.5 rounded-full border border-green-200 font-medium">
+            <CheckCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-success' : 'text-[#228B22]'}`} />
+            <span className={`text-sm font-medium tracking-wide ${bodyTextClass}`}>Manual Review Mode</span>
+            <span className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+              isDashboardThemeEnabled
+                ? 'border-primary/20 bg-primary/10 text-primary'
+                : 'border-green-200 bg-green-100 text-[#228B22]'
+            }`}>
               Human-Verified Entry
             </span>
           </div>
@@ -337,20 +379,25 @@ const ManualProcessing = ({
             isLastDocument={isLastDocument}
             onPrevious={goToPreviousDocument}
             onNext={goToNextDocument}
+            isDashboardThemeEnabled={isDashboardThemeEnabled}
           />
         )}
 
         {/* Main Content Card */}
-        <div className="rounded-2xl shadow-xl overflow-hidden bg-white border border-gray-100">
+        <div className={`overflow-hidden rounded-2xl border shadow-xl ${
+          isDashboardThemeEnabled
+            ? 'border-base-300 bg-base-100 shadow-base-content/10'
+            : 'border-gray-100 bg-white'
+        }`}>
           {/* Document Uploaded Section */}
-          <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-sm font-bold text-gray-600 mb-4 uppercase tracking-wider">Document Uploaded</h2>
+          <div className={`border-b px-8 py-6 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-200/65' : 'bg-gray-50/50'}`}>
+            <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${mutedTextClass}`}>Document Uploaded</h2>
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
-                <div className="p-2.5 rounded-lg shadow-md" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-                  <FileText className="w-5 h-5 text-white flex-shrink-0" />
+                <div className={`p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                  <FileText className={`w-5 h-5 flex-shrink-0 ${accentIconTextClass}`} />
                 </div>
-                <p className="text-gray-900 text-base leading-relaxed font-medium mt-0.5">
+                <p className={`mt-0.5 text-base font-medium leading-relaxed ${titleTextClass}`}>
                   "{documentData?.fileName || 'No file selected'}"
                 </p>
               </div>
@@ -358,7 +405,11 @@ const ManualProcessing = ({
               {documentData?.doc_id && (
                 <button
                   onClick={() => setIsViewerOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-semibold transition-colors border border-blue-200"
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                    isDashboardThemeEnabled
+                      ? 'border-info/20 bg-info/10 text-info hover:bg-info/15'
+                      : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
                 >
                   <Eye className="w-4 h-4" />
                   View File
@@ -368,10 +419,10 @@ const ManualProcessing = ({
           </div>
 
           {/* Manual Entry Fields Section */}
-          <div className="px-8 py-6 border-b border-gray-100 bg-green-50/10">
-            <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center uppercase tracking-wider">
-              <div className="p-2.5 rounded-lg mr-3 shadow-md" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-                <User className="w-5 h-5 text-white" />
+          <div className={`border-b px-8 py-6 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-100' : 'bg-green-50/10'}`}>
+            <h3 className={`mb-5 flex items-center text-base font-bold uppercase tracking-wider ${titleTextClass}`}>
+              <div className={`mr-3 p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                <User className={`w-5 h-5 ${accentIconTextClass}`} />
               </div>
               Manual Document Details
             </h3>
@@ -379,15 +430,23 @@ const ManualProcessing = ({
             <div className="space-y-5">
               {/* Document ID - Moved to Top & Required */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2.5 uppercase tracking-wider">Document ID</label>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID</label>
+                <div className={fieldSurfaceClass}>
                   <input
                     ref={docRefIdInputRef}
                     type="text"
                     value={formData.documentRefId}
                     onChange={(e) => handleInputChange('documentRefId', e.target.value)}
                     placeholder="Enter document reference ID (e.g., DOC-2024-001)..."
-                    className={`w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 placeholder-gray-400 leading-relaxed ${errors.documentRefId ? 'text-red-900' : 'text-gray-900'}`}
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      errors.documentRefId
+                        ? isDashboardThemeEnabled
+                          ? 'text-error placeholder:text-error/50'
+                          : 'text-red-900 placeholder-gray-400'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content placeholder:text-base-content/40'
+                          : 'text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                 </div>
                 {errors.documentRefId && (
@@ -400,14 +459,22 @@ const ManualProcessing = ({
 
               {/* Document Title */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2.5 uppercase tracking-wider">Document Title</label>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document Title</label>
+                <div className={fieldSurfaceClass}>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                     placeholder="Enter document title..."
-                    className={`w-full font-medium bg-transparent border-none focus:outline-none focus:ring-0 placeholder-gray-400 leading-relaxed ${errors.title ? 'text-red-900' : 'text-gray-900'}`}
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      errors.title
+                        ? isDashboardThemeEnabled
+                          ? 'text-error placeholder:text-error/50'
+                          : 'text-red-900 placeholder-gray-400'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content placeholder:text-base-content/40'
+                          : 'text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                 </div>
                 {errors.title && (
@@ -420,81 +487,98 @@ const ManualProcessing = ({
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2.5 uppercase tracking-wider">Description</label>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Description</label>
+                <div className={fieldSurfaceClass}>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Enter document description..."
                     rows={3}
-                    className="w-full text-gray-700 text-sm bg-transparent border-none focus:outline-none focus:ring-0 resize-none placeholder-gray-400 leading-relaxed"
+                    className={`w-full resize-none border-none bg-transparent text-sm leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content/80 placeholder:text-base-content/40'
+                        : 'text-gray-700 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
 
               {/* Remarks */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2.5 uppercase tracking-wider">Remarks</label>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Remarks</label>
+                <div className={fieldSurfaceClass}>
                   <textarea
                     value={formData.remarks}
                     onChange={(e) => handleInputChange('remarks', e.target.value)}
                     placeholder="Enter additional remarks or notes..."
                     rows={3}
-                    className="w-full text-gray-700 text-sm bg-transparent border-none focus:outline-none focus:ring-0 resize-none placeholder-gray-400 leading-relaxed"
+                    className={`w-full resize-none border-none bg-transparent text-sm leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content/80 placeholder:text-base-content/40'
+                        : 'text-gray-700 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
 
               {/* Physical Location */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-2.5 uppercase tracking-wider">Physical Location (Optional)</label>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Physical Location (Optional)</label>
+                <div className={fieldSurfaceClass}>
                   <input
                     type="text"
                     value={formData.physicalLocation}
                     onChange={(e) => handleInputChange('physicalLocation', e.target.value)}
                     placeholder="Enter physical location of document (e.g., Cabinet A, Shelf 3)..."
-                    className="w-full text-gray-900 font-medium bg-transparent border-none focus:outline-none focus:ring-0 placeholder-gray-400 leading-relaxed"
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content placeholder:text-base-content/40'
+                        : 'text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* Folder Selection Section */}
         <div className={`px-8 py-6 space-y-6 transition-all duration-200 ${dropdownStates.location ? 'pb-60' : ''}`}>
           {/* Folder Selection */}
           <div className="relative z-50">
-            <h4 className="text-xs font-bold text-gray-500 mb-3 flex items-center uppercase tracking-wider">
-              <div className="p-2.5 rounded-lg mr-2.5 shadow-md" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-                <Folder className="w-4 h-4 text-white" />
+            <h4 className={`mb-3 flex items-center text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>
+              <div className={`mr-2.5 p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                <Folder className={`w-4 h-4 ${accentIconTextClass}`} />
               </div>
               Folder Location
             </h4>
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className={dropdownSurfaceClass}>
               <div className="relative">
                 <button
                   onClick={() => toggleDropdown('location')}
-                  className="w-full text-left flex items-center justify-between p-4 text-gray-900 font-medium focus:outline-none"
+                  className={`flex w-full items-center justify-between p-4 text-left font-medium focus:outline-none ${titleTextClass}`}
                 >
-                  <span className={formData.selectedFolderId ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                  <span className={formData.selectedFolderId ? titleTextClass : mutedTextClass}>
                     {getSelectedFolderName() || 'Select a folder...'}
                   </span>
-                  <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${dropdownStates.location ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-5 w-5 transition-transform ${dropdownStates.location ? 'rotate-180' : ''} ${
+                    isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'
+                  }`} />
                 </button>
 
                 {dropdownStates.location && (
                   <div
-                    className="absolute z-[999] w-full mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar bg-white border border-gray-100"
+                    className={`custom-scrollbar absolute z-[999] mt-1 max-h-48 w-full overflow-y-auto rounded-xl shadow-2xl ${
+                      isDashboardThemeEnabled
+                        ? 'border border-base-300 bg-base-100'
+                        : 'border border-gray-100 bg-white'
+                    }`}
                   >
                     {loading ? (
-                      <div className="px-4 py-3 text-gray-500 font-medium">Loading folders...</div>
+                      <div className={`px-4 py-3 font-medium ${mutedTextClass}`}>Loading folders...</div>
                     ) : error ? (
-                      <div className="px-4 py-3 text-red-600 font-medium">Error loading folders</div>
+                      <div className={`px-4 py-3 font-medium ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`}>Error loading folders</div>
                     ) : availableFolders.length === 0 ? (
-                      <div className="px-4 py-3 text-gray-500 font-medium">No folders available</div>
+                      <div className={`px-4 py-3 font-medium ${mutedTextClass}`}>No folders available</div>
                     ) : (
                       availableFolders.map((folder) => {
                         // Determine if this is a subfolder by checking parent_folder_id
@@ -504,14 +588,18 @@ const ManualProcessing = ({
                           <button
                             key={folder.folder_id}
                             onClick={() => selectFolder(folder)}
-                            className="w-full px-4 py-3 text-left hover:bg-green-50 border-b border-gray-50 last:border-b-0 transition-all duration-200"
+                            className={`w-full border-b px-4 py-3 text-left transition-all duration-200 last:border-b-0 ${
+                              isDashboardThemeEnabled
+                                ? 'border-base-300/70 hover:bg-base-200'
+                                : 'border-gray-50 hover:bg-green-50'
+                            }`}
                             style={{ paddingLeft: isSubfolder ? '2rem' : '1rem' }}
                           >
-                            <div className="font-semibold flex items-center gap-2 tracking-wide text-gray-900">
-                              {isSubfolder && <span className="text-[#228B22]">└─</span>}
+                            <div className={`font-semibold flex items-center gap-2 tracking-wide ${titleTextClass}`}>
+                              {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#228B22]'}>|-</span>}
                               {folder.folder_name}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1 tracking-wide">{folder.folder_path}</div>
+                            <div className={`mt-1 text-xs tracking-wide ${mutedTextClass}`}>{folder.folder_path}</div>
                           </button>
                         );
                       })
@@ -523,17 +611,19 @@ const ManualProcessing = ({
           </div>
 
           {/* Additional Details */}
-          <div className="grid md:grid-cols-2 gap-6 pt-5 border-t border-gray-200">
+          <div className={`grid gap-6 border-t pt-5 md:grid-cols-2 ${
+            isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'
+          }`}>
             <div className="space-y-3.5">
               <div className="flex items-center space-x-3">
-                <User className="w-4 h-4 text-gray-400" />
-                <span className="text-xs text-gray-500 uppercase tracking-wider font-bold">Created by</span>
-                <span className="text-sm font-semibold text-gray-900">{documentData?.createdBy || 'Current User'}</span>
+                <User className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Created by</span>
+                <span className={`text-sm font-semibold ${titleTextClass}`}>{documentData?.createdBy || 'Current User'}</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-xs text-gray-500 uppercase tracking-wider font-bold">Date</span>
-                <span className="text-sm font-semibold text-gray-900">{documentData?.createdAt || new Date().toISOString().split('T')[0]}</span>
+                <Calendar className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Date</span>
+                <span className={`text-sm font-semibold ${titleTextClass}`}>{documentData?.createdAt || new Date().toISOString().split('T')[0]}</span>
               </div>
             </div>
           </div>
@@ -544,8 +634,14 @@ const ManualProcessing = ({
           <button
             onClick={handleSave}
             disabled={saving || !documentData?.doc_id}
-            className="w-full text-white py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
-            style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}
+            className={`w-full rounded-xl py-4 text-sm font-bold uppercase tracking-wider text-white transition-all duration-200 shadow-lg hover:shadow-xl disabled:transform-none ${
+              isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : ''
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? undefined
+                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+            }
           >
             {saving ? (
               <div className="flex items-center justify-center space-x-2">
@@ -564,7 +660,11 @@ const ManualProcessing = ({
               router.visit(url);
             }}
             disabled={saving}
-            className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:transform-none"
+            className={`w-full rounded-xl border py-4 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md disabled:transform-none ${
+              isDashboardThemeEnabled
+                ? 'border-base-300 bg-base-100 text-base-content hover:bg-base-200'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
           >
             Back to AI Processing
           </button>
@@ -572,7 +672,11 @@ const ManualProcessing = ({
           <button
             onClick={handleCancel}
             disabled={saving}
-            className="w-full bg-white hover:bg-red-50 border border-red-200 text-red-600 py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 disabled:transform-none"
+            className={`w-full rounded-xl border py-4 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md disabled:transform-none ${
+              isDashboardThemeEnabled
+                ? 'border-error/30 bg-base-100 text-error hover:bg-error/10'
+                : 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+            }`}
           >
             Cancel
           </button>
@@ -581,38 +685,48 @@ const ManualProcessing = ({
 
       {/* Footer Info */}
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-400">
+        <p className={`text-sm ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`}>
           Manual processing mode • Review and update document details before saving
         </p>
+      </div>
+
       </div>
 
       {/* Cancel Confirmation Dialog */}
       {
         showCancelDialog && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-end justify-center z-[9999] p-4 pb-10">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden mb-60">
-              <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/30 p-4 pb-10 backdrop-blur-[2px]">
+            <div className={`mb-60 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ${
+              isDashboardThemeEnabled ? 'border border-base-300 bg-base-100' : 'bg-white'
+            }`}>
+              <div className={`border-b px-6 py-5 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-200/80' : 'bg-gray-50/50'}`}>
                 <div className="flex items-center">
-                  <div className="bg-red-100 p-2.5 rounded-lg mr-3">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div className={`mr-3 rounded-lg p-2.5 ${isDashboardThemeEnabled ? 'bg-error/10' : 'bg-red-100'}`}>
+                    <AlertCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`} />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Cancel Processing?</h3>
+                  <h3 className={`text-lg font-bold ${titleTextClass}`}>Cancel Processing?</h3>
                 </div>
               </div>
               <div className="px-6 py-5 space-y-4">
-                <p className="text-gray-600 text-sm leading-relaxed">
-                  Are you sure you want to cancel? This will <span className="font-bold text-red-600">delete the uploaded document</span> and all manually entered data.
+                <p className={`text-sm leading-relaxed ${bodyTextClass}`}>
+                  Are you sure you want to cancel? This will <span className={`font-bold ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`}>delete the uploaded document</span> and all manually entered data.
                 </p>
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={confirmCancel}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg"
+                    className={`flex-1 rounded-lg py-3 text-sm font-bold uppercase tracking-wider text-white transition-all duration-200 shadow-md hover:shadow-lg ${
+                      isDashboardThemeEnabled ? 'bg-error hover:bg-error/90' : 'bg-red-600 hover:bg-red-700'
+                    }`}
                   >
                     Yes, Cancel & Delete
                   </button>
                   <button
                     onClick={() => setShowCancelDialog(false)}
-                    className="flex-1 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm"
+                    className={`flex-1 rounded-lg border py-3 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm ${
+                      isDashboardThemeEnabled
+                        ? 'border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 hover:text-base-content'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
                   >
                     Go Back
                   </button>
@@ -628,6 +742,8 @@ const ManualProcessing = ({
         onClose={() => setIsViewerOpen(false)}
         docId={documentData?.doc_id || null}
         fileName={documentData?.fileName || documentData?.title || 'Document'}
+        theme={theme}
+        isDashboardThemeEnabled={isDashboardThemeEnabled}
       />
     </div >
   );

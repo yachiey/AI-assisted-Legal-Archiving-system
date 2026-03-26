@@ -39,10 +39,8 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl overflow-hidden" style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-        border: '1px solid rgba(255, 255, 255, 0.4)',
+        background: 'white',
+        border: '1px solid rgba(0, 0, 0, 0.1)',
       }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-green-500 to-green-600">

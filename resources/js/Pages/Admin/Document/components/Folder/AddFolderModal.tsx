@@ -1,18 +1,29 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { folderService } from "../../services/folderService";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../../hooks/useDashboardTheme";
 
 interface AddFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate?: (folderName: string) => void;
-  parentFolderId?: number | null; // Add parent folder ID prop
+  parentFolderId?: number | null;
 }
 
-const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCreate, parentFolderId = null }) => {
+const AddFolderModal: React.FC<AddFolderModalProps> = ({
+  isOpen,
+  onClose,
+  onCreate,
+  parentFolderId = null,
+}) => {
   const [folderName, setFolderName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   if (!isOpen) return null;
 
@@ -26,16 +37,14 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
     try {
       const response = await folderService.createFolder({
         folder_name: folderName,
-        folder_path: `/uploads/${folderName}`, // backend will set actual path
+        folder_path: `/uploads/${folderName}`,
         folder_type: "regular",
-        parent_folder_id: parentFolderId, // Use parent folder ID
+        parent_folder_id: parentFolderId,
       });
 
-      // Clear form and close modal
       setFolderName("");
       onClose();
 
-      // Call onCreate callback to refresh parent component
       if (onCreate) {
         onCreate(response.folder_name);
       }
@@ -57,34 +66,76 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
 
   const modalContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30 backdrop-blur-sm"
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm"
       style={{ margin: 0, padding: 0 }}
     >
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-md p-6 mx-4">
-        <div className="flex justify-between items-center border-b border-gray-200 pb-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            {parentFolderId ? 'Create Subfolder' : 'Create New Folder'}
+      <div
+        className={`mx-4 w-full max-w-md rounded-xl border p-6 shadow-xl ${
+          isDashboardThemeEnabled
+            ? "border-base-300 bg-base-100 text-base-content shadow-base-content/15"
+            : "border-gray-200 bg-white"
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between border-b pb-4 ${
+            isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"
+          }`}
+        >
+          <h2
+            className={`text-lg font-bold ${
+              isDashboardThemeEnabled ? "text-base-content" : "text-gray-900"
+            }`}
+          >
+            {parentFolderId ? "Create Subfolder" : "Create New Folder"}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-1 rounded-lg transition-all"
+            className={`rounded-lg p-1 text-xl leading-none transition-all ${
+              isDashboardThemeEnabled
+                ? "text-base-content/55 hover:bg-base-200 hover:text-base-content"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            }`}
             disabled={loading}
+            aria-label="Close add folder modal"
           >
-            ✕
+            &times;
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {error && <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm font-medium border border-red-200">{error}</div>}
+          {error && (
+            <div
+              className={`rounded-lg border p-3 text-sm font-medium ${
+                isDashboardThemeEnabled
+                  ? "border-error/25 bg-error/10 text-error"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {error}
+            </div>
+          )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Folder Name</label>
+            <label
+              className={`mb-2 block text-sm font-medium ${
+                isDashboardThemeEnabled
+                  ? "text-base-content/75"
+                  : "text-gray-700"
+              }`}
+            >
+              Folder Name
+            </label>
             <input
               type="text"
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
               placeholder="Enter folder name"
-              className="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:outline-none bg-white text-gray-900 placeholder-gray-400 font-normal shadow-sm"
+              className={`block w-full rounded-lg border px-4 py-3 text-sm font-normal shadow-sm focus:outline-none focus:ring-2 ${
+                isDashboardThemeEnabled
+                  ? "border-base-300 bg-base-100 text-base-content placeholder:text-base-content/40 focus:border-primary focus:ring-primary/25"
+                  : "border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:ring-green-500"
+              }`}
               required
               disabled={loading}
             />
@@ -94,7 +145,11 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition-all duration-200 border border-gray-300"
+              className={`rounded-lg border px-5 py-2.5 font-medium transition-all duration-200 ${
+                isDashboardThemeEnabled
+                  ? "border-base-300 text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                  : "border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
               disabled={loading}
             >
               Cancel
@@ -102,7 +157,11 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`rounded-lg px-5 py-2.5 font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 ${
+                isDashboardThemeEnabled
+                  ? "bg-primary text-primary-content hover:bg-primary/90"
+                  : "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700"
+              }`}
             >
               {loading ? "Creating..." : "Create"}
             </button>
@@ -112,9 +171,7 @@ const AddFolderModal: React.FC<AddFolderModalProps> = ({ isOpen, onClose, onCrea
     </div>
   );
 
-  // Render modal using portal to bypass parent overflow constraints
-  // Only render portal if DOM document.body is available
-  if (typeof window !== 'undefined' && window.document?.body) {
+  if (typeof window !== "undefined" && window.document?.body) {
     return createPortal(modalContent, window.document.body);
   }
 

@@ -1,6 +1,10 @@
-import React from 'react';
-import { FileText, Eye } from 'lucide-react';
-import { DocumentReference } from '../../types';
+import React from "react";
+import { Eye, FileText } from "lucide-react";
+import { DocumentReference } from "../../types";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../../hooks/useDashboardTheme";
 
 interface FileLinkProps {
   document: DocumentReference;
@@ -8,44 +12,69 @@ interface FileLinkProps {
   onNavigate?: (doc: DocumentReference) => void;
 }
 
-export const FileLink: React.FC<FileLinkProps> = ({ document, onViewDocument, onNavigate }) => {
+export const FileLink: React.FC<FileLinkProps> = ({
+  document,
+  onViewDocument,
+  onNavigate,
+}) => {
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
   const handleView = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onViewDocument) {
-      onViewDocument(document.doc_id);
-    }
+    onViewDocument?.(document.doc_id);
   };
 
   const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onNavigate) {
-      onNavigate(document);
-    }
+    onNavigate?.(document);
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-800 rounded-lg border border-green-200 text-sm font-medium max-w-full w-full">
-      {/* Document icon - click to navigate to location */}
+    <div
+      className={`flex w-full max-w-full items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm ${
+        isDashboardThemeEnabled
+          ? "border-base-300 bg-base-200/70 text-base-content"
+          : "border-green-100 bg-green-50/90 text-gray-900"
+      }`}
+    >
       <button
         onClick={handleNavigate}
-        className="flex-shrink-0 p-1 hover:bg-green-200 rounded transition-colors"
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+          isDashboardThemeEnabled
+            ? "bg-base-100 text-primary hover:bg-base-300"
+            : "bg-white text-[#228B22] hover:bg-green-100"
+        }`}
         title="Go to document location"
       >
-        <FileText size={14} />
+        <FileText size={15} />
       </button>
-      <span className="truncate flex-1 min-w-0 font-semibold text-left">{document.title}</span>
-      {document.folder_name && (
-        <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded truncate max-w-[100px] flex-shrink-0">
-          📁 {document.folder_name}
-        </span>
-      )}
-      {/* Eye icon - click to open document viewer */}
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-left font-semibold">{document.title}</p>
+        {document.folder_name && (
+          <p
+            className={`truncate text-xs ${
+              isDashboardThemeEnabled
+                ? "text-base-content/55"
+                : "text-gray-500"
+            }`}
+          >
+            {document.folder_name}
+          </p>
+        )}
+      </div>
+
       <button
         onClick={handleView}
-        className="p-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors flex-shrink-0"
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+          isDashboardThemeEnabled
+            ? "bg-primary text-primary-content hover:bg-secondary"
+            : "bg-[#228B22] text-white hover:bg-[#1a6b1a]"
+        }`}
         title={`View "${document.title}"`}
       >
-        <Eye size={14} />
+        <Eye size={15} />
       </button>
     </div>
   );
