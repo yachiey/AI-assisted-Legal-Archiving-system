@@ -40,17 +40,16 @@ def create_app():
 if __name__ == '__main__':
     logger.info("Starting AI Bridge Service...")
     logger.info("Loading BERT embedding model...")
-    
+
     model_loaded = load_embedding_model()
-    
+
     if not model_loaded:
         logger.warning("Embedding model not loaded, some features will be limited")
-    
-    logger.info("Loading Llama model for description generation...")
+
+    logger.info("Loading Llama model for offline fallback (used when Groq is unavailable)...")
     llama_loaded = load_llama_model()
-    
     if not llama_loaded:
-        logger.warning("Llama model not loaded, will use rule-based description generation")
+        logger.warning("Llama model not loaded — offline fallback unavailable, will use rule-based generation")
     
     app = create_app()
     

@@ -164,12 +164,7 @@ const AccountManagement = () => {
     return (
         <div
             data-theme={isDashboardThemeEnabled ? theme : undefined}
-            className={`min-h-screen p-6 ${isDashboardThemeEnabled ? 'bg-transparent text-base-content' : ''}`}
-            style={
-                isDashboardThemeEnabled
-                    ? undefined
-                    : { background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }
-            }
+            className={`p-6 pb-12 ${isDashboardThemeEnabled ? 'bg-transparent text-base-content' : ''}`}
         >
             <AccountHeader
                 totalUsers={users.length}

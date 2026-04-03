@@ -2,7 +2,7 @@ import React, { useState, useEffect, JSX } from 'react';
 import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { router } from '@inertiajs/react';
-import { Plus, FileText, FolderPlus, Folder as FolderIcon, ScanLine, Lock, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { Plus, FileText, FolderPlus, Folder as FolderIcon, ScanLine, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 
 
 import SearchBar from '../SearhBar/SearchBar';
@@ -10,22 +10,20 @@ import FolderCard from '../Folder/FolderCard';
 import DocumentListItem from './DocumentListItem';
 import DocumentGridItem from './DocumentGridItem';
 import BreadcrumbNav from './BreadcrumbNav';
+import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import AddFolderModal from '../Folder/AddFolderModal';
 import MultiFileUploadUI from '../FileUpload/MultiFileUploadUI';
 import FilterModal from '../Filter/FilterModal';
 import ScanDocumentModal from '../ScanDocument/ScanDocumentModal';
 import DocumentSidebar from '../DocumentSidebar/DocumentSidebar';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 import realDocumentService from '../../services/realDocumentService';
 import folderService from '../../services/folderService';
 import { Folder, Document, DocumentFilters } from '../../types/types';
-
-interface UserPermissions {
-  can_view: boolean;
-  can_upload: boolean;
-  can_delete: boolean;
-  can_edit: boolean;
-}
 
 type ViewMode = 'folders' | 'documents';
 
@@ -41,6 +39,7 @@ interface DocumentManagementState {
   sortField: 'name' | 'date';
   sortOrder: 'asc' | 'desc';
   documentViewMode: 'list' | 'grid';
+  viewingDocument: Document | null;
 }
 
 
@@ -57,7 +56,8 @@ const DocumentManagement: React.FC = () => {
     filters: {},
     sortField: 'date',
     sortOrder: 'desc',
-    documentViewMode: 'list'
+    documentViewMode: 'list',
+    viewingDocument: null
   });
 
 
@@ -77,6 +77,8 @@ const DocumentManagement: React.FC = () => {
 
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const sortMenuRef = React.useRef<HTMLDivElement>(null);
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -91,43 +93,7 @@ const DocumentManagement: React.FC = () => {
     };
   }, []);
 
-
-  // User permissions state
-  const [userPermissions, setUserPermissions] = useState<UserPermissions>({
-    can_view: false,
-    can_upload: false,
-    can_delete: false,
-    can_edit: false,
-  });
-
-  // Fetch user permissions on mount
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-        if (response.ok) {
-          const user = await response.json();
-          setUserPermissions({
-            can_view: user.can_view ?? false,
-            can_upload: user.can_upload ?? false,
-            can_delete: user.can_delete ?? false,
-            can_edit: user.can_edit ?? false,
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch user permissions:', error);
-      }
-    };
-    fetchPermissions();
-  }, []);
-
-  const handleCreate = async () => {
+  const handleCreate = async (folderName?: string) => {
     try {
       if (currentFolder) {
         // When inside a folder, reload subfolders
@@ -165,9 +131,9 @@ const DocumentManagement: React.FC = () => {
     filters,
     sortField,
     sortOrder,
-    documentViewMode
+    documentViewMode,
+    viewingDocument
   } = state;
-
 
   // Load initial data
   useEffect(() => {
@@ -217,6 +183,38 @@ const DocumentManagement: React.FC = () => {
     }
   }, [folders]);
 
+  // NEW: Handle URL-based document persistence
+  const handleViewDocument = (document: Document): void => {
+    setState(prev => ({ ...prev, viewingDocument: document }));
+
+    // Update URL without full reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', document.doc_id.toString());
+    window.history.pushState({}, '', url.toString());
+  };
+
+  const handleCloseViewer = (): void => {
+    setState(prev => ({ ...prev, viewingDocument: null }));
+
+    // Remove view param from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('view');
+    window.history.pushState({}, '', url.toString());
+  };
+
+  // Check for 'view' param on load or when documents update
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewId = urlParams.get('view');
+
+    if (viewId && documents.length > 0) {
+      const docToView = documents.find(d => d.doc_id === parseInt(viewId));
+      if (docToView && (!viewingDocument || viewingDocument.doc_id !== docToView.doc_id)) {
+        setState(prev => ({ ...prev, viewingDocument: docToView }));
+      }
+    }
+  }, [documents]);
+
   // Track if we just opened a folder to prevent double loading
   const justOpenedFolder = React.useRef(false);
 
@@ -228,7 +226,6 @@ const DocumentManagement: React.FC = () => {
     const timeoutId = setTimeout(() => {
       if (viewMode === 'folders') {
         setState(prev => ({ ...prev, loading: true }));
-        // Show documents when document-level filters are active (year)
         if (filters.year !== undefined) {
           loadDocuments(); // Load documents when year filter is active
         } else {
@@ -398,11 +395,11 @@ const DocumentManagement: React.FC = () => {
         filters: {},
         sortField: 'date',
         sortOrder: 'desc',
-        documentViewMode: 'list'
+        documentViewMode: 'list',
+        viewingDocument: null
       });
 
-
-      setSidebarRefreshKey(prev => prev + 1);
+      setSidebarRefreshKey(prev => prev + 1); // Refresh sidebar to show root folders
       await loadFolders(null, '');
     }
   };
@@ -478,10 +475,22 @@ const DocumentManagement: React.FC = () => {
   };
 
   const renderEmptyFolderState = (): JSX.Element => (
-    <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
-      <div className="text-6xl mb-4">📁</div>
-      <h3 className="text-lg font-semibold mb-2 text-gray-700">No folders found</h3>
-      <p className="text-sm text-center max-w-md font-normal text-gray-600">
+    <div className={`col-span-full flex w-full flex-col items-center justify-center py-12 ${
+      isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-500'
+    }`}>
+      <div className={`mb-6 rounded-full p-6 ${
+        isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+      }`}>
+        <FolderIcon className={`h-12 w-12 ${
+          isDashboardThemeEnabled ? 'text-base-content/40' : 'text-gray-400'
+        }`} />
+      </div>
+      <h3 className={`mb-3 text-xl font-bold tracking-tight ${
+        isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'
+      }`}>No folders found</h3>
+      <p className={`mb-8 mx-auto max-w-md text-center text-base font-medium leading-relaxed ${
+        isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+      }`}>
         {searchTerm
           ? `No folders match "${searchTerm}". Try adjusting your search terms.`
           : 'Create your first folder to get started organizing your documents.'}
@@ -489,9 +498,13 @@ const DocumentManagement: React.FC = () => {
       {!searchTerm && (
         <button
           onClick={handleAddFolder}
-          className="mt-4 flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md font-medium"
+          className={`flex items-center gap-2 rounded-xl px-6 py-3 font-bold text-white transition-all duration-300 hover:scale-105 ${
+            isDashboardThemeEnabled
+              ? 'bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 hover:shadow-xl'
+              : 'bg-gradient-to-r from-green-600 to-green-700 shadow-md hover:from-green-700 hover:to-green-800 hover:shadow-lg'
+          }`}
         >
-          <FolderPlus className="w-4 h-4" />
+          <FolderPlus className="w-5 h-5" />
           <span>Create First Folder</span>
         </button>
       )}
@@ -499,24 +512,38 @@ const DocumentManagement: React.FC = () => {
   );
 
   const renderEmptyDocumentState = (): JSX.Element => (
-    <div className="p-8 text-center text-gray-500">
-      <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-      <h3 className="text-lg font-semibold mb-2 text-gray-700">No documents found</h3>
-      <p className="text-sm max-w-md mx-auto font-normal text-gray-600">
+    <div className={`col-span-full flex w-full flex-col items-center justify-center p-12 text-center ${
+      isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-500'
+    }`}>
+      <div className={`mb-6 rounded-full p-6 ${
+        isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+      }`}>
+        <FileText className={`h-12 w-12 ${
+          isDashboardThemeEnabled ? 'text-base-content/40' : 'text-gray-400'
+        }`} />
+      </div>
+      <h3 className={`mb-3 text-xl font-bold tracking-tight ${
+        isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'
+      }`}>No documents found</h3>
+      <p className={`mx-auto mb-8 max-w-md text-base font-medium leading-relaxed ${
+        isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+      }`}>
         {searchTerm
           ? `No documents match "${searchTerm}" in this folder. Try adjusting your search terms.`
           : currentFolder
-            ? userPermissions.can_upload
-              ? 'This folder is empty. Upload your first document to get started.'
-              : 'This folder is empty.'
+            ? 'This folder is empty. Upload your first document to get started.'
             : 'No documents available'}
       </p>
-      {currentFolder && !searchTerm && userPermissions.can_upload && (
+      {currentFolder && !searchTerm && (
         <button
           onClick={handleAddDocument}
-          className="mt-4 flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md mx-auto font-medium"
+          className={`flex items-center gap-2 rounded-xl px-6 py-3 font-bold text-white transition-all duration-300 hover:scale-105 ${
+            isDashboardThemeEnabled
+              ? 'bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 hover:shadow-xl'
+              : 'bg-gradient-to-r from-green-600 to-green-700 shadow-md hover:from-green-700 hover:to-green-800 hover:shadow-lg'
+          }`}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           <span>Upload Document</span>
         </button>
       )}
@@ -570,6 +597,7 @@ const DocumentManagement: React.FC = () => {
   const sortedFolders = getSortedItems(folders) as Folder[];
 
 
+
   const refreshCounts = async () => {
     try {
       const [folderTotal, documentTotal] = await Promise.all([
@@ -588,49 +616,63 @@ const DocumentManagement: React.FC = () => {
   }, [folders]); // Update when folders change
 
   return (
-    <div className="flex h-full relative" style={{ background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }}>
-      {/* Mobile Overlay Backdrop */}
-      {isMobileSidebarOpen && (
-        <div
-          className="absolute inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
+    <div
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className={`relative flex h-full ${isDashboardThemeEnabled ? 'bg-transparent text-base-content' : ''}`}
+      style={
+        isDashboardThemeEnabled
+          ? undefined
+          : { background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }
+      }
+    >
+      {/* Sidebar + backdrop rendered via portal into document.body to escape all stacking contexts */}
+      {createPortal(
+        <>
+          {isMobileSidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-[9998] md:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+          <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`
+            fixed top-0 left-0 h-screen z-[9999]
+            transform transition-transform duration-300 ease-in-out
+            ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}>
+            <DocumentSidebar
+              currentFolder={state.currentFolder}
+              onFolderSelect={(folder) => {
+                if (folder) {
+                  handleFolderClick(folder);
+                  setIsMobileSidebarOpen(false);
+                } else {
+                  setState(prev => ({
+                    ...prev,
+                    currentFolder: null,
+                    viewMode: 'folders',
+                    searchTerm: '',
+                    filters: {},
+                    documents: [],
+                    subfolders: [],
+                    loading: true
+                  }));
+                  loadFolders(null);
+                  setIsMobileSidebarOpen(false);
+                }
+              }}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={setSidebarCollapsed}
+              refreshTrigger={sidebarRefreshKey}
+            />
+          </div>
+        </>,
+        document.body
       )}
 
-      {/* Sidebar - Hidden on mobile by default, shown as overlay when open */}
-      <div className={`
-        absolute md:relative inset-y-0 left-0 z-50
-        transform transition-transform duration-300 ease-in-out
-        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
-        <DocumentSidebar
-          currentFolder={state.currentFolder}
-          onFolderSelect={(folder) => {
-            if (folder) {
-              handleFolderClick(folder);
-              setIsMobileSidebarOpen(false);
-            } else {
-              setState(prev => ({
-                ...prev,
-                currentFolder: null,
-                viewMode: 'folders',
-                searchTerm: '',
-                filters: {},
-                documents: [],
-                subfolders: []
-              }));
-              loadFolders(null);
-              setIsMobileSidebarOpen(false);
-            }
-          }}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={setSidebarCollapsed}
-          refreshTrigger={sidebarRefreshKey}
-        />
-      </div>
-
-      {/* Main Content - Full width on mobile, with margin on desktop */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      {/* Main Content - offset by sidebar width on desktop */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
         <div className="flex-1 overflow-y-auto p-6 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Back to AI Assistant Button - Shows when navigated from AI */}
           {cameFromAI && (
@@ -639,7 +681,11 @@ const DocumentManagement: React.FC = () => {
                 setCameFromAI(false);
                 window.history.back();
               }}
-              className="mb-4 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg hover:scale-105"
+              className={`mb-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105 ${
+                isDashboardThemeEnabled
+                  ? 'bg-secondary shadow-lg shadow-secondary/20 hover:bg-secondary/90 hover:shadow-xl'
+                  : 'bg-gradient-to-r from-purple-600 to-purple-700 shadow-md hover:from-purple-700 hover:to-purple-800 hover:shadow-lg'
+              }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -649,15 +695,33 @@ const DocumentManagement: React.FC = () => {
           )}
 
           {/* Header - Forest Green Design */}
-          <div className="rounded-2xl shadow-lg border border-green-700/20 p-6 mb-8" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
-            <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 sm:gap-6">
+          <div
+            className={`relative z-20 mb-8 rounded-2xl border p-6 ${
+              isDashboardThemeEnabled
+                ? 'border-base-300/70 bg-base-100/90 shadow-2xl shadow-base-content/5 backdrop-blur-xl'
+                : 'border-green-700/20 shadow-lg'
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? {
+                    boxShadow:
+                      '0 24px 60px oklch(var(--bc) / 0.06), inset 0 1px 0 oklch(var(--b1) / 0.4)',
+                  }
+                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+            }
+          >
+            <div className="relative z-10 flex flex-col items-stretch justify-between gap-4 sm:gap-6 xl:flex-row xl:items-center">
               <div className="flex-1">
                 {/* Mobile: Hamburger + Title in one row */}
                 <div className="flex items-center gap-3 mb-2">
                   {/* Hamburger Menu - Only visible on mobile */}
                   <button
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                    className={`rounded-lg p-2 transition-colors md:hidden ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content hover:bg-base-200'
+                        : 'text-white hover:bg-white/10'
+                    }`}
                     aria-label="Open menu"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -665,95 +729,121 @@ const DocumentManagement: React.FC = () => {
                     </svg>
                   </button>
 
-                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight flex items-center gap-3">
-                    <FileText className="w-8 h-8 text-yellow-400" />
+                  <h1 className={`flex items-center gap-3 text-4xl font-black tracking-tight md:text-5xl ${
+                    isDashboardThemeEnabled ? 'text-base-content' : 'text-white'
+                  }`}>
+                    <FileText className={`h-8 w-8 ${
+                      isDashboardThemeEnabled ? 'text-primary' : 'text-yellow-400'
+                    }`} />
                     DOCUMENTS
                   </h1>
                 </div>
-                <div className="h-1 w-48 bg-gradient-to-r from-yellow-400 to-transparent rounded-full mb-3"></div>
+                <div
+                  className="mb-3 h-1 w-48 rounded-full"
+                  style={{
+                    background: isDashboardThemeEnabled
+                      ? 'linear-gradient(90deg, oklch(var(--p)), transparent)'
+                      : 'linear-gradient(90deg, #facc15, transparent)',
+                  }}
+                ></div>
 
-                <p className="text-lg text-green-50 font-medium tracking-wide">
+                <p className={`text-lg font-medium tracking-wide ${
+                  isDashboardThemeEnabled ? 'text-base-content/70' : 'text-green-50'
+                }`}>
                   Manage your legal documents and folders
                 </p>
 
+                {/* Stats - Stack on mobile */}
                 <div className="flex flex-wrap items-center gap-3 sm:gap-6 mt-4 sm:mt-6 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-base sm:text-lg">{folderCount}</span>
-                    <span className="text-green-100/80 text-xs sm:text-sm">Folders</span>
+                    <span className={`text-base font-bold sm:text-lg ${
+                      isDashboardThemeEnabled ? 'text-base-content' : 'text-white'
+                    }`}>{folderCount}</span>
+                    <span className={`text-xs sm:text-sm ${
+                      isDashboardThemeEnabled ? 'text-base-content/60' : 'text-green-100/80'
+                    }`}>Folders</span>
                   </div>
-                  <div className="w-px h-4 bg-white/20"></div>
+
+                  <div className={`h-4 w-px ${
+                    isDashboardThemeEnabled ? 'bg-base-300' : 'bg-white/20'
+                  }`}></div>
+
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-base sm:text-lg">{documentCount}</span>
-                    <span className="text-green-100/80 text-xs sm:text-sm">Total Documents</span>
+                    <span className={`text-base font-bold sm:text-lg ${
+                      isDashboardThemeEnabled ? 'text-base-content' : 'text-white'
+                    }`}>{documentCount}</span>
+                    <span className={`text-xs sm:text-sm ${
+                      isDashboardThemeEnabled ? 'text-base-content/60' : 'text-green-100/80'
+                    }`}>Total Documents</span>
                   </div>
+
                   {currentFolder && (
                     <>
-                      <div className="w-px h-4 bg-white/20"></div>
+                      <div className={`h-4 w-px ${
+                        isDashboardThemeEnabled ? 'bg-base-300' : 'bg-white/20'
+                      }`}></div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base sm:text-lg">{getFolderDocumentCount(currentFolder.folder_id)}</span>
-                        <span className="text-green-100/80 text-xs sm:text-sm">in this folder</span>
+                        <span className={`text-base font-bold sm:text-lg ${
+                          isDashboardThemeEnabled ? 'text-base-content' : 'text-white'
+                        }`}>{getFolderDocumentCount(currentFolder.folder_id)}</span>
+                        <span className={`text-xs sm:text-sm ${
+                          isDashboardThemeEnabled ? 'text-base-content/60' : 'text-green-100/80'
+                        }`}>in this folder</span>
                       </div>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons - Wrap on mobile */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Action Buttons - Wrap on mobile, show icons only on smallest screens */}
+              <div className="relative z-20 flex flex-wrap items-center gap-2 sm:gap-3">
                 <button
                   onClick={handleAddFolder}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
+                  className={`group flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+                    isDashboardThemeEnabled
+                      ? 'border border-base-300 bg-base-100 text-base-content shadow-sm hover:border-primary/40 hover:bg-base-200 hover:text-primary'
+                      : 'border-2 border-white/30 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20 hover:shadow-lg'
+                  }`}
                   type="button"
                 >
                   <FolderPlus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
                   <span className="hidden xs:inline sm:inline">{currentFolder ? 'Add Subfolder' : 'Add Folder'}</span>
                 </button>
 
-                {userPermissions.can_upload ? (
-                  <button
-                    onClick={handleAddDocument}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
-                    type="button"
-                  >
-                    <Plus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                    <span className="hidden xs:inline sm:inline">Add Document</span>
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    className="flex items-center gap-2 bg-gray-300 text-gray-500 px-3 sm:px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed min-h-[44px]"
-                    type="button"
-                    title="You don't have permission to upload documents"
-                  >
-                    <Lock className="w-5 h-5" />
-                    <span className="hidden xs:inline sm:inline">Add Document</span>
-                  </button>
-                )}
+                <button
+                  onClick={handleAddDocument}
+                  className={`group flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 ${
+                    isDashboardThemeEnabled
+                      ? 'border border-primary/30 bg-primary text-primary-content shadow-lg shadow-primary/15 hover:bg-primary/90 hover:shadow-xl'
+                      : 'border-2 border-white/30 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20 hover:shadow-lg'
+                  }`}
+                  type="button"
+                >
+                  <Plus className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                  <span className="hidden xs:inline sm:inline">Add Document</span>
+                </button>
 
-                {userPermissions.can_upload ? (
-                  <button
-                    onClick={handleScanDocument}
-                    className="hidden sm:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border-2 border-white/30 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg backdrop-blur-sm group"
-                    type="button"
-                  >
-                    <ScanLine className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                    <span>Scan Document</span>
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    className="hidden sm:flex items-center gap-2 bg-gray-300 text-gray-500 px-3 sm:px-5 py-2.5 rounded-lg font-semibold cursor-not-allowed min-h-[44px]"
-                    type="button"
-                    title="You don't have permission to upload documents"
-                  >
-                    <Lock className="w-5 h-5" />
-                    <span>Scan Document</span>
-                  </button>
-                )}
-                <div className="relative" ref={sortMenuRef}>
+                <button
+                  onClick={handleScanDocument}
+                  className={`group hidden items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 sm:flex ${
+                    isDashboardThemeEnabled
+                      ? 'border border-secondary/30 bg-secondary text-secondary-content shadow-lg shadow-secondary/15 hover:bg-secondary/90 hover:shadow-xl'
+                      : 'border-2 border-white/30 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20 hover:shadow-lg'
+                  }`}
+                  type="button"
+                >
+                  <ScanLine className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                  <span>Scan Document</span>
+                </button>
+
+                <div className="relative z-30" ref={sortMenuRef}>
                   <button
                     onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                    className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 sm:px-4 py-2.5 rounded-lg font-medium transition-all shadow-sm backdrop-blur-sm min-h-[44px]"
+                    className={`flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 font-medium transition-all sm:px-4 ${
+                      isDashboardThemeEnabled
+                        ? 'border border-base-300 bg-base-100 text-base-content shadow-sm hover:border-primary/40 hover:bg-base-200 hover:text-primary'
+                        : 'border border-white/20 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20'
+                    }`}
                     type="button"
                   >
                     <ArrowUpDown className="w-5 h-5" />
@@ -761,59 +851,129 @@ const DocumentManagement: React.FC = () => {
                   </button>
 
                   {isSortMenuOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                      <div className="px-4 py-2 border-b border-gray-50 mb-1">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sort By</span>
+                    <div className={`absolute right-0 top-full z-[90] mt-2 w-56 rounded-xl border py-2 shadow-xl animate-in fade-in zoom-in-95 duration-100 ${
+                      isDashboardThemeEnabled
+                        ? 'border-base-300 bg-base-100 text-base-content'
+                        : 'border-gray-100 bg-white'
+                    }`}>
+                      <div className={`mb-1 border-b px-4 py-2 ${
+                        isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-50'
+                      }`}>
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${
+                          isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-400'
+                        }`}>Sort By</span>
                       </div>
 
                       <button
                         onClick={() => handleSortSelection('name', 'asc')}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                          sortField === 'name' && sortOrder === 'asc'
+                            ? isDashboardThemeEnabled
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'bg-green-50 text-green-700 font-medium'
+                            : isDashboardThemeEnabled
+                              ? 'text-base-content hover:bg-base-200 hover:text-primary'
+                              : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                        }`}
                       >
                         <span>Name (A-Z)</span>
-                        {sortField === 'name' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
+                        {sortField === 'name' && sortOrder === 'asc' && (
+                          <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}>&#10003;</span>
+                        )}
                       </button>
 
                       <button
                         onClick={() => handleSortSelection('name', 'desc')}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'name' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                          sortField === 'name' && sortOrder === 'desc'
+                            ? isDashboardThemeEnabled
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'bg-green-50 text-green-700 font-medium'
+                            : isDashboardThemeEnabled
+                              ? 'text-base-content hover:bg-base-200 hover:text-primary'
+                              : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                        }`}
                       >
                         <span>Name (Z-A)</span>
-                        {sortField === 'name' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
+                        {sortField === 'name' && sortOrder === 'desc' && (
+                          <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}>&#10003;</span>
+                        )}
                       </button>
 
-                      <div className="my-1 border-t border-gray-50"></div>
+                      <div className={`my-1 border-t ${
+                        isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-50'
+                      }`}></div>
 
                       <button
                         onClick={() => handleSortSelection('date', 'desc')}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'desc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                          sortField === 'date' && sortOrder === 'desc'
+                            ? isDashboardThemeEnabled
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'bg-green-50 text-green-700 font-medium'
+                            : isDashboardThemeEnabled
+                              ? 'text-base-content hover:bg-base-200 hover:text-primary'
+                              : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                        }`}
                       >
                         <span>Date (Newest First)</span>
-                        {sortField === 'date' && sortOrder === 'desc' && <span className="text-green-600">✓</span>}
+                        {sortField === 'date' && sortOrder === 'desc' && (
+                          <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}>&#10003;</span>
+                        )}
                       </button>
 
                       <button
                         onClick={() => handleSortSelection('date', 'asc')}
-                        className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-green-50 hover:text-green-700 transition-colors ${sortField === 'date' && sortOrder === 'asc' ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-700'}`}
+                        className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                          sortField === 'date' && sortOrder === 'asc'
+                            ? isDashboardThemeEnabled
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'bg-green-50 text-green-700 font-medium'
+                            : isDashboardThemeEnabled
+                              ? 'text-base-content hover:bg-base-200 hover:text-primary'
+                              : 'text-gray-700 hover:bg-green-50 hover:text-green-700'
+                        }`}
                       >
                         <span>Date (Oldest First)</span>
-                        {sortField === 'date' && sortOrder === 'asc' && <span className="text-green-600">✓</span>}
+                        {sortField === 'date' && sortOrder === 'asc' && (
+                          <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}>&#10003;</span>
+                        )}
                       </button>
                     </div>
                   )}
                 </div>
 
-                <div className="flex bg-white/10 rounded-lg p-1 border border-white/20">
+                <div className={`flex rounded-lg border p-1 ${
+                  isDashboardThemeEnabled
+                    ? 'border-base-300 bg-base-200/70'
+                    : 'border-white/20 bg-white/10'
+                }`}>
                   <button
                     onClick={() => setState(prev => ({ ...prev, documentViewMode: 'list' }))}
-                    className={`p-1.5 rounded-md transition-all min-h-[36px] min-w-[36px] ${documentViewMode === 'list' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                    className={`min-h-[36px] min-w-[36px] rounded-md p-1.5 transition-all ${
+                      documentViewMode === 'list'
+                        ? isDashboardThemeEnabled
+                          ? 'bg-base-100 text-primary shadow-sm'
+                          : 'bg-white text-green-700 shadow-sm'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content/70 hover:bg-base-100 hover:text-primary'
+                          : 'text-white hover:bg-white/10'
+                    }`}
                     title="List View"
                   >
                     <List className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, documentViewMode: 'grid' }))}
-                    className={`p-1.5 rounded-md transition-all min-h-[36px] min-w-[36px] ${documentViewMode === 'grid' ? 'bg-white text-green-700 shadow-sm' : 'text-white hover:bg-white/10'}`}
+                    className={`rounded-md p-1.5 transition-all ${
+                      documentViewMode === 'grid'
+                        ? isDashboardThemeEnabled
+                          ? 'bg-base-100 text-primary shadow-sm'
+                          : 'bg-white text-green-700 shadow-sm'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content/70 hover:bg-base-100 hover:text-primary'
+                          : 'text-white hover:bg-white/10'
+                    }`}
                     title="Grid View"
                   >
                     <LayoutGrid className="w-5 h-5" />
@@ -852,17 +1012,34 @@ const DocumentManagement: React.FC = () => {
           {initialLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div
+                  key={i}
+                  className={`rounded-xl border p-6 animate-pulse ${
+                    isDashboardThemeEnabled
+                      ? 'border-base-300 bg-base-100 shadow-lg shadow-base-content/5'
+                      : 'border-gray-200 bg-white shadow-sm'
+                  }`}
+                >
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                    <div className={`h-10 w-10 rounded-lg ${
+                      isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-200'
+                    }`}></div>
                     <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-3 bg-gray-100 rounded w-3/4"></div>
+                      <div className={`mb-2 h-4 rounded ${
+                        isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-200'
+                      }`}></div>
+                      <div className={`h-3 w-3/4 rounded ${
+                        isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                      }`}></div>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <div className="h-3 bg-gray-100 rounded w-20"></div>
-                    <div className="h-3 bg-gray-100 rounded w-16"></div>
+                    <div className={`h-3 w-20 rounded ${
+                      isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                    }`}></div>
+                    <div className={`h-3 w-16 rounded ${
+                      isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                    }`}></div>
                   </div>
                 </div>
               ))}
@@ -871,10 +1048,18 @@ const DocumentManagement: React.FC = () => {
 
           {/* Quick Loading Indicator for Updates */}
           {loading && !initialLoading && (
-            <div className="fixed top-4 right-4 bg-white rounded-lg px-4 py-2 z-50 shadow-sm border border-gray-200">
+            <div className={`fixed top-4 right-4 z-50 rounded-lg border px-4 py-2 ${
+              isDashboardThemeEnabled
+                ? 'border-base-300 bg-base-100 shadow-lg shadow-base-content/10'
+                : 'border-gray-200 bg-white shadow-sm'
+            }`}>
               <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
-                <span className="text-sm text-gray-700 font-medium">Updating...</span>
+                <div className={`h-4 w-4 animate-spin rounded-full border-2 border-t-transparent ${
+                  isDashboardThemeEnabled ? 'border-primary' : 'border-green-600'
+                }`}></div>
+                <span className={`text-sm font-medium ${
+                  isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-700'
+                }`}>Updating...</span>
               </div>
             </div>
           )}
@@ -890,23 +1075,39 @@ const DocumentManagement: React.FC = () => {
                       {loading ? (
                         // Show loading skeleton when loading folders
                         [...Array(6)].map((_, i) => (
-                          <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
+                          <div
+                            key={i}
+                            className={`rounded-xl border p-6 animate-pulse ${
+                              isDashboardThemeEnabled
+                                ? 'border-base-300 bg-base-100 shadow-lg shadow-base-content/5'
+                                : 'border-gray-200 bg-white shadow-sm'
+                            }`}
+                          >
                             <div className="flex items-center gap-3 mb-4">
-                              <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                              <div className={`h-10 w-10 rounded-lg ${
+                                isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-200'
+                              }`}></div>
                               <div className="flex-1">
-                                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                                <div className="h-3 bg-gray-100 rounded w-3/4"></div>
+                                <div className={`mb-2 h-4 rounded ${
+                                  isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-200'
+                                }`}></div>
+                                <div className={`h-3 w-3/4 rounded ${
+                                  isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                                }`}></div>
                               </div>
                             </div>
                             <div className="flex justify-between items-center">
-                              <div className="h-3 bg-gray-100 rounded w-20"></div>
-                              <div className="h-3 bg-gray-100 rounded w-16"></div>
+                              <div className={`h-3 w-20 rounded ${
+                                isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                              }`}></div>
+                              <div className={`h-3 w-16 rounded ${
+                                isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                              }`}></div>
                             </div>
                           </div>
                         ))
                       ) : sortedFolders.length > 0 ? (
                         sortedFolders.map((folder) => (
-
                           <FolderCard
                             key={folder.folder_id}
                             folder={folder}
@@ -924,183 +1125,188 @@ const DocumentManagement: React.FC = () => {
                       )}
                     </div>
                   ) : (
-                    // Show filtered documents list when document-level filters are active
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                      <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h2 className="text-xl font-bold text-gray-900">
-                              {filters.status === 'deleted' ? 'Deleted Documents' :
-                                filters.year ? `Documents from ${filters.year}` : 'Filtered Documents'}
-                            </h2>
-                            <p className="text-sm text-gray-600 font-normal mt-1">
-                              {loading ? 'Loading...' : `${documents.length} document${documents.length !== 1 ? 's' : ''}`}
-                            </p>
+                    // Show documents grid/list when filters are active
+                    <div className={`
+                    ${documentViewMode === 'grid'
+                        ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                        : isDashboardThemeEnabled
+                          ? 'overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-lg shadow-base-content/5 divide-y divide-base-300/70'
+                          : 'bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100'
+                      }
+                  `}>
+                      {loading ? (
+                        [...Array(6)].map((_, i) => (
+                          <div key={i} className="animate-pulse p-6">
+                            <div className="flex items-center gap-4">
+                              <div className={`h-12 w-12 rounded-xl ${
+                                isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-200'
+                              }`}></div>
+                              <div className="flex-1 space-y-2">
+                                <div className={`h-4 w-1/4 rounded ${
+                                  isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
+                                }`}></div>
+                                <div className={`h-3 w-1/2 rounded ${
+                                  isDashboardThemeEnabled ? 'bg-base-200/80' : 'bg-gray-50'
+                                }`}></div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-
-                      <div className="divide-y divide-gray-100">
-                        {loading ? (
-                          <div className="p-8 text-center text-gray-500">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
-                            <p className="text-sm font-normal text-gray-600">Loading documents...</p>
-                          </div>
-                        ) : sortedDocuments.length > 0 ? (
-                          documentViewMode === 'list' ? (
-                            sortedDocuments.map((document) => (
-
-                              <DocumentListItem
-                                key={document.doc_id}
-                                document={document}
-                                isHighlighted={highlightedDocId === document.doc_id}
-                                onDocumentUpdated={async () => {
-                                  await loadDocuments();
-                                }}
-                              />
-                            ))
+                        ))
+                      ) : sortedDocuments.length > 0 ? (
+                        sortedDocuments.map((doc) => (
+                          documentViewMode === 'grid' ? (
+                            <DocumentGridItem
+                              key={doc.doc_id}
+                              document={doc}
+                              isHighlighted={highlightedDocId === doc.doc_id}
+                              onDocumentUpdated={loadDocuments}
+                            />
                           ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 gap-y-10 p-4">
-                              {sortedDocuments.map((document) => (
-                                <DocumentGridItem
-                                  key={document.doc_id}
-                                  document={document}
-                                  isHighlighted={highlightedDocId === document.doc_id}
-                                  onDocumentUpdated={async () => {
-                                    await loadDocuments();
-                                  }}
-                                />
-                              ))}
-                            </div>
+                            <DocumentListItem
+                              key={doc.doc_id}
+                              document={doc}
+                              isHighlighted={highlightedDocId === doc.doc_id}
+                              onDocumentUpdated={loadDocuments}
+                            />
                           )
-                        ) : (
-                          <div className="p-12 text-center">
-                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <FileText className="w-8 h-8 text-gray-400" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                              {filters.status === 'deleted' ? 'No Deleted Documents' :
-                                filters.year ? `No Documents from ${filters.year}` : 'No Documents Found'}
-                            </h3>
-                            <p className="text-gray-600 font-normal">
-                              {filters.year ? `There are no documents created in ${filters.year}.` : 'No documents match your filter criteria.'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                        ))
+                      ) : (
+                        renderEmptyDocumentState()
+                      )}
                     </div>
                   )}
                 </>
               ) : (
-                <>
-                  {/* Unified File Manager View - Folders and Documents - Clean White */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-6 border-b border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h2 className="text-xl font-bold text-gray-900">
-                            {currentFolder?.folder_name || 'All Documents'}
-                          </h2>
-                          <p className="text-sm text-gray-600 font-normal mt-1">
-                            {loading ? 'Loading...' : `${subfolders.length} folder${subfolders.length !== 1 ? 's' : ''}, ${getDocumentCountText()}`}
-                          </p>
-                        </div>
-                      </div>
+                // Folder detail view
+                <div className="space-y-6">
+                  {isTransitioning ? (
+                    <div className={`p-8 text-center ${
+                      isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-500'
+                    }`}>
+                      <div className={`mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 ${
+                        isDashboardThemeEnabled ? 'border-primary' : 'border-green-600'
+                      }`}></div>
+                      <p className={`text-sm font-normal ${
+                        isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-600'
+                      }`}>Loading...</p>
                     </div>
-
-                    <div className="divide-y divide-gray-100">
-                      {isTransitioning ? (
-                        <div className="p-8 text-center text-gray-500">
-                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-4"></div>
-                          <p className="text-sm font-normal text-gray-600">Loading...</p>
+                  ) : (
+                    <>
+                      {/* Subfolders Grid */}
+                      {sortedSubfolders.length > 0 && (
+                        <div className="space-y-4">
+                          <h3 className={`flex items-center gap-2 text-sm font-semibold uppercase tracking-wider ${
+                            isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-400'
+                          }`}>
+                            <FolderIcon className="w-4 h-4" />
+                            Subfolders
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                            {sortedSubfolders.map((folder) => (
+                              <FolderCard
+                                key={folder.folder_id}
+                                folder={folder}
+                                onFolderClick={handleFolderClick}
+                                documentCount={getFolderDocumentCount(folder.folder_id)}
+                                onFolderUpdated={async () => {
+                                  if (currentFolder) {
+                                    hasNavigatedFromUrl.current = true;
+                                    await handleFolderClick(currentFolder);
+                                  }
+                                }}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      ) : (
-                        <>
-                          {/* Subfolders */}
-                          {sortedSubfolders.map((folder) => (
-
-                            <div
-                              key={`folder-${folder.folder_id}`}
-                              className="p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer flex items-center gap-4 group"
-                              onClick={() => handleFolderClick(folder)}
-                            >
-                              <div className="flex-shrink-0">
-                                <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-all">
-                                  <FolderIcon className="w-6 h-6 text-blue-600" />
-                                </div>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 truncate group-hover:text-green-600 transition-colors">
-                                  {folder.folder_name}
-                                </h3>
-                                <p className="text-sm text-gray-600 truncate font-normal">
-                                  {folder.folder_path}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0 text-sm text-gray-500 font-normal">
-                                {getFolderDocumentCount(folder.folder_id)} items
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Documents */}
-                          {loading && documents.length === 0 ? (
-                            <div className="p-4 text-center text-gray-500 text-sm font-normal">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                              <span className="text-gray-600">Loading documents...</span>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              {/* Search loading overlay */}
-                              {loading && documents.length > 0 && (
-                                <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center rounded-xl">
-                                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
-                                    <span className="text-sm text-gray-600">Searching...</span>
-                                  </div>
-                                </div>
-                              )}
-                              {documentViewMode === 'list' ? (
-                                sortedDocuments.map((document) => (
-                                  <DocumentListItem
-                                    key={`doc-${document.doc_id}`}
-                                    document={document}
-                                    folders={folders.map(f => ({ folder_id: f.folder_id, folder_name: f.folder_name }))}
-                                    isHighlighted={highlightedDocId === document.doc_id}
-                                    onDocumentUpdated={async () => {
-                                      await loadDocuments();
-                                      await refreshCounts();
-                                    }}
-                                  />
-                                ))
-                              ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 gap-y-10 p-4">
-                                  {sortedDocuments.map((document) => (
-                                    <DocumentGridItem
-                                      key={`doc-${document.doc_id}`}
-                                      document={document}
-                                      folders={folders.map(f => ({ folder_id: f.folder_id, folder_name: f.folder_name }))}
-                                      isHighlighted={highlightedDocId === document.doc_id}
-                                      onDocumentUpdated={async () => {
-                                        await loadDocuments();
-                                        await refreshCounts();
-                                      }}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Empty State - Only show when truly empty */}
-                          {!loading && subfolders.length === 0 && documents.length === 0 && (
-                            renderEmptyDocumentState()
-                          )}
-                        </>
                       )}
-                    </div>
-                  </div>
-                </>
+
+                      {/* Documents Section */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className={`flex items-center gap-2 text-sm font-semibold uppercase tracking-wider ${
+                            isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-400'
+                          }`}>
+                            <FileText className="w-4 h-4" />
+                            Documents ({documents.length})
+                          </h3>
+
+                          <div className={`flex items-center gap-2 text-xs font-medium ${
+                            isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-500'
+                          }`}>
+                            Showing {getDocumentCountText()}
+                          </div>
+                        </div>
+
+                        {/* Documents */}
+                        {loading && documents.length === 0 ? (
+                          <div className={`p-4 text-center text-sm font-normal ${
+                            isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-500'
+                          }`}>
+                            <div className={`mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-b-2 ${
+                              isDashboardThemeEnabled ? 'border-primary' : 'border-green-600'
+                            }`}></div>
+                            <span className={isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-600'}>
+                              Loading documents...
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            {/* Search loading overlay */}
+                            {loading && documents.length > 0 && (
+                              <div className={`absolute inset-0 z-10 flex items-center justify-center rounded-2xl ${
+                                isDashboardThemeEnabled ? 'bg-base-100/75' : 'bg-white/60'
+                              }`}>
+                                <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${
+                                  isDashboardThemeEnabled
+                                    ? 'border-base-300 bg-base-100 shadow-lg shadow-base-content/10'
+                                    : 'border-gray-200 bg-white shadow-sm'
+                                }`}>
+                                  <div className={`h-4 w-4 animate-spin rounded-full border-2 border-t-transparent ${
+                                    isDashboardThemeEnabled ? 'border-primary' : 'border-green-600'
+                                  }`}></div>
+                                  <span className={`text-sm ${
+                                    isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+                                  }`}>Searching...</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className={`
+                              ${documentViewMode === 'grid'
+                                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                                : isDashboardThemeEnabled
+                                  ? 'overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-lg shadow-base-content/5 divide-y divide-base-300/70'
+                                  : 'bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100'
+                              }
+                            `}>
+                              {sortedDocuments.map((doc) => (
+                                documentViewMode === 'grid' ? (
+                                  <DocumentGridItem
+                                    key={doc.doc_id}
+                                    document={doc}
+                                    isHighlighted={highlightedDocId === doc.doc_id}
+                                    onDocumentUpdated={loadDocuments}
+                                  />
+                                ) : (
+                                  <DocumentListItem
+                                    key={doc.doc_id}
+                                    document={doc}
+                                    isHighlighted={highlightedDocId === doc.doc_id}
+                                    onDocumentUpdated={loadDocuments}
+                                  />
+                                )
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Empty State - Only show when truly empty */}
+                        {!loading && sortedSubfolders.length === 0 && documents.length === 0 && (
+                          renderEmptyDocumentState()
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </>
           )}
@@ -1108,52 +1314,60 @@ const DocumentManagement: React.FC = () => {
       </div>
 
       {/* Upload Modal */}
-      {
-        isUploadModalOpen && createPortal(
+      {isUploadModalOpen && createPortal(
+        <div
+          data-theme={isDashboardThemeEnabled ? theme : undefined}
+          className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30 backdrop-blur-sm"
+          style={{ margin: 0, padding: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div
-            className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/30 backdrop-blur-sm"
-            style={{ margin: 0, padding: 0 }}
+            className={`mx-4 w-full max-w-2xl rounded-xl border ${
+              isDashboardThemeEnabled
+                ? 'border-base-300 bg-base-100 shadow-2xl shadow-base-content/15'
+                : 'border-gray-200 bg-white shadow-sm'
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-2xl mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Upload Documents</h3>
-                  <p className="text-sm text-gray-500 mt-1">You can upload up to 5 documents at a time</p>
-                </div>
-                <button
-                  onClick={() => setIsUploadCancelDialogOpen(true)}
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-1 rounded-lg transition-all text-xl"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6">
-                <MultiFileUploadUI
-                  maxFileSize={50 * 1024 * 1024}
-                  acceptedFileTypes=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                  minFiles={1}
-                  maxFiles={5}
-                  onUploadSuccess={() => {
-                    setIsUploadModalOpen(false);
-                    loadDocuments();
-                  }}
-                  onUploadError={(error) => {
-                    console.error('Upload error:', error);
-                  }}
-                />
-              </div>
+            {/* Modal Header */}
+            <div className={`flex items-center justify-between border-b p-6 ${
+              isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'
+            }`}>
+              <h3 className={`text-lg font-semibold ${
+                isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'
+              }`}>Upload Documents</h3>
+              <button
+                onClick={() => setIsUploadCancelDialogOpen(true)}
+                className={`rounded-lg p-1 text-xl transition-all ${
+                  isDashboardThemeEnabled
+                    ? 'text-base-content/60 hover:bg-base-200 hover:text-base-content'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                &times;
+              </button>
             </div>
-          </div>,
-          document.body
-        )
-      }
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <MultiFileUploadUI
+                maxFileSize={50 * 1024 * 1024} // 50MB limit
+                acceptedFileTypes=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                minFiles={1} // Allow 1+ files
+                onUploadSuccess={() => {
+                  // Modal closes and navigation to AI processing happens automatically in the hook
+                  setIsUploadModalOpen(false);
+                }}
+                onUploadError={(error) => {
+                  console.error('Upload error:', error);
+                  // Keep modal open to show error and allow retry
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Filter Modal */}
       <FilterModal
@@ -1169,27 +1383,58 @@ const DocumentManagement: React.FC = () => {
         onClose={() => setIsScanModalOpen(false)}
       />
 
+      {/* Global Document Viewer */}
+      {viewingDocument && (
+        <DocumentViewer
+          isOpen={true}
+          onClose={handleCloseViewer}
+          document={viewingDocument}
+        />
+      )}
+
       {/* Upload Cancel Confirmation Dialog */}
       {isUploadCancelDialogOpen && createPortal(
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div
+          data-theme={isDashboardThemeEnabled ? theme : undefined}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10000]"
+        >
+          <div className={`mx-4 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-200 ${
+            isDashboardThemeEnabled ? 'border border-base-300 bg-base-100' : 'bg-white'
+          }`}>
             {/* Dialog Header */}
-            <div className="px-6 py-4 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}>
+            <div
+              className={`border-b px-6 py-4 ${
+                isDashboardThemeEnabled ? 'border-base-300 bg-primary text-primary-content' : 'border-gray-100'
+              }`}
+              style={
+                isDashboardThemeEnabled
+                  ? undefined
+                  : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+              }
+            >
               <h3 className="text-lg font-bold text-white">Cancel Upload?</h3>
             </div>
 
             {/* Dialog Content */}
             <div className="px-6 py-5">
-              <p className="text-gray-600 text-sm leading-relaxed">
+              <p className={`text-sm leading-relaxed ${
+                isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+              }`}>
                 Are you sure you want to cancel the upload process? Any selected files will be cleared.
               </p>
             </div>
 
             {/* Dialog Actions */}
-            <div className="px-6 py-4 bg-gray-50 flex gap-3 justify-end">
+            <div className={`flex gap-3 justify-end px-6 py-4 ${
+              isDashboardThemeEnabled ? 'bg-base-200/80' : 'bg-gray-50'
+            }`}>
               <button
                 onClick={() => setIsUploadCancelDialogOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+                  isDashboardThemeEnabled
+                    ? 'text-base-content/70 hover:bg-base-100 hover:text-base-content'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                }`}
               >
                 Continue Upload
               </button>
@@ -1198,7 +1443,11 @@ const DocumentManagement: React.FC = () => {
                   setIsUploadCancelDialogOpen(false);
                   setIsUploadModalOpen(false);
                 }}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors shadow-md"
+                className={`rounded-lg px-4 py-2 font-medium text-white transition-colors ${
+                  isDashboardThemeEnabled
+                    ? 'bg-error shadow-lg shadow-error/20 hover:bg-error/90'
+                    : 'bg-red-500 shadow-md hover:bg-red-600'
+                }`}
               >
                 Yes, Cancel
               </button>
@@ -1210,4 +1459,6 @@ const DocumentManagement: React.FC = () => {
     </div>
   );
 };
+
 export default DocumentManagement;
+

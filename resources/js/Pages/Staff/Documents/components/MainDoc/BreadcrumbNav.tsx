@@ -1,13 +1,19 @@
-// BreadcrumbNav.tsx - Navigation breadcrumb component with TypeScript
-import React from 'react';
-import { ArrowLeft, Home, ChevronRight } from 'lucide-react';
-import { BreadcrumbNavProps, Folder } from '../../types/types';
+import React from "react";
+import { ArrowLeft, Home, ChevronRight } from "lucide-react";
+import { BreadcrumbNavProps, Folder } from "../../types/types";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../../hooks/useDashboardTheme";
 
 const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
   currentFolder,
   onNavigate,
-  breadcrumbPath = []
+  breadcrumbPath = [],
 }) => {
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
   const handleBackClick = (): void => {
     onNavigate(null);
   };
@@ -21,11 +27,20 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
-      {/* Back Button */}
+    <div
+      className={`flex items-center gap-2 mb-4 p-4 rounded-xl shadow-sm ${
+        isDashboardThemeEnabled
+          ? "bg-base-100 border border-base-300 text-base-content"
+          : "bg-white border border-gray-200"
+      }`}
+    >
       <button
         onClick={handleBackClick}
-        className="flex items-center gap-2 text-gray-700 hover:text-green-600 transition-all px-3 py-2 rounded-lg hover:bg-gray-100 font-semibold"
+        className={`flex items-center gap-2 transition-all px-3 py-2 rounded-lg font-semibold ${
+          isDashboardThemeEnabled
+            ? "text-base-content hover:text-primary hover:bg-base-200"
+            : "text-gray-700 hover:text-green-600 hover:bg-gray-100"
+        }`}
         type="button"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -33,15 +48,20 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
         <span className="sm:hidden">Back</span>
       </button>
 
-      {/* Separator */}
-      <div className="w-px h-6 bg-gray-300 mx-2" />
+      <div
+        className={`w-px h-6 mx-2 ${
+          isDashboardThemeEnabled ? "bg-base-300" : "bg-gray-300"
+        }`}
+      />
 
-      {/* Breadcrumb Trail */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
-        {/* Home/Root */}
         <button
           onClick={handleHomeClick}
-          className="flex items-center gap-1 text-gray-600 hover:text-green-600 transition-all px-2 py-1 rounded-lg hover:bg-gray-100 font-normal"
+          className={`flex items-center gap-1 transition-all px-2 py-1 rounded-lg font-normal ${
+            isDashboardThemeEnabled
+              ? "text-base-content/70 hover:text-primary hover:bg-base-200"
+              : "text-gray-600 hover:text-green-600 hover:bg-gray-100"
+          }`}
           type="button"
           title="Go to root directory"
         >
@@ -49,15 +69,24 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
           <span className="hidden md:inline text-sm">Root</span>
         </button>
 
-        {/* Breadcrumb Path */}
         {breadcrumbPath.length > 0 && (
           <>
-            {breadcrumbPath.map((folder, index) => (
+            {breadcrumbPath.map((folder) => (
               <React.Fragment key={folder.folder_id}>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight
+                  className={`w-4 h-4 ${
+                    isDashboardThemeEnabled
+                      ? "text-base-content/35"
+                      : "text-gray-400"
+                  }`}
+                />
                 <button
                   onClick={() => handleBreadcrumbClick(folder)}
-                  className="text-gray-600 hover:text-green-600 transition-all text-sm px-2 py-1 rounded-lg hover:bg-gray-100 truncate max-w-32 font-normal"
+                  className={`transition-all text-sm px-2 py-1 rounded-lg truncate max-w-32 font-normal ${
+                    isDashboardThemeEnabled
+                      ? "text-base-content/70 hover:text-primary hover:bg-base-200"
+                      : "text-gray-600 hover:text-green-600 hover:bg-gray-100"
+                  }`}
                   type="button"
                   title={folder.folder_path}
                 >
@@ -68,12 +97,19 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
           </>
         )}
 
-        {/* Current Folder */}
         {currentFolder && (
           <>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight
+              className={`w-4 h-4 ${
+                isDashboardThemeEnabled
+                  ? "text-base-content/35"
+                  : "text-gray-400"
+              }`}
+            />
             <span
-              className="font-semibold text-gray-900 text-sm truncate max-w-40"
+              className={`font-semibold text-sm truncate max-w-40 ${
+                isDashboardThemeEnabled ? "text-base-content" : "text-gray-900"
+              }`}
               title={currentFolder.folder_path}
             >
               {currentFolder.folder_name}
@@ -82,11 +118,14 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
         )}
       </div>
 
-      {/* Folder Info */}
       {currentFolder && (
-        <div className="hidden lg:flex items-center gap-2 text-xs text-gray-600 bg-gray-100 px-3 py-2 rounded-lg font-normal">
-
-
+        <div
+          className={`hidden lg:flex items-center gap-2 text-xs px-3 py-2 rounded-lg font-normal ${
+            isDashboardThemeEnabled
+              ? "text-base-content/65 bg-base-200"
+              : "text-gray-600 bg-gray-100"
+          }`}
+        >
           <span title={currentFolder.updated_at}>
             Updated {new Date(currentFolder.updated_at).toLocaleDateString()}
           </span>
@@ -97,3 +136,4 @@ const BreadcrumbNav: React.FC<BreadcrumbNavProps> = ({
 };
 
 export default BreadcrumbNav;
+

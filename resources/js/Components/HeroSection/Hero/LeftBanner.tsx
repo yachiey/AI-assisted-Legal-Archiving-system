@@ -32,7 +32,7 @@ const LeftBanner: React.FC<NavbarProps> = ({ onLoginClick }) => {
                 <div className="flex flex-col gap-8 relative z-10">
                     <h1 className="text-5xl lg:text-7xl font-black text-gray-900 leading-[1.1] tracking-tight">
                         Legal <span className="text-green-800">Archiving</span> <br />
-                        <span className="text-yellow-600 font-light italic">&</span> Search
+                       
                     </h1>
 
                     <div className="h-12">
@@ -64,7 +64,7 @@ const LeftBanner: React.FC<NavbarProps> = ({ onLoginClick }) => {
 
                     <div className="flex items-center gap-4 px-6 text-sm font-semibold text-gray-500">
                         <span className="flex h-2.5 w-2.5 rounded-full bg-yellow-500 animate-pulse"></span>
-                        Trusted by CMU Legal
+                        Trusted by CMU Legal Office
                     </div>
                 </div>
             </div>

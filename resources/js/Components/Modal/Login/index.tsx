@@ -104,7 +104,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                                     onChange={(e) => setEmail(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     disabled={isLoading}
-                                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-gray-100 focus:bg-white focus:border-green-800 focus:ring-4 focus:ring-green-800/5 outline-none transition-all placeholder:text-gray-300 font-medium"
+                                    className="w-full px-5 py-4 rounded-2xl bg-white border-2 border-gray-100 focus:border-green-800 focus:ring-4 focus:ring-green-800/5 outline-none transition-all placeholder:text-gray-300 font-medium"
                                 />
                             </div>
 
@@ -120,7 +120,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                                         onChange={(e) => setPassword(e.target.value)}
                                         onKeyPress={handleKeyPress}
                                         disabled={isLoading}
-                                        className="w-full px-5 py-4 pr-12 rounded-2xl bg-gray-50 border-2 border-gray-100 focus:bg-white focus:border-green-800 focus:ring-4 focus:ring-green-800/5 outline-none transition-all placeholder:text-gray-300 font-medium"
+                                        className="w-full px-5 py-4 pr-12 rounded-2xl bg-white border-2 border-gray-100 focus:border-green-800 focus:ring-4 focus:ring-green-800/5 outline-none transition-all placeholder:text-gray-300 font-medium"
                                     />
                                     <button
                                         type="button"

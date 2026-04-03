@@ -625,49 +625,54 @@ const DocumentManagement: React.FC = () => {
           : { background: 'linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)' }
       }
     >
-      {/* Mobile Overlay Backdrop */}
-      {isMobileSidebarOpen && (
-        <div
-          className="absolute inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        />
+      {/* Sidebar + backdrop rendered via portal into document.body to escape all stacking contexts */}
+      {createPortal(
+        <>
+          {isMobileSidebarOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 z-[9998] md:hidden"
+              onClick={() => setIsMobileSidebarOpen(false)}
+            />
+          )}
+          <div
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
+            className={`
+            fixed top-0 left-0 h-screen z-[9999]
+            transform transition-transform duration-300 ease-in-out
+            ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          `}>
+            <DocumentSidebar
+              currentFolder={state.currentFolder}
+              onFolderSelect={(folder) => {
+                if (folder) {
+                  handleFolderClick(folder);
+                  setIsMobileSidebarOpen(false);
+                } else {
+                  setState(prev => ({
+                    ...prev,
+                    currentFolder: null,
+                    viewMode: 'folders',
+                    searchTerm: '',
+                    filters: {},
+                    documents: [],
+                    subfolders: [],
+                    loading: true
+                  }));
+                  loadFolders(null);
+                  setIsMobileSidebarOpen(false);
+                }
+              }}
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={setSidebarCollapsed}
+              refreshTrigger={sidebarRefreshKey}
+            />
+          </div>
+        </>,
+        document.body
       )}
 
-      {/* Sidebar - Hidden on mobile by default, shown as overlay when open */}
-      <div className={`
-        absolute md:relative inset-y-0 left-0 z-50
-        transform transition-transform duration-300 ease-in-out
-        ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-      `}>
-        <DocumentSidebar
-          currentFolder={state.currentFolder}
-          onFolderSelect={(folder) => {
-            if (folder) {
-              handleFolderClick(folder);
-              setIsMobileSidebarOpen(false); // Close sidebar on mobile after selection
-            } else {
-              setState(prev => ({
-                ...prev,
-                currentFolder: null,
-                viewMode: 'folders',
-                searchTerm: '',
-                filters: {},
-                documents: [],
-                subfolders: [],
-                loading: true
-              }));
-              loadFolders(null);
-              setIsMobileSidebarOpen(false);
-            }
-          }}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={setSidebarCollapsed}
-          refreshTrigger={sidebarRefreshKey}
-        />
-      </div>
-
-      {/* Main Content - Full width on mobile, with margin on desktop */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      {/* Main Content - offset by sidebar width on desktop */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
         <div className="flex-1 overflow-y-auto p-6 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Back to AI Assistant Button - Shows when navigated from AI */}
           {cameFromAI && (

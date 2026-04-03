@@ -36,7 +36,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
       setErrorMessage("");
 
       const response = await axios.post(
-        `http://${window.location.hostname}:3000/scan`,
+        `http://localhost:3000/scan`,
         {},
         {
           timeout: 120000,

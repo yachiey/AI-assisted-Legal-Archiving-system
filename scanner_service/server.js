@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
+require('dotenv').config();
 
 const app = express();
 const PORT = 3000;
@@ -103,8 +104,8 @@ app.post('/scan', async (req, res) => {
             const formData = new FormData();
             formData.append('file', fs.createReadStream(outputPath));
 
-            // Adjust this URL to match your Laravel API (scanner-specific endpoint)
-            const API_URL = 'http://127.0.0.1:8000/api/scanner/upload';
+            // Reads LARAVEL_URL from .env file — change this when hosted
+            const API_URL = `${process.env.LARAVEL_URL || 'http://127.0.0.1:8000'}/api/scanner/upload`;
 
             const uploadResponse = await axios.post(API_URL, formData, {
                 headers: { ...formData.getHeaders() },

@@ -63,6 +63,7 @@ export const THEMED_ADMIN_COMPONENTS = [
 export const THEMED_STAFF_COMPONENTS = [
     "Staff/Dashboard/index",
     "Staff/Aiassistant/index",
+    "Staff/Documents/index",
 ] as const;
 
 export const isThemedAdminComponent = (component: string) =>

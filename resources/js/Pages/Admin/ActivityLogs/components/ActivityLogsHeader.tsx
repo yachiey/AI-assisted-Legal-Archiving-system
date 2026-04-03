@@ -440,27 +440,24 @@ const ActivityLogsHeader: React.FC<ActivityLogsHeaderProps> = ({
         <>
             <div
                 data-theme={isDashboardThemeEnabled ? theme : undefined}
-                className={`mb-8 rounded-2xl border p-6 ${
+                className={`mb-8 rounded-2xl border p-6 shadow-lg ${
                     isDashboardThemeEnabled
-                        ? 'border-base-300/70 bg-base-100/90 shadow-2xl shadow-base-content/5 backdrop-blur-xl'
-                        : 'border-green-700/20 shadow-lg'
+                        ? 'border-primary/20 bg-gradient-to-br from-primary via-primary to-secondary text-primary-content'
+                        : 'border-green-700/20'
                 }`}
                 style={
                     isDashboardThemeEnabled
-                        ? {
-                            boxShadow:
-                                '0 24px 60px oklch(var(--bc) / 0.06), inset 0 1px 0 oklch(var(--b1) / 0.4)',
-                        }
+                        ? undefined
                         : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
                 }
             >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div>
                         <h1 className={`mb-2 flex items-center gap-3 text-4xl font-black tracking-tight md:text-5xl ${
-                            isDashboardThemeEnabled ? 'text-base-content' : 'text-white'
+                            isDashboardThemeEnabled ? 'text-primary-content' : 'text-white'
                         }`}>
                             <ActivityIcon className={`w-8 h-8 ${
-                                isDashboardThemeEnabled ? 'text-primary' : 'text-yellow-400'
+                                isDashboardThemeEnabled ? 'text-accent' : 'text-yellow-400'
                             }`} />
                             ACTIVITY LOGS
                         </h1>
@@ -468,12 +465,12 @@ const ActivityLogsHeader: React.FC<ActivityLogsHeaderProps> = ({
                             className="mb-3 h-1 w-48 rounded-full"
                             style={{
                                 background: isDashboardThemeEnabled
-                                    ? 'linear-gradient(90deg, oklch(var(--p)), transparent)'
+                                    ? 'linear-gradient(90deg, oklch(var(--a)), transparent)'
                                     : 'linear-gradient(90deg, #facc15, transparent)',
                             }}
                         ></div>
                         <p className={`text-lg font-medium tracking-wide ${
-                            isDashboardThemeEnabled ? 'text-base-content/70' : 'text-green-50'
+                            isDashboardThemeEnabled ? 'text-primary-content/85' : 'text-green-50'
                         }`}>
                             Monitor and track all system activities
                         </p>
@@ -492,7 +489,7 @@ const ActivityLogsHeader: React.FC<ActivityLogsHeaderProps> = ({
                             disabled={isExporting}
                             className={`group flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 ${
                                 isDashboardThemeEnabled
-                                    ? 'border border-primary/30 bg-primary text-primary-content shadow-lg shadow-primary/15 hover:bg-primary/90 hover:shadow-xl'
+                                    ? 'border-2 border-primary-content/30 bg-primary-content/15 text-primary-content shadow-sm backdrop-blur-sm hover:bg-primary-content/25 hover:shadow-lg'
                                     : 'border-2 border-white/30 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20 hover:shadow-lg'
                             }`}
                         >

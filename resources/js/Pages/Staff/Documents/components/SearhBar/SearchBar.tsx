@@ -1,43 +1,76 @@
-// SearchBar.tsx - Search and filter component with TypeScript
-import React from 'react';
-import { Search, Filter } from 'lucide-react';
-import { SearchBarProps } from '../../types/types'; // Adjust the import path as necessary
+import React from "react";
+import { Search, Filter } from "lucide-react";
+import { SearchBarProps } from "../../types/types";
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from "../../../../../hooks/useDashboardTheme";
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
-  searchTerm, 
-  onSearchChange, 
-  onFilterClick 
+const SearchBar: React.FC<SearchBarProps> = ({
+  searchTerm,
+  onSearchChange,
+  onFilterClick,
 }) => {
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
+
+  const handleSearchChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void => {
     onSearchChange(event.target.value);
   };
 
-  const handleFilterClick = (): void => {
-    onFilterClick();
-  };
-
   return (
-    <div className="flex items-center gap-4 mb-6">
-      <div className="flex-1 relative bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+    <div className="relative z-0 mb-6 flex items-center gap-4">
+      <div
+        className={`flex-1 relative rounded-lg overflow-hidden ${
+          isDashboardThemeEnabled
+            ? "bg-base-100 border border-base-300 shadow-sm"
+            : "bg-white shadow-sm border border-gray-200"
+        }`}
+      >
+        <Search
+          className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+            isDashboardThemeEnabled ? "text-base-content/40" : "text-gray-400"
+          }`}
+        />
         <input
           type="text"
           placeholder="Search documents, cases, agreements..."
           value={searchTerm}
           onChange={handleSearchChange}
-          className="w-full pl-12 pr-4 py-3 bg-transparent border-0 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 placeholder-gray-400 font-normal"
+          className={`w-full pl-12 pr-4 py-3 bg-transparent border-0 focus:outline-none focus:ring-2 font-normal ${
+            isDashboardThemeEnabled
+              ? "focus:ring-primary/20 focus:border-primary text-base-content placeholder:text-base-content/40"
+              : "focus:ring-green-500 focus:border-green-500 text-gray-900 placeholder-gray-400"
+          }`}
         />
       </div>
       <button
-        onClick={handleFilterClick}
-        className="flex items-center gap-2 px-5 py-3 bg-white rounded-lg border border-gray-200 font-medium transition-all duration-200 shadow-sm hover:shadow-md hover:bg-gray-50"
+        onClick={onFilterClick}
+        className={`flex items-center gap-2 px-5 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md ${
+          isDashboardThemeEnabled
+            ? "bg-base-100 border border-base-300 text-base-content hover:bg-base-200"
+            : "bg-white border border-gray-200 hover:bg-gray-50"
+        }`}
         type="button"
       >
-        <Filter className="w-5 h-5 text-gray-600" />
-        <span className="text-gray-700 font-medium">Filter</span>
+        <Filter
+          className={`w-5 h-5 ${
+            isDashboardThemeEnabled ? "text-primary" : "text-gray-600"
+          }`}
+        />
+        <span
+          className={`font-medium ${
+            isDashboardThemeEnabled ? "text-base-content" : "text-gray-700"
+          }`}
+        >
+          Filter
+        </span>
       </button>
     </div>
   );
 };
 
 export default SearchBar;
+

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { RotateCcw, Trash2, X } from 'lucide-react';
 
 interface BulkActionsBarProps {
   selectedCount: number;
-  onDelete: () => Promise<void>;
+  onDelete: () => void;
   onClear: () => void;
 }
 
@@ -16,6 +15,7 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
   const [loading, setLoading] = useState(false);
 
   if (selectedCount === 0) return null;
+
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">

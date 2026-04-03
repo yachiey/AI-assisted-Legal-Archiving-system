@@ -144,6 +144,8 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
     >
       <div
+        data-lenis-prevent
+        data-lenis-prevent-wheel
         className={`rounded-lg shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col ${
           isDashboardThemeEnabled
             ? "bg-base-100 text-base-content border border-base-300/70"
@@ -201,7 +203,11 @@ export const DocumentSelectionModal: React.FC<DocumentSelectionModalProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
+        <div
+          data-lenis-prevent
+          data-lenis-prevent-wheel
+          className="flex-1 min-h-0 overflow-y-auto p-6"
+        >
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div

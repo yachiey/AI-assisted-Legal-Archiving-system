@@ -35,6 +35,8 @@ class ModelManager:
                 n_batch=N_BATCH,  # Faster prompt ingestion on CPU
                 verbose=False,
                 n_gpu_layers=N_GPU_LAYERS,  # Force CPU usage
+                use_mmap=False,  # Disable mmap for Windows stability
+                use_mlock=False,  # Disable mlock to avoid memory issues on Windows
             )
 
             self.is_loaded = True

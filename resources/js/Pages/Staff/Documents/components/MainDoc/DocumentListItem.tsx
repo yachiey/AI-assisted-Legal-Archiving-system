@@ -1,21 +1,24 @@
 // DocumentListItem.tsx - Individual document row in list view with TypeScript
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, MoreVertical } from 'lucide-react';
-import { router } from '@inertiajs/react';
-import { DocumentListItemProps, Document } from '../../types/types';
+import { MoreVertical } from 'lucide-react';
+import { DocumentListItemProps } from '../../types/types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import DocumentMenu from './DocumentMenu';
 import DocumentPropertiesModal from './DocumentPropertiesModal';
 import EditDocumentModal from './EditDocumentModal';
 import DeleteDocumentDialog from './DeleteDocumentDialog';
-import realDocumentService from '../../services/realDocumentService';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 const DocumentListItem: React.FC<DocumentListItemProps> = ({
   document,
   folders = [],
   isHighlighted = false,
-  onDocumentUpdated
+  onDocumentUpdated,
+  onViewDocument
 }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,9 +28,10 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   const handleDocumentClick = (): void => {
-    console.log('Document clicked:', document.title);
     setIsViewerOpen(true);
   };
 
@@ -85,7 +89,6 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     window.document.body.removeChild(link);
   };
 
-
   const handleDocumentUpdated = () => {
     if (onDocumentUpdated) {
       onDocumentUpdated();
@@ -96,16 +99,6 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     if (onDocumentUpdated) {
       onDocumentUpdated();
     }
-  };
-
-  const getStatusBadge = (status: Document['status']): string => {
-    const statusConfig: Record<Document['status'], string> = {
-      active: 'bg-green-100 text-green-800',
-      draft: 'bg-yellow-100 text-yellow-800',
-      pending: 'bg-blue-100 text-blue-800'
-    };
-
-    return statusConfig[status] || 'bg-gray-100 text-gray-800';
   };
 
   const formatDate = (dateString: string): string => {
@@ -164,25 +157,53 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   return (
     <>
       <div
-        className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-all duration-200 cursor-pointer group ${isHighlighted ? 'bg-green-100 ring-2 ring-green-500 ring-inset animate-pulse' : ''
-          }`}
+        className={`group flex cursor-pointer items-center justify-between p-4 transition-all duration-200 ${
+          isDashboardThemeEnabled
+            ? `border-transparent hover:bg-base-200/75 ${
+                isHighlighted
+                  ? 'bg-primary/12 ring-1 ring-inset ring-primary/40 animate-pulse'
+                  : ''
+              }`
+            : `hover:bg-gray-50 ${
+                isHighlighted
+                  ? 'bg-green-100 ring-2 ring-green-500 ring-inset animate-pulse'
+                  : ''
+              }`
+        }`}
         onClick={handleDocumentClick}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          // Prevent triggering when interacting with inputs within the card (e.g. menu buttons or modals if portaled incorrectly)
+          // Also check if the target is an input or textarea
+          const target = e.target as HTMLElement;
+          const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
+          if (!isInput && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             handleDocumentClick();
           }
         }}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="p-2 bg-red-50 rounded-lg flex-shrink-0 group-hover:bg-red-100 transition-all">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div
+            className={`shrink-0 rounded-lg p-2 transition-all ${
+              isDashboardThemeEnabled
+                ? 'border border-error/20 bg-error/10 group-hover:bg-error/15'
+                : 'bg-red-50 group-hover:bg-red-100'
+            }`}
+          >
             {getFileIcon()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors truncate">
+              <h4
+                className={`truncate font-semibold transition-colors ${
+                  isDashboardThemeEnabled
+                    ? 'text-base-content group-hover:text-primary'
+                    : 'text-gray-900 group-hover:text-green-600'
+                }`}
+              >
                 {document.title}
               </h4>
 
@@ -191,23 +212,39 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-shrink-0">
-          <div className="text-right text-sm text-gray-600">
+        <div className="flex shrink-0 items-center gap-4">
+          <div
+            className={`text-right text-sm ${
+              isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
+            }`}
+          >
             <div title={`Updated: ${document.updated_at}`} className="font-normal">
               {formatDate(document.updated_at)}
             </div>
-            <div className="text-xs text-gray-500 font-light">
+            <div
+              className={`text-xs font-light ${
+                isDashboardThemeEnabled ? 'text-base-content/55' : 'text-gray-500'
+              }`}
+            >
               {formatTime(document.updated_at)}
             </div>
           </div>
           <div className="relative">
             <button
-              className="p-1 rounded-lg hover:bg-gray-100 flex-shrink-0 transition-all"
+              className={`shrink-0 rounded-lg p-1 transition-all ${
+                isDashboardThemeEnabled
+                  ? 'text-base-content/70 hover:bg-base-200 hover:text-primary'
+                  : 'hover:bg-gray-100'
+              }`}
               onClick={handleMenuClick}
               type="button"
               aria-label={`More options for ${document.title}`}
             >
-              <MoreVertical className="w-4 h-4 text-gray-700" />
+              <MoreVertical
+                className={`h-4 w-4 ${
+                  isDashboardThemeEnabled ? 'text-current' : 'text-gray-700'
+                }`}
+              />
             </button>
           </div>
         </div>
@@ -277,6 +314,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       {/* Modern Forest Green Toast Notification - Using Portal */}
       {typeof window !== 'undefined' && showToast && createPortal(
         <div
+          data-theme={isDashboardThemeEnabled ? theme : undefined}
           className="fixed top-6 right-6 z-[10000] transform transition-all duration-500 ease-out"
           style={{
             animation: 'slideInRight 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -284,10 +322,21 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
         >
           <div
             className="relative overflow-hidden rounded-2xl backdrop-blur-xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%)',
-              boxShadow: '0 20px 60px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
-            }}
+            style={
+              isDashboardThemeEnabled
+                ? {
+                    background:
+                      'linear-gradient(135deg, oklch(var(--p) / 0.92) 0%, oklch(var(--s) / 0.92) 100%)',
+                    boxShadow:
+                      '0 20px 60px oklch(var(--p) / 0.28), 0 0 0 1px oklch(var(--bc) / 0.08) inset',
+                  }
+                : {
+                    background:
+                      'linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%)',
+                    boxShadow:
+                      '0 20px 60px rgba(16, 185, 129, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) inset',
+                  }
+            }
           >
             {/* Animated gradient overlay */}
             <div
@@ -385,3 +434,4 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
 };
 
 export default DocumentListItem;
+

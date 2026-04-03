@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 interface UserPermissions {
@@ -21,46 +21,28 @@ export const usePermissionPolling = (enabled: boolean = true) => {
     const [permissions, setPermissions] = useState<UserPermissions | null>(null);
     const [unreadCount, setUnreadCount] = useState<number>(0);
     const [hasPermissionChanged, setHasPermissionChanged] = useState(false);
+    const permissionsRef = useRef<UserPermissions | null>(null);
+    const isCheckingRef = useRef(false);
 
-    const checkPermissions = useCallback(async () => {
-        try {
-            const token = localStorage.getItem('auth_token');
-            if (!token) return;
-
-            const response = await axios.get<UserStatus>('/api/user/status', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            const newPermissions = response.data.permissions;
-            const newUnreadCount = response.data.unread_notifications;
-
-            // Check if permissions have changed
-            if (permissions) {
-                const changed = Object.keys(newPermissions).some(
-                    (key) => newPermissions[key as keyof UserPermissions] !== permissions[key as keyof UserPermissions]
-                );
-
-                if (changed) {
-                    setHasPermissionChanged(true);
-                    // Show notification toast
-                    showPermissionChangeToast();
-                }
-            }
-
-            setPermissions(newPermissions);
-            setUnreadCount(newUnreadCount);
-        } catch (error) {
-            console.error('Failed to check permission status:', error);
+    const havePermissionsChanged = (
+        previousPermissions: UserPermissions | null,
+        nextPermissions: UserPermissions
+    ) => {
+        if (!previousPermissions) {
+            return true;
         }
-    }, [permissions]);
 
-    const showPermissionChangeToast = () => {
-        // Create toast notification
+        return Object.keys(nextPermissions).some(
+            (key) =>
+                nextPermissions[key as keyof UserPermissions] !==
+                previousPermissions[key as keyof UserPermissions]
+        );
+    };
+
+    const showPermissionChangeToast = useCallback(() => {
         const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 z-[10000] bg-blue-600 text-white px-6 py-4 rounded-lg shadow-xl animate-slide-in';
+        toast.className =
+            'fixed top-4 right-4 z-[10000] bg-blue-600 text-white px-6 py-4 rounded-lg shadow-xl animate-slide-in';
         toast.innerHTML = `
             <div class="flex items-center gap-3">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,11 +56,52 @@ export const usePermissionPolling = (enabled: boolean = true) => {
         `;
         document.body.appendChild(toast);
 
-        // Auto-refresh after 2 seconds
         setTimeout(() => {
             window.location.reload();
         }, 2000);
-    };
+    }, []);
+
+    const checkPermissions = useCallback(async () => {
+        if (isCheckingRef.current) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) return;
+            isCheckingRef.current = true;
+
+            const response = await axios.get<UserStatus>('/api/user/status', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const newPermissions = response.data.permissions;
+            const newUnreadCount = response.data.unread_notifications;
+            const previousPermissions = permissionsRef.current;
+            const permissionsChanged = havePermissionsChanged(
+                previousPermissions,
+                newPermissions
+            );
+
+            if (previousPermissions && permissionsChanged) {
+                setHasPermissionChanged(true);
+                showPermissionChangeToast();
+            }
+
+            permissionsRef.current = newPermissions;
+            if (!previousPermissions || permissionsChanged) {
+                setPermissions(newPermissions);
+            }
+            setUnreadCount(newUnreadCount);
+        } catch (error) {
+            console.error('Failed to check permission status:', error);
+        } finally {
+            isCheckingRef.current = false;
+        }
+    }, [showPermissionChangeToast]);
 
     const resetChangeFlag = useCallback(() => {
         setHasPermissionChanged(false);

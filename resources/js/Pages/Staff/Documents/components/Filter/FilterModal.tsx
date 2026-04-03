@@ -23,7 +23,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   folders,
 }) => {
   const [filters, setFilters] = useState<DocumentFilters>(currentFilters);
-  const { theme } = useDashboardTheme();
+  const { theme } = useDashboardTheme("staff");
   const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   useEffect(() => {
@@ -229,3 +229,4 @@ const FilterModal: React.FC<FilterModalProps> = ({
 };
 
 export default FilterModal;
+

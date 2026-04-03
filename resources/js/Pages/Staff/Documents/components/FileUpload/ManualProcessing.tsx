@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Folder, Save, X, ChevronDown, Calendar, User, CheckCircle } from 'lucide-react';
+import { FileText, Folder, Save, X, ChevronDown, Calendar, User, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import axios from 'axios';
+import DocumentQueueNavigation from './DocumentQueueNavigation';
+import { useDocumentQueue } from '../../hooks/useDocumentQueue';
+import UploadDocumentViewer from './UploadDocumentViewer';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 interface Folder {
   folder_id: number;
@@ -16,6 +23,7 @@ interface FormData {
   description: string;
   remarks: string;
   physicalLocation: string;
+  documentRefId: string;
 }
 
 const ManualProcessing = ({
@@ -24,6 +32,8 @@ const ManualProcessing = ({
   onSave = (formData: FormData) => { },
   onCancel = () => { }
 }) => {
+  const { theme } = useDashboardTheme("staff");
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   // State for real database data
   const [availableFolders, setAvailableFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,12 +45,20 @@ const ManualProcessing = ({
     selectedFolderId: documentData?.folder_id || null,
     description: documentData?.description || documentData?.analysis || '',
     remarks: documentData?.remarks || '',
-    physicalLocation: documentData?.physical_location || ''
+    physicalLocation: documentData?.physical_location || '',
+    documentRefId: documentData?.document_ref_id || ''
   });
 
   const [dropdownStates, setDropdownStates] = useState({
     location: false
   });
+
+  const [errors, setErrors] = useState({
+    documentRefId: '',
+    title: ''
+  });
+
+  const docRefIdInputRef = React.useRef<HTMLInputElement>(null);
 
   // Update form data when documentData changes
   useEffect(() => {
@@ -53,7 +71,8 @@ const ManualProcessing = ({
         selectedFolderId: documentData.folder_id || null,
         description: documentData.description || documentData.analysis || (documentData as any).suggested_description || '',
         remarks: documentData.remarks || (documentData as any).ai_remarks || '',
-        physicalLocation: documentData.physical_location || ''
+        physicalLocation: documentData.physical_location || '',
+        documentRefId: documentData.document_ref_id || ''
       });
 
       // Also update selectedFolderId directly if folder_id exists in documentData
@@ -100,22 +119,48 @@ const ManualProcessing = ({
       ...prev,
       [field]: value
     }));
+
+    // Clear error when user types
+    if (errors[field as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
   };
 
-  const handleCancel = async () => {
-    // Delete the document from database if it exists (same behavior as AIProcessing)
+
+  // Custom Cancel Modal State
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  // Document queue management for multi-document upload flow
+  const {
+    hasQueue,
+    isFirstDocument,
+    isLastDocument,
+    remainingCount,
+    currentPosition,
+    totalDocuments,
+    goToNextDocument,
+    goToPreviousDocument,
+    removeCurrentAndContinue,
+    clearQueue
+  } = useDocumentQueue(documentData?.doc_id);
+
+  const handleCancel = () => {
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = async () => {
+    // Delete the document from database if it exists
     if (documentData?.doc_id) {
-      const confirmDelete = window.confirm(
-        'Are you sure you want to cancel? This will delete the uploaded document.'
-      );
+      setSaving(true);
+      setShowCancelDialog(false);
 
-      if (!confirmDelete) {
-        return;
-      }
-
-      setSaving(true); // Reuse saving state to show loading/disable buttons
       try {
-        const response = await axios.delete(`/api/documents/${documentData.doc_id}`, {
+        const axios = (await import('axios')).default;
+        await axios.delete(`/api/documents/${documentData.doc_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
             'Accept': 'application/json'
@@ -124,24 +169,34 @@ const ManualProcessing = ({
 
         // Show success message
         const toast = window.document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50';
-        toast.textContent = 'Document deleted successfully';
+        toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-xl z-50';
+        toast.textContent = hasQueue && !isLastDocument
+          ? `Document deleted. Moving to next (${remainingCount} remaining)...`
+          : 'Document deleted successfully';
         window.document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
 
-        // Navigate back after short delay
+        // Navigate to next document or back to document list
         setTimeout(() => {
-          router.visit('/admin/documents');
+          if (hasQueue && !isLastDocument) {
+            removeCurrentAndContinue();
+          } else {
+            clearQueue();
+            router.visit('/staff/documents');
+          }
         }, 1000);
 
       } catch (error) {
         console.error('Failed to delete document:', error);
         alert('Failed to delete document. Redirecting anyway...');
-        router.visit('/admin/documents');
+        clearQueue();
+        router.visit('/staff/documents');
+      } finally {
+        setSaving(false);
       }
     } else {
-      // No document to delete, just navigate back
-      router.visit('/admin/documents');
+      clearQueue();
+      router.visit('/staff/documents');
     }
   };
 
@@ -168,12 +223,27 @@ const ManualProcessing = ({
 
   // Handle form validation
   const validateForm = (): boolean => {
+    let isValid = true;
+    const newErrors = {
+      documentRefId: '',
+      title: ''
+    };
+
     if (!formData.title.trim()) {
-      alert('Please enter a document title');
-      return false;
+      newErrors.title = 'Please enter a document title';
+      isValid = false;
     }
 
-    return true;
+    if (!formData.documentRefId.trim()) {
+      newErrors.documentRefId = 'Please enter a Document ID';
+      if (docRefIdInputRef.current) {
+        docRefIdInputRef.current.focus();
+      }
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   // Handle save document - Edit existing uploaded document metadata
@@ -198,7 +268,8 @@ const ManualProcessing = ({
         folder_id: formData.selectedFolderId,
         description: formData.description,
         remarks: formData.remarks,
-        physical_location: formData.physicalLocation
+        physical_location: formData.physicalLocation,
+        document_ref_id: formData.documentRefId
       };
 
       console.log('Updating document metadata:', dataToSend);
@@ -212,9 +283,27 @@ const ManualProcessing = ({
       });
 
       if (response.data.success) {
-        alert('Document updated successfully!');
+        // Show success toast
+        const toast = window.document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl z-50';
+        const hasMoreDocs = hasQueue && !isLastDocument;
+        toast.textContent = hasMoreDocs
+          ? `Document ${currentPosition}/${totalDocuments} saved! Moving to next...`
+          : 'Document saved successfully!';
+        window.document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+
         onSave(formData);
-        router.visit('/admin/documents');
+
+        // Navigate to next document or back to document list
+        setTimeout(() => {
+          if (hasMoreDocs) {
+            goToNextDocument();
+          } else {
+            clearQueue();
+            router.visit('/staff/documents');
+          }
+        }, 1000);
       } else {
         alert('Failed to update document: ' + response.data.message);
       }
@@ -227,245 +316,439 @@ const ManualProcessing = ({
     }
   };
 
+  const titleTextClass = isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900';
+  const bodyTextClass = isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-700';
+  const mutedTextClass = isDashboardThemeEnabled ? 'text-base-content/55' : 'text-gray-500';
+  const sectionBorderClass = isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-100';
+  const fieldSurfaceClass = isDashboardThemeEnabled
+    ? 'rounded-lg border border-base-300 bg-base-200 p-4 shadow-sm'
+    : 'rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm';
+  const dropdownSurfaceClass = isDashboardThemeEnabled
+    ? 'rounded-lg border border-base-300 bg-base-100 shadow-sm'
+    : 'rounded-lg border border-gray-200 bg-white shadow-sm';
+  const accentIconClass = isDashboardThemeEnabled
+    ? 'rounded-lg bg-primary/12 shadow-lg shadow-primary/10'
+    : 'rounded-lg shadow-md';
+  const accentIconStyle = isDashboardThemeEnabled
+    ? undefined
+    : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' };
+  const accentIconTextClass = isDashboardThemeEnabled ? 'text-primary' : 'text-white';
+
   return (
-    <div className="min-h-screen p-4" style={{
-      background: 'rgba(0, 0, 0, 0.3)',
-    }}>
+    <div
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className={`min-h-screen p-4 ${
+        isDashboardThemeEnabled ? 'bg-base-200 text-base-content' : 'bg-gray-50'
+      }`}
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Manual Document Processing</h1>
-          <div className="h-1 w-32 bg-gradient-to-r from-green-500 to-green-600 rounded-full shadow-lg"></div>
+          <h1 className={`mb-3 text-3xl font-bold tracking-tight ${titleTextClass}`}>Manual Document Processing</h1>
+          <div
+            className={`h-1 w-32 rounded-full shadow-lg ${
+              isDashboardThemeEnabled ? 'bg-primary shadow-primary/25' : ''
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? undefined
+                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+            }
+          ></div>
 
           {/* Status Indicator */}
           <div className="mt-5 flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <span className="text-sm font-medium text-white/95 tracking-wide">Manual Review Mode</span>
-            <span className="text-xs bg-green-500/20 text-green-200 px-3 py-1.5 rounded-full border border-green-400/30 font-medium">
+            <CheckCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-success' : 'text-[#228B22]'}`} />
+            <span className={`text-sm font-medium tracking-wide ${bodyTextClass}`}>Manual Review Mode</span>
+            <span className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+              isDashboardThemeEnabled
+                ? 'border-primary/20 bg-primary/10 text-primary'
+                : 'border-green-200 bg-green-100 text-[#228B22]'
+            }`}>
               Human-Verified Entry
             </span>
           </div>
         </div>
 
+        {/* Document Queue Navigation - shows when multiple documents uploaded */}
+        {hasQueue && (
+          <DocumentQueueNavigation
+            currentPosition={currentPosition}
+            totalDocuments={totalDocuments}
+            isFirstDocument={isFirstDocument}
+            isLastDocument={isLastDocument}
+            onPrevious={goToPreviousDocument}
+            onNext={goToNextDocument}
+            isDashboardThemeEnabled={isDashboardThemeEnabled}
+          />
+        )}
+
         {/* Main Content Card */}
-        <div className="rounded-2xl shadow-xl overflow-hidden" style={{
-          background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
-          border: '1px solid rgba(34, 139, 34, 0.3)',
-          boxShadow: '0 10px 40px 0 rgba(0, 0, 0, 0.3)'
-        }}>
+        <div className={`overflow-hidden rounded-2xl border shadow-xl ${
+          isDashboardThemeEnabled
+            ? 'border-base-300 bg-base-100 shadow-base-content/10'
+            : 'border-gray-100 bg-white'
+        }`}>
           {/* Document Uploaded Section */}
-          <div className="px-8 py-6 border-b border-white/30" style={{
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)'
-          }}>
-            <h2 className="text-sm font-bold text-white/90 mb-4 uppercase tracking-wider">Document Uploaded</h2>
-            <div className="flex items-start space-x-4">
-              <div className="bg-gradient-to-br from-green-500 to-green-600 p-2.5 rounded-lg shadow-lg">
-                <FileText className="w-5 h-5 text-white flex-shrink-0" />
+          <div className={`border-b px-8 py-6 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-200/65' : 'bg-gray-50/50'}`}>
+            <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${mutedTextClass}`}>Document Uploaded</h2>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-4">
+                <div className={`p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                  <FileText className={`w-5 h-5 flex-shrink-0 ${accentIconTextClass}`} />
+                </div>
+                <p className={`mt-0.5 text-base font-medium leading-relaxed ${titleTextClass}`}>
+                  "{documentData?.fileName || 'No file selected'}"
+                </p>
               </div>
-              <p className="text-white text-base leading-relaxed font-medium mt-0.5">
-                "{documentData?.fileName || 'No file selected'}"
-              </p>
+
+              {documentData?.doc_id && (
+                <button
+                  onClick={() => setIsViewerOpen(true)}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                    isDashboardThemeEnabled
+                      ? 'border-info/20 bg-info/10 text-info hover:bg-info/15'
+                      : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  <Eye className="w-4 h-4" />
+                  View File
+                </button>
+              )}
             </div>
           </div>
 
           {/* Manual Entry Fields Section */}
-          <div className="px-8 py-6 border-b border-white/30" style={{
-            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%)'
-          }}>
-            <h3 className="text-base font-bold text-white mb-5 flex items-center uppercase tracking-wider">
-              <div className="bg-gradient-to-br from-green-500 to-green-600 p-2.5 rounded-lg mr-3 shadow-lg">
-                <User className="w-5 h-5 text-white" />
+          <div className={`border-b px-8 py-6 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-100' : 'bg-green-50/10'}`}>
+            <h3 className={`mb-5 flex items-center text-base font-bold uppercase tracking-wider ${titleTextClass}`}>
+              <div className={`mr-3 p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                <User className={`w-5 h-5 ${accentIconTextClass}`} />
               </div>
               Manual Document Details
             </h3>
 
             <div className="space-y-5">
+              {/* Document ID - Moved to Top & Required */}
+              <div>
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID</label>
+                <div className={fieldSurfaceClass}>
+                  <input
+                    ref={docRefIdInputRef}
+                    type="text"
+                    value={formData.documentRefId}
+                    onChange={(e) => handleInputChange('documentRefId', e.target.value)}
+                    placeholder="Enter document reference ID (e.g., DOC-2024-001)..."
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      errors.documentRefId
+                        ? isDashboardThemeEnabled
+                          ? 'text-error placeholder:text-error/50'
+                          : 'text-red-900 placeholder-gray-400'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content placeholder:text-base-content/40'
+                          : 'text-gray-900 placeholder-gray-400'
+                    }`}
+                  />
+                </div>
+                {errors.documentRefId && (
+                  <p className="mt-2 text-sm text-red-600 font-medium flex items-center animate-pulse">
+                    <AlertCircle className="w-4 h-4 mr-1.5" />
+                    {errors.documentRefId}
+                  </p>
+                )}
+              </div>
+
               {/* Document Title */}
               <div>
-                <label className="block text-xs font-bold text-white/80 mb-2.5 uppercase tracking-wider">Document Title</label>
-                <div className="bg-white/15 p-4 rounded-lg border border-green-500/40 backdrop-blur-sm shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document Title</label>
+                <div className={fieldSurfaceClass}>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                     placeholder="Enter document title..."
-                    className="w-full text-white font-medium bg-transparent border-none focus:outline-none focus:ring-0 placeholder-white/60 leading-relaxed"
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      errors.title
+                        ? isDashboardThemeEnabled
+                          ? 'text-error placeholder:text-error/50'
+                          : 'text-red-900 placeholder-gray-400'
+                        : isDashboardThemeEnabled
+                          ? 'text-base-content placeholder:text-base-content/40'
+                          : 'text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                 </div>
+                {errors.title && (
+                  <p className="mt-2 text-sm text-red-600 font-medium flex items-center animate-pulse">
+                    <AlertCircle className="w-4 h-4 mr-1.5" />
+                    {errors.title}
+                  </p>
+                )}
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-white/80 mb-2.5 uppercase tracking-wider">Description</label>
-                <div className="bg-white/15 p-4 rounded-lg border border-green-500/40 backdrop-blur-sm shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Description</label>
+                <div className={fieldSurfaceClass}>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     placeholder="Enter document description..."
                     rows={3}
-                    className="w-full text-white/95 text-sm bg-transparent border-none focus:outline-none focus:ring-0 resize-none placeholder-white/60 leading-relaxed"
+                    className={`w-full resize-none border-none bg-transparent text-sm leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content/80 placeholder:text-base-content/40'
+                        : 'text-gray-700 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
 
               {/* Remarks */}
               <div>
-                <label className="block text-xs font-bold text-white/80 mb-2.5 uppercase tracking-wider">Remarks</label>
-                <div className="bg-white/15 p-4 rounded-lg border border-green-500/40 backdrop-blur-sm shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Remarks</label>
+                <div className={fieldSurfaceClass}>
                   <textarea
                     value={formData.remarks}
                     onChange={(e) => handleInputChange('remarks', e.target.value)}
                     placeholder="Enter additional remarks or notes..."
                     rows={3}
-                    className="w-full text-white/95 text-sm bg-transparent border-none focus:outline-none focus:ring-0 resize-none placeholder-white/60 leading-relaxed"
+                    className={`w-full resize-none border-none bg-transparent text-sm leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content/80 placeholder:text-base-content/40'
+                        : 'text-gray-700 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
 
               {/* Physical Location */}
               <div>
-                <label className="block text-xs font-bold text-white/80 mb-2.5 uppercase tracking-wider">Physical Location (Optional)</label>
-                <div className="bg-white/15 p-4 rounded-lg border border-green-500/40 backdrop-blur-sm shadow-sm">
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Physical Location (Optional)</label>
+                <div className={fieldSurfaceClass}>
                   <input
                     type="text"
                     value={formData.physicalLocation}
                     onChange={(e) => handleInputChange('physicalLocation', e.target.value)}
                     placeholder="Enter physical location of document (e.g., Cabinet A, Shelf 3)..."
-                    className="w-full text-white font-medium bg-transparent border-none focus:outline-none focus:ring-0 placeholder-white/60 leading-relaxed"
+                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled
+                        ? 'text-base-content placeholder:text-base-content/40'
+                        : 'text-gray-900 placeholder-gray-400'
+                    }`}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Folder Selection Section */}
-          <div className={`px-8 py-6 space-y-6 transition-all duration-200 ${dropdownStates.location ? 'pb-60' : ''}`}>
-            {/* Folder Selection */}
-            <div className="relative z-50">
-              <h4 className="text-xs font-bold text-white/80 mb-3 flex items-center uppercase tracking-wider">
-                <div className="bg-gradient-to-br from-green-500 to-green-600 p-2.5 rounded-lg mr-2.5 shadow-lg">
-                  <Folder className="w-4 h-4 text-white" />
-                </div>
-                Folder Location
-              </h4>
-              <div className="bg-white/15 p-4 rounded-lg border border-green-500/40 backdrop-blur-sm shadow-sm">
-                <div className="relative">
-                  <button
-                    onClick={() => toggleDropdown('location')}
-                    className="w-full text-left flex items-center justify-between text-white font-medium focus:outline-none"
-                  >
-                    <span className={formData.selectedFolderId ? 'text-white font-medium' : 'text-white/70'}>
-                      {getSelectedFolderName() || 'Select a folder...'}
-                    </span>
-                    <ChevronDown className={`w-5 h-5 text-white transition-transform ${dropdownStates.location ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {dropdownStates.location && (
-                    <div
-                      className="absolute z-[999] w-full mt-1 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar"
-                      style={{
-                        background: 'white',
-                        border: '1px solid rgba(34, 197, 94, 0.3)',
-                        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
-                      }}>
-                      {loading ? (
-                        <div className="px-4 py-3 text-gray-700 font-medium">Loading folders...</div>
-                      ) : error ? (
-                        <div className="px-4 py-3 text-red-600 font-medium">Error loading folders</div>
-                      ) : availableFolders.length === 0 ? (
-                        <div className="px-4 py-3 text-gray-700 font-medium">No folders available</div>
-                      ) : (
-                        availableFolders.map((folder) => {
-                          // Determine if this is a subfolder by checking parent_folder_id
-                          const isSubfolder = folder.parent_folder_id != null;
-
-                          return (
-                            <button
-                              key={folder.folder_id}
-                              onClick={() => selectFolder(folder)}
-                              className="w-full px-4 py-3 text-left hover:bg-green-500/10 border-b border-gray-200/50 last:border-b-0 transition-all duration-200"
-                              style={{ paddingLeft: isSubfolder ? '2rem' : '1rem' }}
-                            >
-                              <div className="font-semibold flex items-center gap-2 tracking-wide text-gray-900">
-                                {isSubfolder && <span className="text-green-600">└─</span>}
-                                {folder.folder_name}
-                              </div>
-                              <div className="text-xs text-gray-600 mt-1 tracking-wide">{folder.folder_path}</div>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
+        {/* Folder Selection Section */}
+        <div className={`px-8 py-6 space-y-6 transition-all duration-200 ${dropdownStates.location ? 'pb-60' : ''}`}>
+          {/* Folder Selection */}
+          <div className="relative z-50">
+            <h4 className={`mb-3 flex items-center text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>
+              <div className={`mr-2.5 p-2.5 ${accentIconClass}`} style={accentIconStyle}>
+                <Folder className={`w-4 h-4 ${accentIconTextClass}`} />
               </div>
-            </div>
+              Folder Location
+            </h4>
+            <div className={dropdownSurfaceClass}>
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown('location')}
+                  className={`flex w-full items-center justify-between p-4 text-left font-medium focus:outline-none ${titleTextClass}`}
+                >
+                  <span className={formData.selectedFolderId ? titleTextClass : mutedTextClass}>
+                    {getSelectedFolderName() || 'Select a folder...'}
+                  </span>
+                  <ChevronDown className={`h-5 w-5 transition-transform ${dropdownStates.location ? 'rotate-180' : ''} ${
+                    isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'
+                  }`} />
+                </button>
 
-            {/* Additional Details */}
-            <div className="grid md:grid-cols-2 gap-6 pt-5 border-t border-white/20">
-              <div className="space-y-3.5">
-                <div className="flex items-center space-x-3">
-                  <User className="w-4 h-4 text-white/80" />
-                  <span className="text-xs text-white/80 uppercase tracking-wider font-bold">Created by</span>
-                  <span className="text-sm font-semibold text-white">{documentData?.createdBy || 'Current User'}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-4 h-4 text-white/80" />
-                  <span className="text-xs text-white/80 uppercase tracking-wider font-bold">Date</span>
-                  <span className="text-sm font-semibold text-white">{documentData?.createdAt || new Date().toISOString().split('T')[0]}</span>
-                </div>
+                {dropdownStates.location && (
+                  <div
+                    className={`custom-scrollbar absolute z-[999] mt-1 max-h-48 w-full overflow-y-auto rounded-xl shadow-2xl ${
+                      isDashboardThemeEnabled
+                        ? 'border border-base-300 bg-base-100'
+                        : 'border border-gray-100 bg-white'
+                    }`}
+                  >
+                    {loading ? (
+                      <div className={`px-4 py-3 font-medium ${mutedTextClass}`}>Loading folders...</div>
+                    ) : error ? (
+                      <div className={`px-4 py-3 font-medium ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`}>Error loading folders</div>
+                    ) : availableFolders.length === 0 ? (
+                      <div className={`px-4 py-3 font-medium ${mutedTextClass}`}>No folders available</div>
+                    ) : (
+                      availableFolders.map((folder) => {
+                        // Determine if this is a subfolder by checking parent_folder_id
+                        const isSubfolder = folder.parent_folder_id != null;
+
+                        return (
+                          <button
+                            key={folder.folder_id}
+                            onClick={() => selectFolder(folder)}
+                            className={`w-full border-b px-4 py-3 text-left transition-all duration-200 last:border-b-0 ${
+                              isDashboardThemeEnabled
+                                ? 'border-base-300/70 hover:bg-base-200'
+                                : 'border-gray-50 hover:bg-green-50'
+                            }`}
+                            style={{ paddingLeft: isSubfolder ? '2rem' : '1rem' }}
+                          >
+                            <div className={`font-semibold flex items-center gap-2 tracking-wide ${titleTextClass}`}>
+                              {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#228B22]'}>|-</span>}
+                              {folder.folder_name}
+                            </div>
+                            <div className={`mt-1 text-xs tracking-wide ${mutedTextClass}`}>{folder.folder_path}</div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="px-8 pb-8 space-y-3.5">
-            <button
-              onClick={handleSave}
-              disabled={saving || !documentData?.doc_id}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-green-300 disabled:to-green-300 text-white py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
-            >
-              {saving ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <CheckCircle className="w-4 h-4 animate-spin" />
-                  <span>Saving Manual Entry...</span>
-                </div>
-              ) : (
-                'Save Manual Entry'
-              )}
-            </button>
-
-            <button
-              onClick={() => {
-                const docId = documentData?.doc_id;
-                const url = docId ? `/ai-processing?docId=${docId}` : '/ai-processing';
-                router.visit(url);
-              }}
-              disabled={saving}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-blue-300 disabled:to-blue-300 text-white py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
-            >
-              Back to AI Processing
-            </button>
-
-            <button
-              onClick={handleCancel}
-              disabled={saving}
-              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-red-300 disabled:to-red-300 text-white py-4 rounded-xl text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
-            >
-              Cancel
-            </button>
+          {/* Additional Details */}
+          <div className={`grid gap-6 border-t pt-5 md:grid-cols-2 ${
+            isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'
+          }`}>
+            <div className="space-y-3.5">
+              <div className="flex items-center space-x-3">
+                <User className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Created by</span>
+                <span className={`text-sm font-semibold ${titleTextClass}`}>{documentData?.createdBy || 'Current User'}</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Calendar className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Date</span>
+                <span className={`text-sm font-semibold ${titleTextClass}`}>{documentData?.createdAt || new Date().toISOString().split('T')[0]}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-white">
-            Manual processing mode • Review and update document details before saving
-          </p>
+        {/* Action Buttons */}
+        <div className="px-8 pb-8 space-y-3.5">
+          <button
+            onClick={handleSave}
+            disabled={saving || !documentData?.doc_id}
+            className={`w-full rounded-xl py-4 text-sm font-bold uppercase tracking-wider text-white transition-all duration-200 shadow-lg hover:shadow-xl disabled:transform-none ${
+              isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : ''
+            }`}
+            style={
+              isDashboardThemeEnabled
+                ? undefined
+                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+            }
+          >
+            {saving ? (
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle className="w-4 h-4 animate-spin" />
+                <span>Saving Manual Entry...</span>
+              </div>
+            ) : (
+              'Save Manual Entry'
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              const docId = documentData?.doc_id;
+              const url = docId ? `/ai-processing?docId=${docId}` : '/ai-processing';
+              router.visit(url);
+            }}
+            disabled={saving}
+            className={`w-full rounded-xl border py-4 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md disabled:transform-none ${
+              isDashboardThemeEnabled
+                ? 'border-base-300 bg-base-100 text-base-content hover:bg-base-200'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Back to AI Processing
+          </button>
+
+          <button
+            onClick={handleCancel}
+            disabled={saving}
+            className={`w-full rounded-xl border py-4 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm hover:shadow-md disabled:transform-none ${
+              isDashboardThemeEnabled
+                ? 'border-error/30 bg-base-100 text-error hover:bg-error/10'
+                : 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+            }`}
+          >
+            Cancel
+          </button>
         </div>
       </div>
-    </div>
+
+      {/* Footer Info */}
+      <div className="mt-6 text-center">
+        <p className={`text-sm ${isDashboardThemeEnabled ? 'text-base-content/45' : 'text-gray-400'}`}>
+          Manual processing mode • Review and update document details before saving
+        </p>
+      </div>
+
+      </div>
+
+      {/* Cancel Confirmation Dialog */}
+      {
+        showCancelDialog && (
+          <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/30 p-4 pb-10 backdrop-blur-[2px]">
+            <div className={`mb-60 w-full max-w-md overflow-hidden rounded-2xl shadow-2xl ${
+              isDashboardThemeEnabled ? 'border border-base-300 bg-base-100' : 'bg-white'
+            }`}>
+              <div className={`border-b px-6 py-5 ${sectionBorderClass} ${isDashboardThemeEnabled ? 'bg-base-200/80' : 'bg-gray-50/50'}`}>
+                <div className="flex items-center">
+                  <div className={`mr-3 rounded-lg p-2.5 ${isDashboardThemeEnabled ? 'bg-error/10' : 'bg-red-100'}`}>
+                    <AlertCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`} />
+                  </div>
+                  <h3 className={`text-lg font-bold ${titleTextClass}`}>Cancel Processing?</h3>
+                </div>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <p className={`text-sm leading-relaxed ${bodyTextClass}`}>
+                  Are you sure you want to cancel? This will <span className={`font-bold ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`}>delete the uploaded document</span> and all manually entered data.
+                </p>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={confirmCancel}
+                    className={`flex-1 rounded-lg py-3 text-sm font-bold uppercase tracking-wider text-white transition-all duration-200 shadow-md hover:shadow-lg ${
+                      isDashboardThemeEnabled ? 'bg-error hover:bg-error/90' : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    Yes, Cancel & Delete
+                  </button>
+                  <button
+                    onClick={() => setShowCancelDialog(false)}
+                    className={`flex-1 rounded-lg border py-3 text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-sm ${
+                      isDashboardThemeEnabled
+                        ? 'border-base-300 bg-base-100 text-base-content/70 hover:bg-base-200 hover:text-base-content'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Go Back
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <UploadDocumentViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        docId={documentData?.doc_id || null}
+        fileName={documentData?.fileName || documentData?.title || 'Document'}
+        theme={theme}
+        isDashboardThemeEnabled={isDashboardThemeEnabled}
+      />
+    </div >
   );
 };
 
 export default ManualProcessing;
+
+

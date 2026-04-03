@@ -39,6 +39,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const loadFolders = async () => {
     try {
       const allFolders = await folderService.getAllFolders();
+      // Only show folders, not subfolders if flattened, but usually getAllFolders returns everything or roots.
+      // Based on folderService, getAllFolders returns array of folders.
       setFolderList(allFolders);
     } catch (err) {
       console.error("Failed to load folders", err);

@@ -40,7 +40,7 @@ const FileUploadUI: React.FC<FileUploadUIProps> = ({
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       handleFileSelect(files[0]);
@@ -62,6 +62,7 @@ const FileUploadUI: React.FC<FileUploadUIProps> = ({
     <div className="w-full rounded-2xl" style={{
       background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)',
       border: '1px solid rgba(34, 139, 34, 0.2)',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
     }}>
       {/* Header */}
       <div className="px-8 py-5 border-b border-white/30 rounded-t-2xl">
