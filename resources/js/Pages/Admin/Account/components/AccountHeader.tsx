@@ -20,12 +20,9 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
     const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
     return (
-        <div
-            data-theme={isDashboardThemeEnabled ? theme : undefined}
-            className={`mb-8 ${isDashboardThemeEnabled ? '' : 'bg-transparent'}`}
-            style={{ background: isDashboardThemeEnabled ? undefined : 'transparent' }}
-        >
+        <div className="mb-8">
             <div
+                data-theme={isDashboardThemeEnabled ? theme : undefined}
                 className={`mb-8 rounded-2xl border p-6 shadow-lg ${
                     isDashboardThemeEnabled
                         ? "border-primary/20 bg-gradient-to-br from-primary via-primary to-secondary text-primary-content"

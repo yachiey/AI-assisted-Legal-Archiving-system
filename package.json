@@ -10,6 +10,7 @@
         "@types/react": "^19.1.10",
         "@types/react-dom": "^19.1.7",
         "@types/react-dropzone": "^4.2.2",
+        "@types/react-scroll": "^1.8.10",
         "@vitejs/plugin-react-swc": "^4.0.1",
         "autoprefixer": "^10.4.21",
         "axios": "^1.11.0",

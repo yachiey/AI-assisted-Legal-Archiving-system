@@ -99,6 +99,9 @@ return [
                 PDO::ATTR_TIMEOUT => 5,
                 PDO::ATTR_PERSISTENT => true,
             ],
+            'dump' => [
+                'dump_binary_path' => 'C:/Program Files/PostgreSQL/17/bin',
+            ],
         ],
 
         'sqlsrv' => [

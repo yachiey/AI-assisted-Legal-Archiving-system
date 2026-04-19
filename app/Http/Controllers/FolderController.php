@@ -113,6 +113,38 @@ class FolderController extends Controller
     }
 
     /**
+     * Get paginated folders
+     */
+    public function getPaginatedFolders(Request $request)
+    {
+        $perPage = $request->input('per_page', 10);
+        $parentId = $request->input('parent_id');
+        $search = $request->input('search');
+
+        $query = Folder::with('creator')
+            ->select('folder_id', 'folder_name', 'folder_path', 'folder_type', 'parent_folder_id', 'created_by', 'created_at', 'updated_at');
+
+        if ($parentId !== null && $parentId !== 'null' && $parentId !== '') {
+            $query->where('parent_folder_id', $parentId);
+        } else if ($search === null || $search === '') {
+            // Only enforce null parent if we are not globally searching
+            $query->whereNull('parent_folder_id');
+        }
+
+        if ($search !== null && $search !== '') {
+            $term = strtolower($search);
+            $query->where(function($q) use ($term) {
+                $q->where(DB::raw('LOWER(folder_name)'), 'LIKE', '%' . $term . '%')
+                  ->orWhere(DB::raw('LOWER(folder_path)'), 'LIKE', '%' . $term . '%');
+            });
+        }
+
+        $paginated = $query->orderBy('updated_at', 'desc')->paginate($perPage);
+
+        return response()->json($paginated);
+    }
+
+    /**
      * Get single folder with relations
      */
     public function show($id)

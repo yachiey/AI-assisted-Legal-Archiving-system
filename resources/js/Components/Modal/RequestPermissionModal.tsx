@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { X, Shield, Check, Loader2, Clock, XCircle, CheckCircle } from "lucide-react";
 
 interface RequestPermissionModalProps {
     isOpen: boolean;
     onClose: () => void;
+    isDashboardThemeEnabled?: boolean;
+    theme?: string;
 }
 
 interface PermissionRequest {
@@ -18,7 +21,7 @@ interface PermissionRequest {
     updated_at: string;
 }
 
-const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen, onClose }) => {
+const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen, onClose, isDashboardThemeEnabled = false, theme }) => {
     const [permissions, setPermissions] = useState({
         can_view: false,
         can_upload: false,
@@ -60,7 +63,6 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
     };
 
     const handlePermissionChange = (key: keyof typeof permissions) => {
-        // Only allow change if user doesn't already have this permission
         if (!currentPermissions[key]) {
             setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
         }
@@ -81,7 +83,6 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
             return;
         }
 
-        // Check for pending request
         const hasPendingRequest = myRequests.some(r => r.status === 'pending');
         if (hasPendingRequest) {
             setError("You already have a pending permission request");
@@ -118,6 +119,9 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
 
     if (!isOpen) return null;
 
+    const modalRoot = document.body;
+    const themed = isDashboardThemeEnabled;
+
     const permissionOptions = [
         { key: 'can_view', label: 'View Documents', description: 'Access and read documents' },
         { key: 'can_upload', label: 'Upload Documents', description: 'Add new documents to the system' },
@@ -127,54 +131,41 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
 
     const hasPendingRequest = myRequests.some(r => r.status === 'pending');
     const pendingRequest = myRequests.find(r => r.status === 'pending');
-    const recentRequest = myRequests[0]; // Most recent request
+    const recentRequest = myRequests[0];
 
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'pending':
-                return <Clock className="w-4 h-4 text-amber-600" />;
+                return <Clock className={`w-4 h-4 ${themed ? "text-warning" : "text-amber-600"}`} />;
             case 'approved':
-                return <CheckCircle className="w-4 h-4 text-green-600" />;
+                return <CheckCircle className={`w-4 h-4 ${themed ? "text-success" : "text-green-600"}`} />;
             case 'denied':
-                return <XCircle className="w-4 h-4 text-red-600" />;
+                return <XCircle className={`w-4 h-4 ${themed ? "text-error" : "text-red-600"}`} />;
             default:
                 return null;
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return 'bg-amber-100 text-amber-800';
-            case 'approved':
-                return 'bg-green-100 text-green-800';
-            case 'denied':
-                return 'bg-red-100 text-red-800';
-            default:
-                return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
-            />
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            data-theme={themed ? theme : undefined}
+            onClick={onClose}
+            style={{ WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)' }}
+        >
 
             {/* Modal */}
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className={`relative rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto ${themed ? "border border-base-300 bg-base-100 text-base-content" : "bg-white"}`} onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 sticky top-0">
+                <div className={`px-6 py-4 sticky top-0 ${themed ? "bg-primary text-primary-content" : "bg-gradient-to-r from-green-600 to-emerald-600"}`}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Shield className="w-6 h-6 text-white" />
-                            <h2 className="text-xl font-semibold text-white">Request Permissions</h2>
+                            <Shield className={`w-6 h-6 ${themed ? "text-primary-content" : "text-white"}`} />
+                            <h2 className={`text-xl font-semibold ${themed ? "text-primary-content" : "text-white"}`}>Request Permissions</h2>
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-white/80 hover:text-white transition-colors"
+                            className={`transition-colors ${themed ? "text-primary-content/80 hover:text-primary-content" : "text-white/80 hover:text-white"}`}
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -185,31 +176,31 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                 <div className="p-6">
                     {fetchingData ? (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                            <Loader2 className={`w-8 h-8 animate-spin ${themed ? "text-primary" : "text-green-600"}`} />
                         </div>
                     ) : success ? (
                         <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Check className="w-8 h-8 text-green-600" />
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${themed ? "bg-success/20" : "bg-green-100"}`}>
+                                <Check className={`w-8 h-8 ${themed ? "text-success" : "text-green-600"}`} />
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Request Submitted!</h3>
-                            <p className="text-gray-500">An administrator will review your request.</p>
+                            <h3 className={`text-lg font-medium mb-2 ${themed ? "text-base-content" : "text-gray-900"}`}>Request Submitted!</h3>
+                            <p className={themed ? "text-base-content/60" : "text-gray-500"}>An administrator will review your request.</p>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit}>
                             {/* Pending Request Warning */}
                             {hasPendingRequest && pendingRequest && (
-                                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className={`mb-6 p-4 rounded-lg border ${themed ? "bg-warning/10 border-warning/30" : "bg-amber-50 border-amber-200"}`}>
                                     <div className="flex items-center gap-2 mb-2">
-                                        <Clock className="w-5 h-5 text-amber-600" />
-                                        <span className="font-medium text-amber-800">Pending Request</span>
+                                        <Clock className={`w-5 h-5 ${themed ? "text-warning" : "text-amber-600"}`} />
+                                        <span className={`font-medium ${themed ? "text-warning" : "text-amber-800"}`}>Pending Request</span>
                                     </div>
-                                    <p className="text-sm text-amber-700 mb-2">
+                                    <p className={`text-sm mb-2 ${themed ? "text-base-content/70" : "text-amber-700"}`}>
                                         You have a pending request submitted on {new Date(pendingRequest.created_at).toLocaleDateString()}.
                                     </p>
                                     <div className="flex flex-wrap gap-1">
                                         {pendingRequest.permission_labels.map((label, idx) => (
-                                            <span key={idx} className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs rounded-full">
+                                            <span key={idx} className={`px-2 py-0.5 text-xs rounded-full ${themed ? "bg-warning/20 text-warning" : "bg-amber-100 text-amber-800"}`}>
                                                 {label}
                                             </span>
                                         ))}
@@ -219,22 +210,34 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
 
                             {/* Recent Request Status */}
                             {recentRequest && recentRequest.status !== 'pending' && (
-                                <div className={`mb-6 p-4 rounded-lg border ${recentRequest.status === 'approved' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                <div className={`mb-6 p-4 rounded-lg border ${
+                                    recentRequest.status === 'approved'
+                                        ? themed ? 'bg-success/10 border-success/30' : 'bg-green-50 border-green-200'
+                                        : themed ? 'bg-error/10 border-error/30' : 'bg-red-50 border-red-200'
+                                }`}>
                                     <div className="flex items-center gap-2 mb-2">
                                         {getStatusIcon(recentRequest.status)}
-                                        <span className={`font-medium ${recentRequest.status === 'approved' ? 'text-green-800' : 'text-red-800'}`}>
+                                        <span className={`font-medium ${
+                                            recentRequest.status === 'approved'
+                                                ? themed ? 'text-success' : 'text-green-800'
+                                                : themed ? 'text-error' : 'text-red-800'
+                                        }`}>
                                             Last Request: {recentRequest.status === 'approved' ? 'Approved' : 'Denied'}
                                         </span>
                                     </div>
                                     {recentRequest.admin_response && (
-                                        <p className={`text-sm ${recentRequest.status === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
+                                        <p className={`text-sm ${
+                                            recentRequest.status === 'approved'
+                                                ? themed ? 'text-success/80' : 'text-green-700'
+                                                : themed ? 'text-error/80' : 'text-red-700'
+                                        }`}>
                                             {recentRequest.admin_response}
                                         </p>
                                     )}
                                 </div>
                             )}
 
-                            <p className="text-gray-600 mb-6">
+                            <p className={`mb-6 ${themed ? "text-base-content/70" : "text-gray-600"}`}>
                                 Select the permissions you need access to. Already granted permissions are shown but cannot be requested again.
                             </p>
 
@@ -249,14 +252,14 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                                         <label
                                             key={option.key}
                                             className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-all ${hasPermission
-                                                    ? 'border-green-300 bg-green-50 cursor-not-allowed opacity-70'
+                                                    ? themed ? 'border-success/40 bg-success/10 cursor-not-allowed opacity-70' : 'border-green-300 bg-green-50 cursor-not-allowed opacity-70'
                                                     : isPending
-                                                        ? 'border-amber-300 bg-amber-50 cursor-not-allowed'
+                                                        ? themed ? 'border-warning/40 bg-warning/10 cursor-not-allowed' : 'border-amber-300 bg-amber-50 cursor-not-allowed'
                                                         : isSelected
-                                                            ? 'border-green-500 bg-green-50 cursor-pointer'
+                                                            ? themed ? 'border-primary bg-primary/10 cursor-pointer' : 'border-green-500 bg-green-50 cursor-pointer'
                                                             : hasPendingRequest
-                                                                ? 'border-gray-200 cursor-not-allowed opacity-50'
-                                                                : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                                                                ? themed ? 'border-base-300 cursor-not-allowed opacity-50' : 'border-gray-200 cursor-not-allowed opacity-50'
+                                                                : themed ? 'border-base-300 hover:border-base-content/30 cursor-pointer' : 'border-gray-200 hover:border-gray-300 cursor-pointer'
                                                 }`}
                                         >
                                             <input
@@ -264,25 +267,25 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                                                 checked={hasPermission || isSelected || !!isPending}
                                                 onChange={() => handlePermissionChange(option.key as keyof typeof permissions)}
                                                 disabled={hasPermission || hasPendingRequest}
-                                                className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500 mt-0.5 disabled:cursor-not-allowed"
+                                                className={`w-5 h-5 rounded mt-0.5 disabled:cursor-not-allowed ${themed ? "checkbox checkbox-primary checkbox-sm" : "border-gray-300 text-green-600 focus:ring-green-500"}`}
                                             />
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`font-medium ${hasPermission ? 'text-green-700' : 'text-gray-900'}`}>
+                                                    <span className={`font-medium ${hasPermission ? themed ? 'text-success' : 'text-green-700' : themed ? 'text-base-content' : 'text-gray-900'}`}>
                                                         {option.label}
                                                     </span>
                                                     {hasPermission && (
-                                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${themed ? "bg-success/20 text-success" : "bg-green-100 text-green-700"}`}>
                                                             Granted
                                                         </span>
                                                     )}
                                                     {isPending && (
-                                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${themed ? "bg-warning/20 text-warning" : "bg-amber-100 text-amber-700"}`}>
                                                             Pending
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className="text-sm text-gray-500">{option.description}</p>
+                                                <p className={`text-sm ${themed ? "text-base-content/60" : "text-gray-500"}`}>{option.description}</p>
                                             </div>
                                         </label>
                                     );
@@ -292,7 +295,7 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                             {/* Reason Textarea */}
                             {!hasPendingRequest && (
                                 <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className={`block text-sm font-medium mb-2 ${themed ? "text-base-content/80" : "text-gray-700"}`}>
                                         Reason (optional)
                                     </label>
                                     <textarea
@@ -300,14 +303,17 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                                         onChange={(e) => setReason(e.target.value)}
                                         placeholder="Explain why you need these permissions..."
                                         rows={3}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                                        className={`w-full px-4 py-3 rounded-lg resize-none ${themed
+                                            ? "bg-base-200 border border-base-300 text-base-content placeholder:text-base-content/40 focus:ring-2 focus:ring-primary focus:border-primary"
+                                            : "border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        }`}
                                     />
                                 </div>
                             )}
 
                             {/* Error Message */}
                             {error && (
-                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                                <div className={`mb-4 p-3 rounded-lg text-sm ${themed ? "bg-error/10 border border-error/30 text-error" : "bg-red-50 border border-red-200 text-red-600"}`}>
                                     {error}
                                 </div>
                             )}
@@ -317,7 +323,10 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className={`w-full py-3 font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${themed
+                                        ? "btn btn-primary"
+                                        : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700"
+                                    }`}
                                 >
                                     {loading ? (
                                         <>
@@ -336,7 +345,8 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        modalRoot
     );
 };
 

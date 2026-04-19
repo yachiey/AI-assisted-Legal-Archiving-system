@@ -99,6 +99,27 @@ class FolderService {
     return await this.apiCall<Folder[]>(`/search/${encodeURIComponent(searchTerm)}`);
   }
 
+  // Get paginated folders
+  async getPaginatedFolders(
+    page: number = 1,
+    parentId: number | null = null,
+    search: string = '',
+    perPage: number = 10
+  ): Promise<{ data: Folder[], current_page: number, last_page: number, total: number }> {
+    let queryParams = `?page=${page}&per_page=${perPage}`;
+    if (parentId !== null) {
+      queryParams += `&parent_id=${parentId}`;
+    }
+    if (search) {
+      queryParams += `&search=${encodeURIComponent(search)}`;
+    }
+    
+    const timestamp = Date.now();
+    queryParams += `&_t=${timestamp}`;
+    
+    return await this.apiCall<any>(`/paginated${queryParams}`);
+  }
+
   // Create new folder
   async createFolder(folderData: CreateFolderRequest): Promise<Folder> {
     return await this.apiCall<{ message: string; folder: Folder }>('', {

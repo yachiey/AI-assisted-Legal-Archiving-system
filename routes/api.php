@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('folders/search/{term}', [FolderController::class, 'search']);
     Route::get('folders/recent/{limit?}', [FolderController::class, 'recent']);
     Route::get('folders/tree', [FolderController::class, 'tree']);
+    Route::get('folders/paginated', [FolderController::class, 'getPaginatedFolders']);
     Route::get('folders/{parentId}/subfolders', [FolderController::class, 'getSubfolders']);
     Route::apiResource('folders', FolderController::class);
 

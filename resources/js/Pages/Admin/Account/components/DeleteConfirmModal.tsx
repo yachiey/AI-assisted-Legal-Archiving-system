@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, AlertTriangle } from "lucide-react";
 import {
     DEFAULT_DASHBOARD_THEME,
@@ -40,13 +41,19 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
 
     if (!isOpen) return null;
 
-    return (
+    const modalContent = (
         <div
             data-theme={isDashboardThemeEnabled ? theme : undefined}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[9999]"
+            style={{ background: 'transparent' }}
         >
             <div
-                className={`w-full max-w-sm rounded-2xl shadow-2xl ${
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={onClose}
+            />
+            <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+            <div
+                className={`pointer-events-auto w-full max-w-sm rounded-2xl shadow-2xl ${
                     isDashboardThemeEnabled
                         ? "border border-base-300 bg-base-100 text-base-content"
                         : "bg-white"
@@ -198,8 +205,11 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };
 
 export default DeleteConfirmModal;

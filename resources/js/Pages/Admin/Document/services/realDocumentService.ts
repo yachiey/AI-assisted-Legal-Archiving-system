@@ -1,5 +1,4 @@
-// realDocumentService.ts - Real document service that connects to Laravel backend
-import { Document, DocumentFilters } from '../types/types';
+import { Document, DocumentFilters, PaginatedResponse } from '../types/types';
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
@@ -109,6 +108,43 @@ class RealDocumentService {
     }
   }
 
+  // Get paginated documents
+  async getPaginatedDocuments(
+    page: number = 1,
+    folderId?: number,
+    filters?: DocumentFilters,
+    searchTerm?: string,
+    perPage: number = 10
+  ): Promise<PaginatedResponse<Document>> {
+    const params = new URLSearchParams();
+    
+    params.append('paginate', 'true');
+    params.append('page', page.toString());
+    params.append('per_page', perPage.toString());
+
+    if (folderId !== undefined && folderId !== null) {
+      params.append('folder_id', folderId.toString());
+    }
+
+    if (searchTerm) {
+      params.append('search', searchTerm);
+    }
+
+    if (filters) {
+      if (filters.folder_id) {
+        params.append('folder_id', filters.folder_id.toString());
+      }
+      if (filters.year) {
+        params.append('year', filters.year.toString());
+      }
+      if (filters.status) {
+        params.append('status', filters.status);
+      }
+    }
+
+    const endpoint = params.toString() ? `/documents?${params.toString()}` : '/documents';
+    return await this.apiCall<PaginatedResponse<Document>>(endpoint);
+  }
 
   // Get all documents with optional filtering
   async getAllDocuments(folderId?: number, filters?: DocumentFilters, searchTerm?: string): Promise<Document[]> {

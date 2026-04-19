@@ -39,29 +39,22 @@ const StaffSidebar: FC = () => {
                 isDashboardThemeEnabled
                     ? undefined
                     : {
-                          background:
-                              "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                          background: '#228B22',
                       }
             }
         >
             {/* Decorative top gradient overlay */}
-            <div
-                className={`pointer-events-none absolute left-0 right-0 top-0 h-40 ${
-                    isDashboardThemeEnabled
-                        ? "bg-gradient-to-b from-primary-content/15 to-transparent"
-                        : "bg-gradient-to-b from-white/20 to-transparent"
-                }`}
-            ></div>
+            {isDashboardThemeEnabled && (
+                <div className="pointer-events-none absolute left-0 right-0 top-0 h-40 bg-gradient-to-b from-primary-content/15 to-transparent"></div>
+            )}
 
             {/* Brand Logo */}
             <div className={`relative flex justify-center items-center transition-all duration-300 ${collapsed ? "py-6" : "py-6 px-4"
                 }`}>
                 <div className="relative">
-                    <div
-                        className={`absolute inset-0 rounded-full blur-xl ${
-                            isDashboardThemeEnabled ? "bg-secondary/20" : "bg-green-700/15"
-                        }`}
-                    ></div>
+                    {isDashboardThemeEnabled && (
+                        <div className="absolute inset-0 rounded-full blur-xl bg-secondary/20"></div>
+                    )}
                     <Brand
                         height={collapsed ? 45 : 65}
                         width={collapsed ? 45 : 160}
@@ -121,11 +114,11 @@ const StaffSidebar: FC = () => {
                 <div className="px-5 pb-3">
                     <div className="flex items-center gap-2">
                         <div
-                            className={`h-px flex-1 bg-gradient-to-r from-transparent ${
+                            className={`h-px flex-1 ${
                                 isDashboardThemeEnabled
-                                    ? "via-primary-content/20"
-                                    : "via-white/20"
-                            } to-transparent`}
+                                    ? "bg-gradient-to-r from-transparent via-primary-content/20 to-transparent"
+                                    : "bg-white/20"
+                            }`}
                         ></div>
                         <span
                             className={`text-[0.65rem] font-semibold uppercase tracking-widest ${
@@ -137,11 +130,11 @@ const StaffSidebar: FC = () => {
                             Navigation
                         </span>
                         <div
-                            className={`h-px flex-1 bg-gradient-to-r from-transparent ${
+                            className={`h-px flex-1 ${
                                 isDashboardThemeEnabled
-                                    ? "via-primary-content/20"
-                                    : "via-white/20"
-                            } to-transparent`}
+                                    ? "bg-gradient-to-r from-transparent via-primary-content/20 to-transparent"
+                                    : "bg-white/20"
+                            }`}
                         ></div>
                     </div>
                 </div>
@@ -162,13 +155,9 @@ const StaffSidebar: FC = () => {
             </ul>
 
             {/* Bottom Decorative Element */}
-            <div
-                className={`pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t to-transparent ${
-                    isDashboardThemeEnabled
-                        ? "from-secondary/35"
-                        : "from-green-300/30"
-                }`}
-            ></div>
+            {isDashboardThemeEnabled && (
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-secondary/35 to-transparent"></div>
+            )}
         </div>
     );
 };

@@ -40,6 +40,22 @@ interface DocumentManagementState {
   sortOrder: 'asc' | 'desc';
   documentViewMode: 'list' | 'grid';
   viewingDocument: Document | null;
+  currentPage: number;
+  lastPage: number;
+  totalDocumentsCount: number;
+  perPage: number;
+  
+  // Folder pagination
+  currentFolderPage: number;
+  lastFolderPage: number;
+  totalFoldersCount: number;
+  foldersPerPage: number;
+
+  // Subfolder pagination
+  currentSubfolderPage: number;
+  lastSubfolderPage: number;
+  totalSubfoldersCount: number;
+  subfoldersPerPage: number;
 }
 
 
@@ -57,7 +73,19 @@ const DocumentManagement: React.FC = () => {
     sortField: 'date',
     sortOrder: 'desc',
     documentViewMode: 'list',
-    viewingDocument: null
+    viewingDocument: null,
+    currentPage: 1,
+    lastPage: 1,
+    totalDocumentsCount: 0,
+    perPage: 10,
+    currentFolderPage: 1,
+    lastFolderPage: 1,
+    totalFoldersCount: 0,
+    foldersPerPage: 10,
+    currentSubfolderPage: 1,
+    lastSubfolderPage: 1,
+    totalSubfoldersCount: 0,
+    subfoldersPerPage: 5
   });
 
 
@@ -132,7 +160,19 @@ const DocumentManagement: React.FC = () => {
     sortField,
     sortOrder,
     documentViewMode,
-    viewingDocument
+    viewingDocument,
+    currentPage,
+    lastPage,
+    totalDocumentsCount,
+    perPage,
+    currentFolderPage,
+    lastFolderPage,
+    totalFoldersCount,
+    foldersPerPage,
+    currentSubfolderPage,
+    lastSubfolderPage,
+    totalSubfoldersCount,
+    subfoldersPerPage
   } = state;
 
   // Load initial data
@@ -150,6 +190,17 @@ const DocumentManagement: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('documentViewMode', documentViewMode);
   }, [documentViewMode]);
+
+  // Tell Lenis to recompute scroll bounds when content height changes
+  useEffect(() => {
+    const raf1 = window.requestAnimationFrame(() => {
+      const raf2 = window.requestAnimationFrame(() => {
+        (window as any).__lenis?.resize?.();
+      });
+      (window as any).__lenisResizeRaf2 = raf2;
+    });
+    return () => window.cancelAnimationFrame(raf1);
+  }, [documentViewMode, state.viewMode, state.currentFolder, state.documents.length, state.folders.length, state.subfolders.length, state.currentPage, state.currentFolderPage, state.currentSubfolderPage, state.loading]);
 
 
   // Check for folder query parameter and navigate to that folder (only once on initial load)
@@ -224,24 +275,25 @@ const DocumentManagement: React.FC = () => {
   // Load data when search term or filters change (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (viewMode === 'folders') {
+      if (state.viewMode === 'folders') {
         setState(prev => ({ ...prev, loading: true }));
-        if (filters.year !== undefined) {
+        if (state.filters.year !== undefined) {
           loadDocuments(); // Load documents when year filter is active
         } else {
           loadFolders(); // Load folders by default
         }
-      } else if (currentFolder && !justOpenedFolder.current) {
-        // Reload documents when search/filters change
+      } else if (state.currentFolder && !justOpenedFolder.current) {
+        // Reload documents and subfolders when search/filters/pages change
         setState(prev => ({ ...prev, loading: true }));
         loadDocuments();
+        loadSubfolders();
       }
       // Reset the flag after the effect runs
       justOpenedFolder.current = false;
     }, 200); // Debounce for search/filters
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, filters]);
+  }, [state.searchTerm, state.filters, state.currentPage, state.currentFolderPage, state.currentSubfolderPage]);
 
   const loadInitialData = async (): Promise<void> => {
     setState(prev => ({ ...prev, loading: true }));
@@ -259,16 +311,24 @@ const DocumentManagement: React.FC = () => {
       let foldersData: Folder[];
 
       // Use override if provided, otherwise use current state
-      const effectiveSearch = searchOverride !== undefined ? searchOverride : searchTerm;
+      const effectiveSearch = searchOverride !== undefined ? searchOverride : state.searchTerm;
 
+      let paginatedData;
       if (effectiveSearch) {
-        foldersData = await folderService.searchFolders(effectiveSearch);
+        paginatedData = await folderService.getPaginatedFolders(state.currentFolderPage, null, effectiveSearch, state.foldersPerPage);
       } else {
-        foldersData = await folderService.getFoldersByParent(parentId);
+        paginatedData = await folderService.getPaginatedFolders(state.currentFolderPage, parentId, '', state.foldersPerPage);
       }
 
-      foldersData = folderService.sortFolders(foldersData, 'updated_at', 'desc');
-      setState(prev => ({ ...prev, folders: foldersData, loading: false }));
+      foldersData = folderService.sortFolders(paginatedData.data, 'updated_at', 'desc');
+      setState(prev => ({ 
+        ...prev, 
+        folders: foldersData,
+        currentFolderPage: paginatedData.current_page || 1,
+        lastFolderPage: paginatedData.last_page || 1,
+        totalFoldersCount: paginatedData.total || 0,
+        loading: false 
+      }));
       setInitialLoading(false);
 
       if (foldersData.length > 0) {
@@ -283,23 +343,68 @@ const DocumentManagement: React.FC = () => {
 
   const loadDocuments = async (): Promise<void> => {
     try {
-      let documentsData: Document[];
+      let response;
 
       if (filters.status === 'deleted') {
-        documentsData = await realDocumentService.getAllDocuments(currentFolder?.folder_id, { status: 'deleted' });
+        response = await realDocumentService.getPaginatedDocuments(state.currentPage, currentFolder?.folder_id, { status: 'deleted' }, searchTerm, state.perPage);
       } else {
-        documentsData = await realDocumentService.getAllDocuments(currentFolder?.folder_id, filters, searchTerm);
+        response = await realDocumentService.getPaginatedDocuments(state.currentPage, currentFolder?.folder_id, filters, searchTerm, state.perPage);
       }
 
-      setState(prev => ({ ...prev, documents: documentsData, loading: false }));
+      setState(prev => ({ 
+        ...prev, 
+        documents: response.data || [], 
+        currentPage: response.current_page || 1,
+        lastPage: response.last_page || 1,
+        totalDocumentsCount: response.total || 0,
+        loading: false 
+      }));
     } catch (error) {
       console.error('Error loading documents:', error);
       setState(prev => ({ ...prev, documents: [], loading: false }));
     }
   };
 
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > state.lastPage) return;
+    setState(prev => ({ ...prev, currentPage: page, loading: true }));
+  };
+
+  const handleFolderPageChange = (page: number) => {
+    if (page < 1 || page > state.lastFolderPage) return;
+    setState(prev => ({ ...prev, currentFolderPage: page, loading: true }));
+  };
+
+  const handleSubfolderPageChange = (page: number) => {
+    if (page < 1 || page > state.lastSubfolderPage) return;
+    setState(prev => ({ ...prev, currentSubfolderPage: page, loading: true }));
+  };
+
+  const loadSubfolders = async () => {
+    if (!state.currentFolder) return;
+    try {
+      const response = await folderService.getPaginatedFolders(state.currentSubfolderPage, state.currentFolder.folder_id, '', state.subfoldersPerPage);
+      const filteredSubfolders = response.data.filter(f =>
+        f.folder_id !== state.currentFolder!.folder_id &&
+        f.folder_id !== state.currentFolder!.parent_folder_id
+      );
+      setState(prev => ({
+        ...prev,
+        subfolders: filteredSubfolders,
+        currentSubfolderPage: response.current_page || 1,
+        lastSubfolderPage: response.last_page || 1,
+        totalSubfoldersCount: response.total || 0,
+      }));
+      if (filteredSubfolders.length > 0) {
+        loadFolderDocumentCounts(filteredSubfolders);
+      }
+    } catch (error) {
+      console.error('Error loading subfolders:', error);
+    }
+  };
+
   const handleSearchChange = (term: string): void => {
-    setState(prev => ({ ...prev, searchTerm: term }));
+    setState(prev => ({ ...prev, searchTerm: term, currentPage: 1 }));
   };
 
   const handleFolderClick = async (folder: Folder): Promise<void> => {
@@ -315,19 +420,21 @@ const DocumentManagement: React.FC = () => {
       filters: {},
       loading: true,
       documents: [],
-      subfolders: []
+      subfolders: [],
+      currentPage: 1
     }));
 
     try {
       // Start both requests in parallel but don't wait for both
-      const documentsPromise = realDocumentService.getAllDocuments(folder.folder_id);
-      const subfoldersPromise = folderService.getFoldersByParent(folder.folder_id);
+      const documentsPromise = realDocumentService.getPaginatedDocuments(1, folder.folder_id, {}, '', state.perPage);
+      const subfoldersPromise = folderService.getPaginatedFolders(1, folder.folder_id, '', state.subfoldersPerPage);
 
       // Wait for subfolders first (usually faster) and show them immediately
-      const subfoldersData = await subfoldersPromise;
+      const subfoldersResponse = await subfoldersPromise;
+      const subfoldersData = subfoldersResponse.data;
 
       // CRITICAL: Filter subfolders - exclude parent and grandparent
-      const filteredSubfolders = subfoldersData.filter(f =>
+      const filteredSubfolders = subfoldersData.filter((f: any) =>
         f.folder_id !== folder.folder_id &&
         f.folder_id !== folder.parent_folder_id
       );
@@ -339,6 +446,9 @@ const DocumentManagement: React.FC = () => {
             return {
               ...prev,
               subfolders: filteredSubfolders,
+              currentSubfolderPage: subfoldersResponse.current_page || 1,
+              lastSubfolderPage: subfoldersResponse.last_page || 1,
+              totalSubfoldersCount: subfoldersResponse.total || 0,
               loading: true // Keep loading true for documents
             };
           }
@@ -356,7 +466,10 @@ const DocumentManagement: React.FC = () => {
           if (prev.currentFolder?.folder_id === folder.folder_id) {
             return {
               ...prev,
-              documents: documentsData,
+              documents: (documentsData as any).data || documentsData || [],
+              currentPage: (documentsData as any).current_page || 1,
+              lastPage: (documentsData as any).last_page || 1,
+              totalDocumentsCount: (documentsData as any).total || 0,
               loading: false
             };
           }
@@ -384,7 +497,8 @@ const DocumentManagement: React.FC = () => {
       const parentFolder = await folderService.getFolderById(currentFolder.parent_folder_id);
       handleFolderClick(parentFolder);
     } else {
-      setState({
+      setState(prev => ({
+        ...prev,
         searchTerm: '',
         currentFolder: null,
         viewMode: 'folders',
@@ -396,8 +510,9 @@ const DocumentManagement: React.FC = () => {
         sortField: 'date',
         sortOrder: 'desc',
         documentViewMode: 'list',
-        viewingDocument: null
-      });
+        viewingDocument: null,
+        currentPage: 1
+      }));
 
       setSidebarRefreshKey(prev => prev + 1); // Refresh sidebar to show root folders
       await loadFolders(null, '');
@@ -409,7 +524,7 @@ const DocumentManagement: React.FC = () => {
   };
 
   const handleApplyFilters = (newFilters: DocumentFilters): void => {
-    setState(prev => ({ ...prev, filters: newFilters }));
+    setState(prev => ({ ...prev, filters: newFilters, currentPage: 1 }));
     setIsFilterModalOpen(false);
   };
 
@@ -611,6 +726,33 @@ const DocumentManagement: React.FC = () => {
     }
   };
 
+  const renderPagination = (page: number, lastP: number, onPageChange: (p: number) => void, isLoading: boolean = false) => {
+    if (isLoading || lastP <= 1) return null;
+    return (
+      <div className="flex justify-center mt-8 pb-4">
+        <div className="join shadow-sm">
+          <button 
+            className={`join-item btn ${isDashboardThemeEnabled ? 'btn-outline border-base-300' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+          >
+            «
+          </button>
+          <button className={`join-item btn no-animation ${isDashboardThemeEnabled ? 'btn-outline border-base-300 bg-base-200/50' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+            Page {page} of {lastP}
+          </button>
+          <button 
+            className={`join-item btn ${isDashboardThemeEnabled ? 'btn-outline border-base-300' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+            onClick={() => onPageChange(page + 1)}
+            disabled={page === lastP}
+          >
+            »
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     refreshCounts();
   }, [folders]); // Update when folders change
@@ -656,7 +798,8 @@ const DocumentManagement: React.FC = () => {
                     filters: {},
                     documents: [],
                     subfolders: [],
-                    loading: true
+                    loading: true,
+                    currentPage: 1
                   }));
                   loadFolders(null);
                   setIsMobileSidebarOpen(false);
@@ -1071,6 +1214,7 @@ const DocumentManagement: React.FC = () => {
                 <>
                   {/* Show folders grid when no document-level filters are active */}
                   {!hasDocumentFilters ? (
+                    <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 auto-rows-fr" style={{ willChange: 'transform' }}>
                       {loading ? (
                         // Show loading skeleton when loading folders
@@ -1124,16 +1268,20 @@ const DocumentManagement: React.FC = () => {
                         renderEmptyFolderState()
                       )}
                     </div>
+                    {/* Render Folders Pagination */}
+                    {state.viewMode === 'folders' && !state.filters.year && renderPagination(state.currentFolderPage, state.lastFolderPage, handleFolderPageChange, state.loading)}
+                    </>
                   ) : (
                     // Show documents grid/list when filters are active
-                    <div className={`
-                    ${documentViewMode === 'grid'
-                        ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                        : isDashboardThemeEnabled
-                          ? 'overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-lg shadow-base-content/5 divide-y divide-base-300/70'
-                          : 'bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100'
-                      }
-                  `}>
+                    <>
+                      <div className={`
+                      ${documentViewMode === 'grid'
+                          ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                          : isDashboardThemeEnabled
+                            ? 'overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-lg shadow-base-content/5 divide-y divide-base-300/70'
+                            : 'bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden divide-y divide-gray-100'
+                        }
+                    `}>
                       {loading ? (
                         [...Array(6)].map((_, i) => (
                           <div key={i} className="animate-pulse p-6">
@@ -1173,7 +1321,9 @@ const DocumentManagement: React.FC = () => {
                       ) : (
                         renderEmptyDocumentState()
                       )}
-                    </div>
+                      </div>
+                      {renderPagination(state.currentPage, state.lastPage, handlePageChange, state.loading)}
+                    </>
                   )}
                 </>
               ) : (
@@ -1217,6 +1367,7 @@ const DocumentManagement: React.FC = () => {
                               />
                             ))}
                           </div>
+                          {renderPagination(state.currentSubfolderPage, state.lastSubfolderPage, handleSubfolderPageChange, false)}
                         </div>
                       )}
 
@@ -1303,6 +1454,8 @@ const DocumentManagement: React.FC = () => {
                         {!loading && sortedSubfolders.length === 0 && documents.length === 0 && (
                           renderEmptyDocumentState()
                         )}
+
+                        {renderPagination(state.currentPage, state.lastPage, handlePageChange, state.loading)}
                       </div>
                     </>
                   )}

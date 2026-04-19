@@ -70,8 +70,16 @@ class DocumentQueryService
         // Apply sorting
         $sortBy = $request->get('sort_by', 'updated_at');
         $sortOrder = $request->get('sort_order', 'desc');
+        
+        $query->orderBy($sortBy, $sortOrder);
 
-        return $query->orderBy($sortBy, $sortOrder)->get();
+        $paginate = $request->get('paginate', false);
+        if (filter_var($paginate, FILTER_VALIDATE_BOOLEAN)) {
+            $perPage = $request->get('per_page', 12);
+            return $query->paginate((int)$perPage);
+        }
+
+        return $query->get();
     }
 
     /**

@@ -1,0 +1,51 @@
+/* ==============================
+   Global Custom Scrollbar Styles
+   ============================== */
+
+/* Default theme scrollbar (green) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #228B22;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1a6b1a;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #228B22 #f1f1f1;
+}
+
+/* ==============================
+   DaisyUI Theme Scrollbar Overrides
+   ============================== */
+
+[data-theme] ::-webkit-scrollbar-track {
+    background: oklch(var(--b2, 0.961 0 0));
+}
+
+[data-theme] ::-webkit-scrollbar-thumb {
+    background: oklch(var(--p, 0.6 0.2 145));
+    border-radius: 4px;
+}
+
+[data-theme] ::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--pf, 0.5 0.2 145));
+}
+
+/* Firefox - DaisyUI themes */
+[data-theme] * {
+    scrollbar-color: oklch(var(--p, 0.6 0.2 145)) oklch(var(--b2, 0.961 0 0));
+}

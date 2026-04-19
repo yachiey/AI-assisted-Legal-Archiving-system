@@ -54,6 +54,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
         <div
             data-theme={isDashboardThemeEnabled ? theme : undefined}
             className="fixed inset-0 z-[9999]"
+            style={{ background: 'transparent' }}
         >
             <div
                 className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"

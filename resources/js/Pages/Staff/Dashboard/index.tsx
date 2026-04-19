@@ -289,13 +289,13 @@ export default function StaffDashboard() {
                                             }`}
                                         >
                                             <div
-                                                className={`h-1.5 w-1.5 rounded-full transition-transform group-hover/item:scale-150 ${
+                                                className={`h-2 w-2 rounded-full transition-transform group-hover/item:scale-150 ${
                                                     permission.enabled
                                                         ? isDashboardThemeEnabled
-                                                            ? 'bg-success'
+                                                            ? 'bg-primary'
                                                             : 'bg-green-600'
                                                         : isDashboardThemeEnabled
-                                                            ? 'bg-base-300'
+                                                            ? 'bg-base-content/20'
                                                             : 'bg-gray-300'
                                                 }`}
                                             ></div>

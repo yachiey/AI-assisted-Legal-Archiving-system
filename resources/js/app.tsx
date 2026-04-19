@@ -1,5 +1,6 @@
 import "../css/app.css";
 import "../css/document-sidebar.css";
+import "../css/CustomScrollBar.css";
 import "lenis/dist/lenis.css";
 
 import { createRoot } from "react-dom/client";
