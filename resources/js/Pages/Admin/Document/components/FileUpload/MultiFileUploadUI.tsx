@@ -52,6 +52,8 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
         handleConfirmUpload,
         handleCancelUpload,
         dismissDuplicate,
+        handleSkipAndContinue,
+        handleProceedToScan
     } = useMultiFileUpload({
         maxFileSize,
         acceptedFileTypes,
@@ -59,6 +61,8 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
         onUploadSuccess: () => onUploadSuccess?.(),
         onUploadError: (error) => onUploadError?.(error),
     });
+
+    const hasRemainingFiles = progress.total > progress.current;
 
     const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
         e.preventDefault();
@@ -384,110 +388,126 @@ const MultiFileUploadUI: React.FC<MultiFileUploadUIProps> = ({
             )}
 
             {duplicateDocument && (
-                <div
-                    className={`mt-4 rounded-xl border p-5 ${
-                        isDashboardThemeEnabled
-                            ? 'border-warning/25 bg-warning/10'
-                            : 'border-amber-300 bg-amber-50'
-                    }`}
-                >
-                    <div className="flex items-start gap-3">
-                        <Copy
-                            className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
+                    <div
+                        className={`relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl ${
+                            isDashboardThemeEnabled
+                                ? 'bg-base-100 border border-base-300'
+                                : 'bg-white border border-gray-200'
+                        }`}
+                    >
+                        <div
+                            className={`px-6 py-4 flex items-center gap-3 border-b ${
                                 isDashboardThemeEnabled
-                                    ? 'text-warning'
-                                    : 'text-amber-600'
+                                    ? 'border-base-300 bg-base-200/50'
+                                    : 'border-gray-100 bg-gray-50/80'
                             }`}
-                        />
-                        <div className="flex-1">
-                            <h4
-                                className={`mb-1 text-sm font-semibold ${
+                        >
+                            <div className={`p-2 rounded-full ${isDashboardThemeEnabled ? 'bg-warning/20' : 'bg-amber-100'}`}>
+                                <AlertCircle
+                                    className={`h-6 w-6 ${
+                                        isDashboardThemeEnabled
+                                            ? 'text-warning'
+                                            : 'text-amber-600'
+                                    }`}
+                                />
+                            </div>
+                            <h3
+                                className={`text-lg font-bold ${
                                     isDashboardThemeEnabled
-                                        ? 'text-warning'
-                                        : 'text-amber-800'
+                                        ? 'text-base-content'
+                                        : 'text-gray-900'
                                 }`}
                             >
                                 Duplicate Document Detected
-                            </h4>
+                            </h3>
+                        </div>
+
+                        <div className="px-6 py-6 border-b border-opacity-10 border-base-content/10">
                             <p
-                                className={`mb-3 text-sm ${
+                                className={`mb-4 text-sm ${
                                     isDashboardThemeEnabled
-                                        ? 'text-base-content/75'
-                                        : 'text-amber-700'
+                                        ? 'text-base-content/80'
+                                        : 'text-gray-600'
                                 }`}
                             >
-                                <span className="font-medium">
-                                    "{duplicateDocument.fileName}"
-                                </span>{' '}
-                                already exists in the system.
+                                The file <span className="font-semibold px-1.5 py-0.5 rounded bg-base-300/50 text-base-content">{duplicateDocument.fileName}</span> already exists in the system.
                             </p>
+                            
                             <div
-                                className={`space-y-1.5 rounded-lg border p-3 ${
+                                className={`space-y-3 rounded-xl border p-4 ${
                                     isDashboardThemeEnabled
-                                        ? 'border-base-300 bg-base-100/80'
-                                        : 'border-amber-200 bg-white/70'
+                                        ? 'border-base-300 bg-base-200/50'
+                                        : 'border-gray-200 bg-gray-50'
                                 }`}
                             >
-                                <p
-                                    className={`text-sm ${
-                                        isDashboardThemeEnabled
-                                            ? 'text-base-content'
-                                            : 'text-gray-800'
-                                    }`}
-                                >
-                                    <span
-                                        className={
-                                            isDashboardThemeEnabled
-                                                ? 'text-base-content/55'
-                                                : 'text-gray-500'
-                                        }
-                                    >
-                                        Title:
-                                    </span>{' '}
-                                    <span className="font-medium">
+                                <div>
+                                    <p className={`text-xs uppercase tracking-wider font-semibold mb-1 ${isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-500'}`}>
+                                        System Title
+                                    </p>
+                                    <p className={`text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-800'}`}>
                                         {duplicateDocument.title}
-                                    </span>
-                                </p>
-                                <p
-                                    className={`flex items-center gap-1.5 text-sm ${
-                                        isDashboardThemeEnabled
-                                            ? 'text-base-content'
-                                            : 'text-gray-800'
-                                    }`}
-                                >
-                                    <FolderOpen
-                                        className={`h-3.5 w-3.5 ${
-                                            isDashboardThemeEnabled
-                                                ? 'text-base-content/45'
-                                                : 'text-gray-400'
-                                        }`}
-                                    />
-                                    <span
-                                        className={
-                                            isDashboardThemeEnabled
-                                                ? 'text-base-content/55'
-                                                : 'text-gray-500'
-                                        }
-                                    >
-                                        Location:
-                                    </span>{' '}
-                                    <span className="font-medium">
+                                    </p>
+                                </div>
+                                <div className="h-px w-full bg-base-300/50"></div>
+                                <div>
+                                    <p className={`text-xs uppercase tracking-wider font-semibold mb-1 flex items-center gap-1 ${isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-500'}`}>
+                                        <FolderOpen className="w-3.5 h-3.5" /> Location
+                                    </p>
+                                    <p className={`text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-800'}`}>
                                         {duplicateDocument.folder_name}
-                                    </span>
-                                </p>
+                                    </p>
+                                </div>
                             </div>
-                            <div className="mt-3 flex gap-2">
+                            
+                            {hasRemainingFiles && (
+                                <p className={`mt-5 text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'}`}>
+                                    You have {progress.total - progress.current} more file{progress.total - progress.current !== 1 ? 's' : ''} in the upload queue. How would you like to proceed?
+                                </p>
+                            )}
+                        </div>
+
+                        <div
+                            className={`px-6 py-5 flex flex-wrap-reverse items-center justify-end gap-3 ${
+                                isDashboardThemeEnabled
+                                    ? 'bg-base-200/30'
+                                    : 'bg-gray-50/50'
+                            }`}
+                        >
+                            <button
+                                onClick={dismissDuplicate}
+                                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                                    isDashboardThemeEnabled
+                                        ? 'text-base-content/70 hover:bg-base-300 hover:text-base-content'
+                                        : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                                }`}
+                            >
+                                Cancel Upload
+                            </button>
+                            
+                            <button
+                                onClick={handleProceedToScan}
+                                className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm ${
+                                    isDashboardThemeEnabled
+                                        ? 'bg-base-300 text-base-content hover:bg-base-content/20'
+                                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                }`}
+                            >
+                                Proceed to Scan
+                            </button>
+                            
+                            {hasRemainingFiles && (
                                 <button
-                                    onClick={dismissDuplicate}
-                                    className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+                                    onClick={handleSkipAndContinue}
+                                    className={`px-5 py-2.5 rounded-xl font-medium text-sm text-white shadow-sm transition-transform active:scale-95 ${
                                         isDashboardThemeEnabled
-                                            ? 'bg-warning/15 text-warning hover:bg-warning/25'
-                                            : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                            ? 'bg-primary hover:bg-primary/90'
+                                            : 'bg-green-600 hover:bg-green-700'
                                     }`}
                                 >
-                                    Dismiss
+                                    Skip & Continue
                                 </button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

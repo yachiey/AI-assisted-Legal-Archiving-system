@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import { UploadedFile } from '../types/types';
 import { validateFileType, validateFileSize } from '../utils/fileUtils';
@@ -54,6 +54,20 @@ export const useMultiFileUpload = ({
         status: 'idle'
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const pendingDuplicateResolveRef = useRef<((action: 'scan' | 'skip' | 'cancel') => void) | null>(null);
+
+    const pauseForDuplicateAction = (): Promise<'scan' | 'skip' | 'cancel'> => {
+        return new Promise(resolve => {
+            pendingDuplicateResolveRef.current = resolve;
+        });
+    };
+
+    const handleDuplicateAction = useCallback((action: 'scan' | 'skip' | 'cancel') => {
+        if (pendingDuplicateResolveRef.current) {
+            pendingDuplicateResolveRef.current(action);
+            pendingDuplicateResolveRef.current = null;
+        }
+    }, []);
 
     /**
      * Validate and add files to the upload queue
@@ -120,7 +134,7 @@ export const useMultiFileUpload = ({
     /**
      * Upload a single file to the server
      */
-    const uploadSingleFile = async (file: UploadedFile): Promise<number | null> => {
+    const uploadSingleFile = async (file: UploadedFile): Promise<number | { duplicate: DuplicateDocument }> => {
         const formData = new FormData();
         formData.append('file', file.file);
 
@@ -138,11 +152,12 @@ export const useMultiFileUpload = ({
 
         // Handle duplicate document (409 Conflict)
         if (response.status === 409 && responseData.duplicate) {
-            setDuplicateDocument({
-                ...responseData.existing_document,
-                fileName: file.name,
-            });
-            return null;
+            return {
+                duplicate: {
+                    ...responseData.existing_document,
+                    fileName: file.name,
+                }
+            };
         }
 
         if (!response.ok) {
@@ -197,12 +212,32 @@ export const useMultiFileUpload = ({
 
                 try {
                     const result = await uploadSingleFile(file);
-                    if (result === null) {
-                        // Duplicate detected or upload returned no ID - stop
-                        setIsUploading(false);
-                        return;
+                    
+                    if (typeof result === 'object' && result !== null && 'duplicate' in result) {
+                        // Duplicate detected
+                        setDuplicateDocument(result.duplicate);
+                        
+                        // Wait for user action
+                        const action = await pauseForDuplicateAction();
+                        
+                        setDuplicateDocument(null);
+                        
+                        if (action === 'cancel') {
+                            setIsUploading(false);
+                            return;
+                        } else if (action === 'skip') {
+                            // Continue to next file
+                            continue;
+                        } else if (action === 'scan') {
+                            // Navigate to AI processing with this explicit duplicate document
+                            setUploadedFiles([]);
+                            setIsUploading(false);
+                            router.visit(`/ai-processing?docId=${result.duplicate.doc_id}`);
+                            return;
+                        }
+                    } else if (typeof result === 'number') {
+                        documentIds.push(result);
                     }
-                    documentIds.push(result);
                 } catch (fileError) {
                     console.error(`Failed to upload ${file.name}:`, fileError);
                     // Continue with other files even if one fails
@@ -250,10 +285,24 @@ export const useMultiFileUpload = ({
     };
 
     /**
-     * Dismiss the duplicate document notification
+     * Dismiss the duplicate document notification and cancel the queue
      */
     const dismissDuplicate = () => {
-        setDuplicateDocument(null);
+        handleDuplicateAction('cancel');
+    };
+
+    /**
+     * Skip the duplicate and continue handling the rest of the queue
+     */
+    const handleSkipAndContinue = () => {
+        handleDuplicateAction('skip');
+    };
+
+    /**
+     * Scan this duplicate (stopping everything else)
+     */
+    const handleProceedToScan = () => {
+        handleDuplicateAction('scan');
     };
 
     /**
@@ -287,7 +336,9 @@ export const useMultiFileUpload = ({
         clearFiles,
         handleConfirmUpload,
         handleCancelUpload,
-        dismissDuplicate
+        dismissDuplicate,
+        handleSkipAndContinue,
+        handleProceedToScan
     };
 };
 
