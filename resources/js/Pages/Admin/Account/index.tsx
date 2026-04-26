@@ -175,7 +175,7 @@ const AccountManagement = () => {
             {/* Toast Notification */}
             {toast && (
                 <div
-                    className={`fixed top-4 right-4 z-50 rounded-2xl px-6 py-3 shadow-lg animate-fade-in ${
+                    className={`fixed top-4 right-4 z-[99999] flex items-center gap-3 rounded-2xl px-6 py-4 shadow-xl animate-fade-in ${
                         toast.type === 'success'
                             ? isDashboardThemeEnabled
                                 ? 'bg-success text-success-content shadow-success/20'
@@ -185,7 +185,17 @@ const AccountManagement = () => {
                                 : 'bg-red-500 text-white'
                     }`}
                 >
-                    {toast.message}
+                    {toast.type === 'success' ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-check-circle"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    )}
+                    <div className="flex flex-col">
+                        <span className="font-semibold text-base">
+                            {toast.type === 'success' ? 'Success' : 'Error'}
+                        </span>
+                        <span className="text-sm opacity-90">{toast.message}</span>
+                    </div>
                 </div>
             )}
 

@@ -149,7 +149,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   return (
     <div
       data-theme={isDashboardThemeEnabled ? theme : undefined}
-      className="relative group h-full"
+      className="relative group h-full bg-transparent"
     >
       {/* Animated glow effect on hover */}
       <div
@@ -365,7 +365,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                     No documents found in this folder
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-48 overflow-y-auto overflow-x-visible pr-1">
+                  <div data-lenis-prevent className="space-y-2.5 max-h-48 overflow-y-auto overflow-x-visible pr-1">
                     {documents.map((document) => (
                       <div
                         key={document.doc_id}

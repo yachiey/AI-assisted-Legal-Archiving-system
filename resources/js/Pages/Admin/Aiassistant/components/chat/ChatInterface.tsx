@@ -37,7 +37,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         isDashboardThemeEnabled ? "bg-base-200/40" : "bg-gray-50"
       }`}
     >
-      <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ minHeight: 0 }}>
+      <div 
+        className="flex-1 overflow-y-auto p-6 space-y-4" 
+        style={{ minHeight: 0 }}
+        data-lenis-prevent
+        data-lenis-prevent-wheel
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-16">
             <div className="mb-8">

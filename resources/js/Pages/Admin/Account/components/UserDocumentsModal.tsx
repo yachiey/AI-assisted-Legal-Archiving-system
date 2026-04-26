@@ -118,6 +118,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                     </div>
 
                     <div
+                        data-lenis-prevent
                         className={`flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-track-transparent ${
                             isDashboardThemeEnabled
                                 ? "bg-base-200/40 scrollbar-thumb-base-300 hover:scrollbar-thumb-base-content/20"

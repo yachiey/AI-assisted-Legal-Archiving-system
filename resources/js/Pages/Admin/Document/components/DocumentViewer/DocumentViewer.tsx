@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, ZoomIn, ZoomOut, RotateCw, FileText, Image, AlertCircle } from 'lucide-react';
 import { Document } from '../../types/types';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 interface DocumentViewerProps {
   isOpen: boolean;
@@ -10,6 +14,8 @@ interface DocumentViewerProps {
 }
 
 const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, document }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
@@ -319,7 +325,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
 
       case 'text':
         return (
-          <div className="h-full overflow-auto p-6">
+          <div data-lenis-prevent className="h-full overflow-auto p-6">
             <pre
               className="whitespace-pre-wrap font-mono text-sm"
               style={{ fontSize: `${zoom}%` }}
@@ -349,33 +355,32 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
 
   const modalContent = (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-[9999]"
-      onClick={onClose}
-      style={{ margin: 0, padding: 0 }}
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[9999] p-4 sm:p-6 flex items-center justify-center"
+      style={{ background: 'transparent', margin: 0, padding: 0 }}
     >
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
+        onClick={onClose} 
+      />
       <div
-        className="rounded-xl shadow-2xl w-full max-w-6xl mx-4 h-5/6 flex flex-col"
+        className={`relative flex h-5/6 w-full max-w-6xl flex-col overflow-hidden rounded-xl shadow-2xl ${isDashboardThemeEnabled ? 'border border-base-300 bg-base-100 text-base-content' : 'border border-[rgba(0,0,0,0.1)] bg-white shadow-[0_20px_60px_0_rgba(100,116,139,0.3)]'}`}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'white',
-          border: '1px solid rgba(0, 0, 0, 0.1)',
-          boxShadow: '0 20px 60px 0 rgba(100, 116, 139, 0.3)'
-        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className={`flex items-center justify-between border-b p-4 ${isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              {getFileType(document) === 'pdf' && <FileText className="w-6 h-6 text-blue-600" />}
-              {getFileType(document) === 'image' && <Image className="w-6 h-6 text-green-600" />}
-              {getFileType(document) === 'text' && <FileText className="w-6 h-6 text-purple-600" />}
-              {getFileType(document) === 'unknown' && <FileText className="w-6 h-6 text-gray-600" />}
+            <div className={`rounded-lg p-2 ${isDashboardThemeEnabled ? 'bg-primary/10' : 'bg-blue-100'}`}>
+              {getFileType(document) === 'pdf' && <FileText className={`h-6 w-6 ${isDashboardThemeEnabled ? 'text-primary' : 'text-blue-600'}`} />}
+              {getFileType(document) === 'image' && <Image className={`h-6 w-6 ${isDashboardThemeEnabled ? 'text-success' : 'text-green-600'}`} />}
+              {getFileType(document) === 'text' && <FileText className={`h-6 w-6 ${isDashboardThemeEnabled ? 'text-secondary' : 'text-purple-600'}`} />}
+              {getFileType(document) === 'unknown' && <FileText className={`h-6 w-6 ${isDashboardThemeEnabled ? 'text-base-content/50' : 'text-gray-600'}`} />}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 truncate max-w-md">
+              <h2 className={`max-w-md truncate text-lg font-bold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>
                 {document.title}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className={`text-sm ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-500'}`}>
                 {getFileExtension(document.file_path || document.title).toUpperCase()} • Created by {document.created_by}
               </p>
             </div>
@@ -387,46 +392,46 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
               <>
                 <button
                   onClick={handleZoomOut}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`rounded-lg p-2 transition-colors ${isDashboardThemeEnabled ? 'hover:bg-base-200 text-base-content/70 hover:text-base-content' : 'hover:bg-gray-100'}`}
                   title="Zoom Out"
                 >
-                  <ZoomOut className="w-4 h-4 text-gray-600" />
+                  <ZoomOut className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/70 group-hover:text-base-content' : 'text-gray-600'}`} />
                 </button>
-                <span className="text-sm text-gray-600 min-w-12 text-center">
+                <span className={`min-w-12 text-center text-sm ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'}`}>
                   {zoom}%
                 </span>
                 <button
                   onClick={handleZoomIn}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`rounded-lg p-2 transition-colors ${isDashboardThemeEnabled ? 'hover:bg-base-200 text-base-content/70 hover:text-base-content' : 'hover:bg-gray-100'}`}
                   title="Zoom In"
                 >
-                  <ZoomIn className="w-4 h-4 text-gray-600" />
+                  <ZoomIn className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/70 group-hover:text-base-content' : 'text-gray-600'}`} />
                 </button>
                 <button
                   onClick={handleRotate}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className={`rounded-lg p-2 transition-colors ${isDashboardThemeEnabled ? 'hover:bg-base-200 text-base-content/70 hover:text-base-content' : 'hover:bg-gray-100'}`}
                   title="Rotate"
                 >
-                  <RotateCw className="w-4 h-4 text-gray-600" />
+                  <RotateCw className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/70 group-hover:text-base-content' : 'text-gray-600'}`} />
                 </button>
-                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                <div className={`mx-2 h-6 w-px ${isDashboardThemeEnabled ? 'bg-base-300' : 'bg-gray-300'}`}></div>
               </>
             )}
 
             <button
               onClick={handleDownload}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className={`rounded-lg p-2 transition-colors ${isDashboardThemeEnabled ? 'hover:bg-base-200 text-base-content/70 hover:text-base-content' : 'hover:bg-gray-100'}`}
               title="Download"
             >
-              <Download className="w-4 h-4 text-gray-600" />
+              <Download className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/70 group-hover:text-base-content' : 'text-gray-600'}`} />
             </button>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className={`rounded-lg p-2 transition-colors ${isDashboardThemeEnabled ? 'hover:bg-base-200 text-base-content/70 hover:text-base-content' : 'hover:bg-gray-100'}`}
               title="Close"
             >
-              <X className="w-4 h-4 text-gray-600" />
+              <X className={`h-4 w-4 ${isDashboardThemeEnabled ? 'text-base-content/70 group-hover:text-base-content' : 'text-gray-600'}`} />
             </button>
           </div>
         </div>
@@ -437,13 +442,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className={`border-t p-4 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-200/50' : 'border-gray-200 bg-gray-50'}`}>
+          <div className={`flex items-center justify-between text-sm ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'}`}>
             <div className="flex items-center gap-4">
               <span>Status:
-                <span className={`ml-1 px-2 py-1 rounded-full text-xs ${document.status === 'active' ? 'bg-green-100 text-green-800' :
-                  document.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-blue-100 text-blue-800'
+                <span className={`ml-2 rounded-full px-2.5 py-0.5 text-xs font-semibold ${document.status === 'active' ? isDashboardThemeEnabled ? 'bg-success/15 text-success' : 'bg-green-100 text-green-800' :
+                  document.status === 'draft' ? isDashboardThemeEnabled ? 'bg-warning/15 text-warning' : 'bg-yellow-100 text-yellow-800' :
+                    isDashboardThemeEnabled ? 'bg-info/15 text-info' : 'bg-blue-100 text-blue-800'
                   }`}>
                   {(document.status || 'unknown').charAt(0).toUpperCase() + (document.status || 'unknown').slice(1)}
                 </span>
@@ -453,8 +458,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ isOpen, onClose, docume
               )}
             </div>
             <div>
-              Created: {new Date(document.created_at).toLocaleDateString()} •
-              Updated: {new Date(document.updated_at).toLocaleDateString()}
+              Created: {new Date(document.created_at).toLocaleDateString()} • Updated: {new Date(document.updated_at).toLocaleDateString()}
             </div>
           </div>
         </div>

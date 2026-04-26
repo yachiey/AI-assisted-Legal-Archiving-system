@@ -234,14 +234,6 @@ const ManualProcessing = ({
       isValid = false;
     }
 
-    if (!formData.documentRefId.trim()) {
-      newErrors.documentRefId = 'Please enter a Document ID';
-      if (docRefIdInputRef.current) {
-        docRefIdInputRef.current.focus();
-      }
-      isValid = false;
-    }
-
     setErrors(newErrors);
     return isValid;
   };
@@ -405,13 +397,13 @@ const ManualProcessing = ({
               {documentData?.doc_id && (
                 <button
                   onClick={() => setIsViewerOpen(true)}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                  className={`group flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200 ${
                     isDashboardThemeEnabled
-                      ? 'border-info/20 bg-info/10 text-info hover:bg-info/15'
-                      : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'
+                      ? 'border-transparent bg-info/10 text-info hover:bg-info/20 hover:shadow-sm'
+                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-sm'
                   }`}
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className={`w-4 h-4 transition-colors ${isDashboardThemeEnabled ? 'group-hover:text-info' : 'group-hover:text-blue-800'}`} />
                   View File
                 </button>
               )}
@@ -428,9 +420,9 @@ const ManualProcessing = ({
             </h3>
 
             <div className="space-y-5">
-              {/* Document ID - Moved to Top & Required */}
+              {/* Document ID */}
               <div>
-                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID</label>
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID (Optional)</label>
                 <div className={fieldSurfaceClass}>
                   <input
                     ref={docRefIdInputRef}
@@ -566,7 +558,7 @@ const ManualProcessing = ({
                 </button>
 
                 {dropdownStates.location && (
-                  <div
+                  <div data-lenis-prevent
                     className={`custom-scrollbar absolute z-[999] mt-1 max-h-48 w-full overflow-y-auto rounded-xl shadow-2xl ${
                       isDashboardThemeEnabled
                         ? 'border border-base-300 bg-base-100'

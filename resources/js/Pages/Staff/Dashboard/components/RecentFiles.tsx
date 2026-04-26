@@ -1,5 +1,5 @@
 import { FC, useState } from 'react';
-import { FileText, Clock, ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Clock, ArrowUpRight, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import UploadDocumentViewer from '../../Documents/components/FileUpload/UploadDocumentViewer';
 import {
     DEFAULT_DASHBOARD_THEME,
@@ -230,14 +230,18 @@ const RecentFiles: FC<RecentFilesProps> = ({ files }) => {
                                             {file.timestamp}
                                         </span>
                                     </div>
-                                    <ArrowUpRight
-                                        className={`h-4 w-4 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+                                    <div
+                                        className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors duration-300 ${
                                             isDashboardThemeEnabled
-                                                ? 'text-base-content/35 group-hover:text-primary'
-                                                : 'text-gray-400 group-hover:text-blue-600'
+                                                ? 'bg-info/10 text-info hover:bg-info/20'
+                                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                                         }`}
-                                        strokeWidth={2.5}
-                                    />
+                                    >
+                                        <Eye className="h-3.5 w-3.5" strokeWidth={2.5} />
+                                        <span className="text-xs font-semibold">
+                                            View
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))

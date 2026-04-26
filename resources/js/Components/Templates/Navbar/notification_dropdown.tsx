@@ -134,7 +134,7 @@ const NotificationDropdown: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div
+                <div data-lenis-prevent
                     className={`absolute right-0 z-[30] max-h-96 w-[65vw] max-w-xs overflow-y-auto rounded-xl p-4 shadow-xl sm:w-80 ${
                         isDashboardThemeEnabled
                             ? "border border-base-300 bg-base-100 text-base-content shadow-2xl shadow-base-content/10"

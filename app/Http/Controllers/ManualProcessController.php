@@ -164,7 +164,7 @@ class ManualProcessController extends Controller
                 'description' => 'nullable|string',
                 'remarks' => 'nullable|string|max:1000',
                 'physical_location' => 'nullable|string|max:255',
-                'document_ref_id' => 'required|string|max:255|unique:documents,document_ref_id,' . $request->doc_id . ',doc_id',
+                'document_ref_id' => 'nullable|string|max:255|unique:documents,document_ref_id,' . $request->doc_id . ',doc_id',
             ]);
 
             $document = Document::find($request->doc_id);

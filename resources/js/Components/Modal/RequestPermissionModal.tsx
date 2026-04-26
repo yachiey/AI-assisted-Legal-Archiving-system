@@ -155,7 +155,7 @@ const RequestPermissionModal: React.FC<RequestPermissionModalProps> = ({ isOpen,
         >
 
             {/* Modal */}
-            <div className={`relative rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto ${themed ? "border border-base-300 bg-base-100 text-base-content" : "bg-white"}`} onClick={e => e.stopPropagation()}>
+            <div data-lenis-prevent className={`relative rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] overflow-y-auto ${themed ? "border border-base-300 bg-base-100 text-base-content" : "bg-white"}`} onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className={`px-6 py-4 sticky top-0 ${themed ? "bg-primary text-primary-content" : "bg-gradient-to-r from-green-600 to-emerald-600"}`}>
                     <div className="flex items-center justify-between">

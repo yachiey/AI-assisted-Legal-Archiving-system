@@ -816,7 +816,7 @@ const DocumentManagement: React.FC = () => {
 
       {/* Main Content - offset by sidebar width on desktop */}
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? 'md:ml-16' : 'md:ml-72'}`}>
-        <div className="flex-1 overflow-y-auto p-6 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-6 pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
           {/* Back to AI Assistant Button - Shows when navigated from AI */}
           {cameFromAI && (
             <button

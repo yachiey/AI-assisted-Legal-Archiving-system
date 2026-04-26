@@ -1,5 +1,13 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
+import { usePage } from "@inertiajs/react";
 import { X, Save } from "lucide-react";
+import {
+    DEFAULT_DASHBOARD_THEME,
+    getDashboardThemeScopeForComponent,
+    isThemedComponentForScope,
+    useDashboardTheme,
+} from "../../../../hooks/useDashboardTheme";
 
 interface UserData {
     user_id: number;
@@ -22,6 +30,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     userData,
     onSave,
 }) => {
+    const { component } = usePage();
+    const scope = getDashboardThemeScopeForComponent(component);
+    const { theme } = useDashboardTheme(scope);
+    const isDashboardThemeEnabled =
+        isThemedComponentForScope(component, scope) &&
+        theme !== DEFAULT_DASHBOARD_THEME;
+
     const [formData, setFormData] = useState({
         firstname: userData?.firstname || "",
         lastname: userData?.lastname || "",
@@ -111,38 +126,61 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
         }
     };
 
-    return (
-        <div
+    const labelClass = `block text-sm font-semibold mb-2 ${
+        isDashboardThemeEnabled ? "text-base-content" : "text-gray-700"
+    }`;
+
+    const getInputClass = (error?: string) => `w-full px-4 py-3 rounded-xl border-2 focus:outline-none transition-colors ${
+        isDashboardThemeEnabled
+            ? `bg-base-200 text-base-content placeholder:text-base-content/40 ${error ? 'border-error focus:border-error' : 'border-base-300 focus:border-primary'}`
+            : `${error ? 'border-red-500' : 'border-gray-200'} focus:border-blue-500`
+    }`;
+
+    const getErrorClass = () => `text-sm mt-1 ${isDashboardThemeEnabled ? "text-error" : "text-red-500"}`;
+
+    const modalContent = (
+        <div data-lenis-prevent
+            data-theme={isDashboardThemeEnabled ? theme : undefined}
             className="fixed inset-0 z-[99999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center sm:p-6"
             onClick={onClose}
         >
             <div
-                className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+                className={`w-full max-w-2xl overflow-hidden rounded-3xl shadow-2xl ${
+                    isDashboardThemeEnabled ? "border border-base-300 bg-base-100 text-base-content" : "bg-white"
+                }`}
                 onClick={(e) => e.stopPropagation()}
                 style={{ maxHeight: "min(90vh, 960px)" }}
             >
                 {/* Header */}
-                <div className="relative bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600 px-8 py-8">
+                <div className={`relative px-8 py-8 ${
+                    isDashboardThemeEnabled ? "border-b border-base-300 bg-primary text-primary-content" : "bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600"
+                }`}>
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200"
+                        className={`absolute top-4 right-4 rounded-full p-2 transition-all duration-200 ${
+                            isDashboardThemeEnabled ? "text-primary-content/80 hover:bg-white/10 hover:text-primary-content" : "text-white/80 hover:bg-white/20 hover:text-white"
+                        }`}
                     >
                         <X className="w-5 h-5" />
                     </button>
-                    <h2 className="text-3xl font-bold text-white text-center">
+                    <h2 className={`text-3xl font-bold text-center ${
+                        isDashboardThemeEnabled ? "text-primary-content" : "text-white"
+                    }`}>
                         Edit Profile
                     </h2>
-                    <p className="text-white/80 text-center mt-2">
+                    <p className={`text-center mt-2 ${
+                        isDashboardThemeEnabled ? "text-primary-content/80" : "text-white/80"
+                    }`}>
                         Update your personal information
                     </p>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="px-8 py-6 max-h-[60vh] overflow-y-auto">
+                <form data-lenis-prevent onSubmit={handleSubmit} className="px-8 py-6 max-h-[60vh] overflow-y-auto">
                     <div className="space-y-4">
                         {/* First Name */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 First Name *
                             </label>
                             <input
@@ -150,19 +188,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="firstname"
                                 value={formData.firstname}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                                    errors.firstname ? "border-red-500" : "border-gray-200"
-                                } focus:border-blue-500 focus:outline-none transition-colors`}
+                                className={getInputClass(errors.firstname)}
                                 placeholder="Enter first name"
                             />
                             {errors.firstname && (
-                                <p className="text-red-500 text-sm mt-1">{errors.firstname}</p>
+                                <p className={getErrorClass()}>{errors.firstname}</p>
                             )}
                         </div>
 
                         {/* Middle Name */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 Middle Name
                             </label>
                             <input
@@ -170,14 +206,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="middle_name"
                                 value={formData.middle_name}
                                 onChange={handleChange}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors"
+                                className={getInputClass()}
                                 placeholder="Enter middle name (optional)"
                             />
                         </div>
 
                         {/* Last Name */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 Last Name *
                             </label>
                             <input
@@ -185,19 +221,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="lastname"
                                 value={formData.lastname}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                                    errors.lastname ? "border-red-500" : "border-gray-200"
-                                } focus:border-blue-500 focus:outline-none transition-colors`}
+                                className={getInputClass(errors.lastname)}
                                 placeholder="Enter last name"
                             />
                             {errors.lastname && (
-                                <p className="text-red-500 text-sm mt-1">{errors.lastname}</p>
+                                <p className={getErrorClass()}>{errors.lastname}</p>
                             )}
                         </div>
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 Email Address *
                             </label>
                             <input
@@ -205,25 +239,23 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                                    errors.email ? "border-red-500" : "border-gray-200"
-                                } focus:border-blue-500 focus:outline-none transition-colors`}
+                                className={getInputClass(errors.email)}
                                 placeholder="Enter email address"
                             />
                             {errors.email && (
-                                <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                                <p className={getErrorClass()}>{errors.email}</p>
                             )}
                         </div>
 
                         {/* Divider */}
-                        <div className="border-t border-gray-200 my-6"></div>
-                        <p className="text-sm text-gray-600 italic">
+                        <div className={`border-t my-6 ${isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"}`}></div>
+                        <p className={`text-sm italic ${isDashboardThemeEnabled ? "text-base-content/60" : "text-gray-600"}`}>
                             Leave password fields empty if you don't want to change your password
                         </p>
 
                         {/* New Password */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 New Password
                             </label>
                             <input
@@ -231,19 +263,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                                    errors.password ? "border-red-500" : "border-gray-200"
-                                } focus:border-blue-500 focus:outline-none transition-colors`}
+                                className={getInputClass(errors.password)}
                                 placeholder="Enter new password (min 8 characters)"
                             />
                             {errors.password && (
-                                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                                <p className={getErrorClass()}>{errors.password}</p>
                             )}
                         </div>
 
                         {/* Confirm Password */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            <label className={labelClass}>
                                 Confirm New Password
                             </label>
                             <input
@@ -251,31 +281,39 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
                                 name="password_confirmation"
                                 value={formData.password_confirmation}
                                 onChange={handleChange}
-                                className={`w-full px-4 py-3 rounded-xl border-2 ${
-                                    errors.password_confirmation ? "border-red-500" : "border-gray-200"
-                                } focus:border-blue-500 focus:outline-none transition-colors`}
+                                className={getInputClass(errors.password_confirmation)}
                                 placeholder="Confirm new password"
                             />
                             {errors.password_confirmation && (
-                                <p className="text-red-500 text-sm mt-1">{errors.password_confirmation}</p>
+                                <p className={getErrorClass()}>{errors.password_confirmation}</p>
                             )}
                         </div>
                     </div>
                 </form>
 
                 {/* Footer */}
-                <div className="px-8 py-5 bg-gray-50 border-t border-gray-200 flex gap-3">
+                <div className={`px-8 py-5 border-t flex gap-3 ${
+                    isDashboardThemeEnabled ? "border-base-300 bg-base-100" : "bg-gray-50 border-gray-200"
+                }`}>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="flex-1 px-6 py-3 rounded-xl bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-all duration-200"
+                        className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                            isDashboardThemeEnabled 
+                                ? "border border-base-300 text-base-content hover:bg-base-200"
+                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
                         onClick={handleSubmit}
-                        className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold hover:from-blue-700 hover:to-cyan-700 transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                        className={`flex-1 px-6 py-3 rounded-xl font-semibold transform hover:scale-[1.02] transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 ${
+                            isDashboardThemeEnabled
+                                ? "bg-primary text-primary-content hover:bg-primary/90"
+                                : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700"
+                        }`}
                     >
                         <Save className="w-4 h-4" />
                         Save Changes
@@ -284,6 +322,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };
 
 export default EditProfileModal;

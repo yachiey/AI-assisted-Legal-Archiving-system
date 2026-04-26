@@ -148,7 +148,12 @@ export const useMultiFileUpload = ({
             body: formData,
         });
 
-        const responseData = await response.json();
+        let responseData;
+        try {
+            responseData = await response.json();
+        } catch (e) {
+            responseData = {};
+        }
 
         // Handle duplicate document (409 Conflict)
         if (response.status === 409 && responseData.duplicate) {
@@ -160,8 +165,13 @@ export const useMultiFileUpload = ({
             };
         }
 
+        // Map Permissions Error natively
+        if (response.status === 403) {
+            throw new Error("You don't have permission to upload documents.");
+        }
+
         if (!response.ok) {
-            throw new Error(`Upload failed for ${file.name}`);
+            throw new Error(responseData.message || `Upload failed for ${file.name}`);
         }
 
         if (responseData.success && responseData.document?.id) {
@@ -240,6 +250,12 @@ export const useMultiFileUpload = ({
                     }
                 } catch (fileError) {
                     console.error(`Failed to upload ${file.name}:`, fileError);
+                    
+                    // Completely abort the upload logic if it is a permissions issue
+                    if (fileError instanceof Error && fileError.message.includes("permission to upload")) {
+                        throw fileError;
+                    }
+                    
                     // Continue with other files even if one fails
                 }
             }

@@ -212,7 +212,7 @@ const AdminNotificationDropdown: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="max-h-[28rem] overflow-y-auto p-4">
+                    <div data-lenis-prevent className="max-h-[28rem] overflow-y-auto p-4">
                         {activeTab === "notifications" ? (
                             <>
                                 <div className="mb-3 flex items-center justify-between">

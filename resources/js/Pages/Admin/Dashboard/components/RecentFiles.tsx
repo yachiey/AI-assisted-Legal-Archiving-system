@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
+import { Eye } from "lucide-react";
 import { RecentFile } from "../types/dashboard";
 import UploadDocumentViewer from "../../Document/components/FileUpload/UploadDocumentViewer";
 import {
@@ -57,7 +58,7 @@ export default function RecentFiles({ files }: RecentFilesProps) {
           </span>
         </div>
 
-        <div
+        <div data-lenis-prevent
           className={`space-y-4 ${
             files.length > 2 ? "max-h-[280px] overflow-y-auto custom-scrollbar pr-2" : ""
           }`}
@@ -164,32 +165,15 @@ export default function RecentFiles({ files }: RecentFilesProps) {
                         e.stopPropagation();
                         handleViewDocument(file);
                       }}
-                      className={`rounded-full p-2 transition-all ${
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 mt-1 ${
                         isDashboardThemeEnabled
-                          ? "text-base-content/45 hover:bg-primary/10 hover:text-primary"
-                          : "text-gray-400 hover:bg-green-900/30 hover:text-green-300"
+                          ? 'bg-info/10 text-info hover:bg-info/20 hover:shadow-sm'
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-sm'
                       }`}
                       title="View document"
                     >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
+                      <Eye className="h-3.5 w-3.5" />
+                      View
                     </button>
                   </div>
                 </div>

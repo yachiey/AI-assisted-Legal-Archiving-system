@@ -161,7 +161,7 @@ export default function ThemeDropdown({
                         </div>
                     </div>
 
-                    <div className="max-h-[22rem] overflow-y-auto p-3">
+                    <div data-lenis-prevent className="max-h-[22rem] overflow-y-auto p-3">
                         <div className="grid grid-cols-2 gap-2">
                             {DASHBOARD_THEME_OPTIONS.map((theme, index) => {
                                 const isSelected =

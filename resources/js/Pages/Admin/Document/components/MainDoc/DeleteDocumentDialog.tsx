@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
 import { Document } from '../../types/types';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 interface DeleteDocumentDialogProps {
   isOpen: boolean;
@@ -15,6 +19,8 @@ const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
   document,
   onDocumentDeleted
 }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -67,53 +73,58 @@ const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={handleClose}
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+      style={{ background: 'transparent' }}
     >
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
+        onClick={handleClose} 
+      />
       <div
-        className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-md mx-4"
+        className={`relative flex w-full max-w-md flex-col overflow-hidden rounded-xl shadow-2xl ${isDashboardThemeEnabled ? 'border border-base-300 bg-base-100 text-base-content' : 'border border-gray-200 bg-white'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+        <div className={`flex items-center justify-between border-b p-6 ${isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <Trash2 className="w-5 h-5 text-red-600" />
+            <div className={`rounded-lg p-2 ${isDashboardThemeEnabled ? 'bg-error/10' : 'bg-red-50'}`}>
+              <Trash2 className={`h-5 w-5 ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Delete Document</h3>
-              <p className="text-sm text-gray-600 mt-0.5">This action cannot be undone</p>
+              <h3 className={`text-lg font-bold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>Delete Document</h3>
+              <p className={`mt-0.5 text-sm ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-600'}`}>This action cannot be undone</p>
             </div>
           </div>
           <button
             onClick={handleClose}
             disabled={isDeleting}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`rounded-lg p-2 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'text-base-content/50 hover:bg-base-200 hover:text-base-content' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6">
           {/* Warning Message */}
-          <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className={`mb-4 flex items-start gap-3 rounded-lg border p-4 ${isDashboardThemeEnabled ? 'border-error/20 bg-error/10 text-error' : 'border-red-200 bg-red-50 text-red-600'}`}>
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div className="flex-1">
-              <h4 className="text-sm font-semibold text-red-700 mb-1">Warning</h4>
-              <p className="text-sm text-red-600">
+              <h4 className="mb-1 text-sm font-semibold">Warning</h4>
+              <p className="text-sm">
                 Deleting this document will permanently remove the file from storage and all associated data.
               </p>
             </div>
           </div>
 
           {/* Document Info */}
-          <div className="mb-4 p-4 rounded-lg bg-gray-50 border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Document to delete:</div>
-            <div className="font-semibold text-gray-900 break-words">{document.title}</div>
+          <div className={`mb-4 rounded-lg border p-4 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-200/50' : 'border-gray-200 bg-gray-50'}`}>
+            <div className={`mb-1 text-sm ${isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'}`}>Document to delete:</div>
+            <div className={`break-words font-semibold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>{document.title}</div>
             {document.folder?.folder_name && (
-              <div className="text-xs text-gray-600 mt-2">
+              <div className={`mt-2 text-xs ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-600'}`}>
                 Folder: {document.folder.folder_name}
               </div>
             )}
@@ -121,18 +132,17 @@ const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
 
           {/* Confirmation Input */}
           <div className="mb-4">
-            <label htmlFor="confirmText" className="block text-sm font-medium text-gray-700 mb-2">
-              Type <span className="font-bold text-red-600">delete</span> to confirm
+            <label htmlFor="confirmText" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
+              Type <span className={`font-bold ${isDashboardThemeEnabled ? 'text-error' : 'text-red-600'}`}>delete</span> to confirm
             </label>
             <input
               type="text"
               id="confirmText"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              // Stop propagation of key events so parent listeners (like row click) don't trigger
               onKeyDown={(e) => e.stopPropagation()}
               disabled={isDeleting}
-              className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-error focus:ring-error' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-red-500 focus:ring-red-500'}`}
               placeholder="Type 'delete' to confirm"
               autoComplete="off"
             />
@@ -140,20 +150,20 @@ const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <div className={`mb-4 flex items-center gap-2 rounded-lg border p-3 ${isDashboardThemeEnabled ? 'border-error/20 bg-error/10 text-error' : 'border-red-200 bg-red-50 text-red-700'}`}>
+              <AlertTriangle className="h-4 w-4 shrink-0" />
               <span className="text-sm">{error}</span>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+        <div className={`flex justify-end gap-3 border-t p-6 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-200/30' : 'border-gray-200 bg-gray-50'}`}>
           <button
             type="button"
             onClick={handleClose}
             disabled={isDeleting}
-            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`rounded-lg px-4 py-2 font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'border border-base-300 text-base-content hover:bg-base-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             Cancel
           </button>
@@ -161,7 +171,7 @@ const DeleteDocumentDialog: React.FC<DeleteDocumentDialogProps> = ({
             type="button"
             onClick={handleDelete}
             disabled={isDeleting || confirmText.toLowerCase() !== 'delete'}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'bg-error hover:bg-error/90' : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'}`}
           >
             {isDeleting ? (
               <>

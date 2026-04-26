@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText, FolderOpen, AlertCircle } from 'lucide-react';
 import { Document } from '../../types/types';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 import { router } from '@inertiajs/react';
 import { folderService } from '../../services/folderService';
 
@@ -29,6 +33,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [folderList, setFolderList] = useState<Array<{ folder_id: number; folder_name: string }>>(initialFolders);
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   useEffect(() => {
     if (isOpen) {
@@ -106,45 +112,50 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+      style={{ background: 'transparent' }}
       onKeyDown={(e) => {
-        // Prevent spacebar from closing modal when typing in inputs
         if (e.key === ' ' && (e.target as HTMLElement).tagName !== 'BUTTON') {
           e.stopPropagation();
         }
       }}
     >
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
+        onClick={onClose} 
+      />
       <div
-        className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden"
+        className={`relative flex w-full max-w-2xl flex-col overflow-hidden rounded-xl shadow-2xl ${isDashboardThemeEnabled ? 'border border-base-300 bg-base-100 text-base-content' : 'border border-gray-200 bg-white'}`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
+        style={{ maxHeight: '90vh' }}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+        <div className={`flex items-center justify-between border-b p-6 ${isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <FileText className="w-5 h-5 text-blue-600" />
+            <div className={`rounded-lg p-2 ${isDashboardThemeEnabled ? 'bg-primary/10' : 'bg-blue-50'}`}>
+              <FileText className={`h-5 w-5 ${isDashboardThemeEnabled ? 'text-primary' : 'text-blue-600'}`} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Edit Document</h3>
-              <p className="text-sm text-gray-600 mt-0.5">Update document metadata</p>
+              <h3 className={`text-lg font-bold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>Edit Document</h3>
+              <p className={`mt-0.5 text-sm ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-600'}`}>Update document metadata</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition-all"
+            className={`rounded-lg p-2 transition-all ${isDashboardThemeEnabled ? 'text-base-content/50 hover:bg-base-200 hover:text-base-content' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <form data-lenis-prevent onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300">
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-700">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className={`mb-4 flex items-center gap-2 rounded-lg border p-3 ${isDashboardThemeEnabled ? 'border-error/20 bg-error/10 text-error' : 'border-red-200 bg-red-50 text-red-700'}`}>
+              <AlertCircle className="h-4 w-4 shrink-0" />
               <span className="text-sm">{error}</span>
             </div>
           )}
@@ -152,7 +163,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
           <div className="space-y-4">
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="title" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -162,14 +173,14 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={formData.title}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                className={`w-full rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500'}`}
                 placeholder="Enter document title"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 Description
               </label>
               <textarea
@@ -178,14 +189,14 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all resize-none"
+                className={`w-full resize-none rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500'}`}
                 placeholder="Enter document description"
               />
             </div>
 
             {/* Folder */}
             <div>
-              <label htmlFor="folder_id" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="folder_id" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 <FolderOpen className="w-4 h-4 inline mr-1" />
                 Folder
               </label>
@@ -207,7 +218,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
 
             {/* Physical Location */}
             <div>
-              <label htmlFor="physical_location" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="physical_location" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 Physical Location
               </label>
               <input
@@ -216,14 +227,14 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 name="physical_location"
                 value={formData.physical_location}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
+                className={`w-full rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500'}`}
                 placeholder="e.g., Cabinet A, Shelf 3, Box 12"
               />
             </div>
 
             {/* Remarks */}
             <div>
-              <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="remarks" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 Remarks
               </label>
               <textarea
@@ -232,7 +243,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
                 value={formData.remarks}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all resize-none"
+                className={`w-full resize-none rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500'}`}
                 placeholder="Additional notes or remarks"
               />
             </div>
@@ -240,12 +251,12 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         </form>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+        <div className={`flex justify-end gap-3 border-t p-6 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-200/30' : 'border-gray-200 bg-gray-50'}`}>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`rounded-lg px-4 py-2 font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'border border-base-300 text-base-content hover:bg-base-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             Cancel
           </button>
@@ -253,7 +264,7 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
             type="submit"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className={`flex items-center gap-2 rounded-lg px-6 py-2 font-medium text-white transition-all disabled:cursor-not-allowed disabled:opacity-50 ${isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'}`}
           >
             {isSubmitting ? (
               <>

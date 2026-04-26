@@ -300,7 +300,7 @@ export const ChatPanel = () => {
                 </div>
             </div>
 
-            <div className={`flex-1 space-y-4 overflow-y-auto p-4 ${messagesAreaClass}`}>
+            <div data-lenis-prevent className={`flex-1 space-y-4 overflow-y-auto p-4 ${messagesAreaClass}`}>
                 {messages.length === 0 && (
                     <div className={`flex h-full flex-col items-center justify-center space-y-3 p-6 text-center ${emptyTextClass}`}>
                         <div className={`flex h-16 w-16 items-center justify-center rounded-full ${emptyIconClass}`}>

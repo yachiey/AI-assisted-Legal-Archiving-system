@@ -86,7 +86,7 @@ const RecentActivity24h: React.FC<RecentActivity24hProps> = ({ activities }) => 
       </div>
 
       {last24HourActivities.length > 0 ? (
-        <div className="max-h-[380px] space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+        <div data-lenis-prevent className="max-h-[380px] space-y-3 overflow-y-auto pr-2 custom-scrollbar">
           {last24HourActivities.map((activity, index) => (
             <div
               key={index}

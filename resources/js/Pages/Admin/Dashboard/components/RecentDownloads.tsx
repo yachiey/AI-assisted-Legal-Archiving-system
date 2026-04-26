@@ -15,7 +15,7 @@ export default function RecentDownloads({ downloads }: RecentDownloadsProps) {
           <span className="text-sm text-gray-200 font-normal">{downloads.length} downloads</span>
         </div>
 
-        <div className={`space-y-4 ${downloads.length > 2 ? 'max-h-[280px] overflow-y-auto custom-scrollbar pr-2' : ''}`}>
+        <div data-lenis-prevent className={`space-y-4 ${downloads.length > 2 ? 'max-h-[280px] overflow-y-auto custom-scrollbar pr-2' : ''}`}>
           {downloads.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-400 mb-3">

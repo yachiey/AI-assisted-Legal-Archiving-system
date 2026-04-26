@@ -73,7 +73,7 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div data-lenis-prevent className="p-6 overflow-y-auto flex-1">
           <div className="space-y-2">
             {/* Folder Name */}
             <PropertyRow

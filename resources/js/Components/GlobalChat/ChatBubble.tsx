@@ -34,7 +34,7 @@ export const ChatBubble = ({ onPointerDown }: ChatBubbleProps) => {
         <button
             onPointerDown={onPointerDown}
             onClick={toggleChat}
-            className={`z-[9999] rounded-full p-4 shadow-lg transition-all duration-300 ${
+            className={`z-[100000] rounded-full p-4 shadow-lg transition-all duration-300 ${
                 isOpen && !isMinimized ? openBubbleClass : closedBubbleClass
             }`}
             aria-label="Toggle AI Assistant"

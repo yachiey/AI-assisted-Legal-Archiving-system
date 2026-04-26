@@ -311,7 +311,7 @@ const DocumentSidebar: React.FC<DocumentSidebarProps> = ({
         </Link>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-3 space-y-1">
+      <div data-lenis-prevent className="flex-1 overflow-y-auto custom-scrollbar px-2 py-3 space-y-1">
         <button
           onClick={() => onFolderSelect(null)}
           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium ${

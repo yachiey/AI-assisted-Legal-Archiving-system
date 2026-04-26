@@ -377,13 +377,6 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
 
   const handleAcceptAI = async () => {
     isCompletingRef.current = true;
-    if (!documentRefId.trim()) {
-      setErrors({ documentRefId: 'Please enter a Document ID' });
-      if (docRefIdInputRef.current) {
-        docRefIdInputRef.current.focus();
-      }
-      return;
-    }
     setErrors({ documentRefId: '' });
 
     setIsProcessing(true);
@@ -683,13 +676,13 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
               {documentData?.doc_id && (
                 <button
                   onClick={() => setViewerOpen(true)}
-                  className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                  className={`group flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200 ${
                     isDashboardThemeEnabled
-                      ? 'border-base-300 bg-base-100 text-base-content shadow-sm hover:bg-base-200'
-                      : 'border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50'
+                      ? 'border-transparent bg-info/10 text-info hover:bg-info/20 hover:shadow-sm'
+                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:shadow-sm'
                   }`}
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className={`w-4 h-4 transition-colors ${isDashboardThemeEnabled ? 'group-hover:text-info' : 'group-hover:text-blue-800'}`} />
                   View File
                 </button>
               )}
@@ -714,9 +707,9 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
             </h3>
 
             <div className="space-y-5">
-              {/* Document ID - Moved to Top & Required */}
+              {/* Document ID */}
               <div>
-                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID</label>
+                <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Document ID (Optional)</label>
                 <div className={fieldSurfaceClass}>
                   <input
                     ref={docRefIdInputRef}
@@ -840,7 +833,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                   </button>
 
                   {dropdownOpen && (
-                    <div className={`custom-scrollbar absolute z-[999] mt-1 max-h-48 w-full overflow-y-auto rounded-xl shadow-2xl ${
+                    <div data-lenis-prevent className={`custom-scrollbar absolute z-[999] mt-1 max-h-48 w-full overflow-y-auto rounded-xl shadow-2xl ${
                       isDashboardThemeEnabled
                         ? 'border border-base-300 bg-base-100'
                         : 'border border-gray-100 bg-white'

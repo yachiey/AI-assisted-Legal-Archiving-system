@@ -130,7 +130,7 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
         </div>
 
         {/* Content */}
-        <div
+        <div data-lenis-prevent
           className={`h-[calc(100%-80px)] overflow-auto ${
             isDashboardThemeEnabled ? 'bg-base-200' : 'bg-gray-100'
           }`}
@@ -195,7 +195,7 @@ const UploadDocumentViewerUI: React.FC<UploadDocumentViewerUIProps> = ({
               )}
 
               {isText && (
-                <pre className={`w-full max-w-4xl overflow-auto rounded-lg p-6 text-sm font-mono shadow-lg ${
+                <pre data-lenis-prevent className={`w-full max-w-4xl overflow-auto rounded-lg p-6 text-sm font-mono shadow-lg ${
                   isDashboardThemeEnabled
                     ? 'border border-base-300 bg-base-100 text-base-content'
                     : 'border border-gray-300 bg-white'

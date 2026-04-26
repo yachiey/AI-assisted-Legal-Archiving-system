@@ -149,7 +149,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
   return (
     <div
       data-theme={isDashboardThemeEnabled ? theme : undefined}
-      className="relative group h-full"
+      className="relative group h-full bg-transparent"
     >
       {/* Animated glow effect on hover */}
       <div
@@ -167,7 +167,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         className={`relative h-full rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 ${
           isDashboardThemeEnabled
             ? "border border-base-300/80 bg-base-100/95 shadow-xl shadow-base-content/5 hover:border-primary/35 hover:shadow-2xl hover:shadow-primary/10"
-            : "border border-white/10 bg-gradient-to-br from-[#228B22] to-[#1a6b1a] shadow-lg hover:border-white/20 hover:shadow-2xl"
+            : "border border-transparent bg-gradient-to-br from-[#228B22] to-[#1a6b1a] shadow-lg hover:border-white/20 hover:shadow-2xl"
         } ${isExpanded ? 'shadow-2xl scale-[1.02]' : ''}`}
       >
         {/* Folder Header - Click to navigate */}
@@ -365,7 +365,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                     No documents found in this folder
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-48 overflow-y-auto overflow-x-visible pr-1">
+                  <div data-lenis-prevent className="space-y-2.5 max-h-48 overflow-y-auto overflow-x-visible pr-1">
                     {documents.map((document) => (
                       <div
                         key={document.doc_id}

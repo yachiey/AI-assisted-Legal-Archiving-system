@@ -177,7 +177,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+                <div data-lenis-prevent className="p-5 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <p className={`text-sm ${
                         isDashboardThemeEnabled ? 'text-base-content/70' : 'text-gray-600'
                     }`}>Select the date range for your export:</p>

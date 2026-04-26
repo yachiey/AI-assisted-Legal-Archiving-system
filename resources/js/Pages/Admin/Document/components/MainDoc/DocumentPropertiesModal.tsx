@@ -1,6 +1,10 @@
 import React from 'react';
 import { X, FileText, FolderOpen, Calendar, User, HardDrive } from 'lucide-react';
 import { Document } from '../../types/types';
+import {
+  DEFAULT_DASHBOARD_THEME,
+  useDashboardTheme,
+} from '../../../../../hooks/useDashboardTheme';
 
 interface DocumentPropertiesModalProps {
   isOpen: boolean;
@@ -13,6 +17,8 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
   onClose,
   document
 }) => {
+  const { theme } = useDashboardTheme();
+  const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   if (!isOpen) return null;
 
   const formatDate = (dateString: string): string => {
@@ -42,38 +48,44 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
     label,
     value
   }) => (
-    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-all">
-      <div className="text-green-600 mt-0.5">{icon}</div>
+    <div className={`flex items-start gap-3 rounded-lg p-3 transition-all ${isDashboardThemeEnabled ? 'hover:bg-base-200/50' : 'hover:bg-gray-50'}`}>
+      <div className={`mt-0.5 ${isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}`}>{icon}</div>
       <div className="flex-1">
-        <div className="text-xs text-gray-600 mb-1">{label}</div>
-        <div className="text-sm text-gray-900 break-words">{value || 'N/A'}</div>
+        <div className={`mb-1 text-xs ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-600'}`}>{label}</div>
+        <div className={`break-words text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>{value || 'N/A'}</div>
       </div>
     </div>
   );
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
+      data-theme={isDashboardThemeEnabled ? theme : undefined}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+      style={{ background: 'transparent' }}
     >
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
+        onClick={onClose} 
+      />
       <div
-        className="bg-white rounded-xl shadow-sm border border-gray-200 w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden"
+        className={`relative flex w-full max-w-2xl flex-col overflow-hidden rounded-xl shadow-2xl ${isDashboardThemeEnabled ? 'border border-base-300 bg-base-100 text-base-content' : 'border border-gray-200 bg-white'}`}
         onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: '90vh' }}
       >
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+        <div className={`flex items-center justify-between border-b p-6 ${isDashboardThemeEnabled ? 'border-base-300' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-50 rounded-lg">
-              <FileText className="w-5 h-5 text-green-600" />
+            <div className={`rounded-lg p-2 ${isDashboardThemeEnabled ? 'bg-primary/10' : 'bg-green-50'}`}>
+              <FileText className={`h-5 w-5 ${isDashboardThemeEnabled ? 'text-primary' : 'text-green-600'}`} />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Document Properties</h3>
-              <p className="text-sm text-gray-600 mt-0.5">View document details and metadata</p>
+              <h3 className={`text-lg font-bold ${isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'}`}>Document Properties</h3>
+              <p className={`mt-0.5 text-sm ${isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-600'}`}>View document details and metadata</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition-all"
+            className={`rounded-lg p-2 transition-all ${isDashboardThemeEnabled ? 'text-base-content/50 hover:bg-base-200 hover:text-base-content' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
             aria-label="Close properties"
           >
             <X className="w-5 h-5" />
@@ -81,7 +93,7 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div data-lenis-prevent className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300">
           <div className="space-y-2">
             {/* Document Title */}
             <PropertyRow
@@ -189,10 +201,10 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200">
+        <div className={`flex justify-end gap-3 border-t p-6 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-200/30' : 'border-gray-200 bg-gray-50'}`}>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all font-medium"
+            className={`rounded-lg px-6 py-2 font-medium transition-all ${isDashboardThemeEnabled ? 'border border-base-300 text-base-content hover:bg-base-300' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
           >
             Close
           </button>

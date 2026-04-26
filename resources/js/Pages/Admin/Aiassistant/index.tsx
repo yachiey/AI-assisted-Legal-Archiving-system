@@ -377,7 +377,7 @@ function Aiassistant() {
             {documents && documents.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Recent Documents</h4>
-                <div className="max-h-60 overflow-y-auto">
+                <div data-lenis-prevent className="max-h-60 overflow-y-auto">
                   <DocumentList
                     documents={documents}
                     onDelete={handleDeleteDocument}

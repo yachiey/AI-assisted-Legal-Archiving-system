@@ -150,7 +150,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
         : "h-4 w-4 rounded text-green-600 focus:ring-2 focus:ring-green-500";
 
     const modalContent = (
-        <div
+        <div data-lenis-prevent
             data-theme={isDashboardThemeEnabled ? theme : undefined}
             className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center sm:p-6"
             style={{ background: 'transparent' }}
@@ -224,7 +224,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="overflow-y-auto px-8 py-6" style={{ maxHeight: "60vh" }}>
+                <form data-lenis-prevent onSubmit={handleSubmit} className="overflow-y-auto px-8 py-6" style={{ maxHeight: "60vh" }}>
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>

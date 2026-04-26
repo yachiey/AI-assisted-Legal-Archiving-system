@@ -27,7 +27,7 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
     };
 
     return (
-        <div
+        <div data-lenis-prevent
             className="fixed inset-0 z-[99999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center sm:p-6"
             onClick={onClose}
         >

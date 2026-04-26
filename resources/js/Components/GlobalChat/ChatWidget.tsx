@@ -43,7 +43,7 @@ export const ChatWidget = () => {
     return (
         <div
             ref={constraintsRef}
-            className="fixed inset-0 z-[9999] pointer-events-none"
+            className="fixed inset-0 z-[100000] pointer-events-none"
         >
             <div
                 data-theme={isDashboardThemeEnabled ? theme : undefined}

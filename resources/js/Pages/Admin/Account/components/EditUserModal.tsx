@@ -179,6 +179,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
     const modalContent = (
         <div
+            data-lenis-prevent
             data-theme={isDashboardThemeEnabled ? theme : undefined}
             className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center sm:p-6"
             style={{ background: 'transparent' }}
@@ -188,7 +189,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 onClick={onClose}
             />
             <div
-                className={`pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-3xl shadow-2xl ${
+                className={`pointer-events-auto relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl shadow-2xl ${
                     isDashboardThemeEnabled
                         ? "border border-base-300 bg-base-100 text-base-content"
                         : "bg-white"
@@ -251,7 +252,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="overflow-y-auto px-8 py-6" style={{ maxHeight: "60vh" }}>
+                <form data-lenis-prevent onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6">
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>

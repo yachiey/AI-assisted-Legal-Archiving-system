@@ -7,7 +7,6 @@ interface UseMultiFileUploadProps {
     maxFileSize?: number;
     acceptedFileTypes?: string;
     minFiles?: number;
-    maxFiles?: number;
     onUploadSuccess?: (files: UploadedFile[]) => void;
     onUploadError?: (error: string) => void;
     onUploadProgress?: (current: number, total: number, fileName: string) => void;
@@ -40,7 +39,6 @@ export const useMultiFileUpload = ({
     maxFileSize = 50 * 1024 * 1024, // 50MB default
     acceptedFileTypes = '.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png',
     minFiles = 1,
-    maxFiles = 5, // 5 files default limit
     onUploadSuccess,
     onUploadError,
     onUploadProgress
@@ -79,22 +77,7 @@ export const useMultiFileUpload = ({
         const validFiles: UploadedFile[] = [];
         const errors: string[] = [];
 
-        // Check if adding these files would exceed the max limit
-        const currentCount = uploadedFiles.length;
-        const availableSlots = maxFiles - currentCount;
-
-        if (availableSlots <= 0) {
-            onUploadError?.(`Maximum ${maxFiles} files allowed. Please remove some files first.`);
-            return;
-        }
-
-        // Only process files up to available slots
-        const filesToProcess = fileArray.slice(0, availableSlots);
-        if (fileArray.length > availableSlots) {
-            errors.push(`Only ${availableSlots} more file${availableSlots !== 1 ? 's' : ''} can be added (max ${maxFiles})`);
-        }
-
-        filesToProcess.forEach(file => {
+        fileArray.forEach(file => {
             // Validate file type
             if (!validateFileType(file, acceptedFileTypes)) {
                 errors.push(`${file.name}: Invalid file type`);
@@ -165,7 +148,12 @@ export const useMultiFileUpload = ({
             body: formData,
         });
 
-        const responseData = await response.json();
+        let responseData;
+        try {
+            responseData = await response.json();
+        } catch (e) {
+            responseData = {};
+        }
 
         // Handle duplicate document (409 Conflict)
         if (response.status === 409 && responseData.duplicate) {
@@ -177,8 +165,13 @@ export const useMultiFileUpload = ({
             };
         }
 
+        // Map Permissions Error natively
+        if (response.status === 403) {
+            throw new Error("You don't have permission to upload documents.");
+        }
+
         if (!response.ok) {
-            throw new Error(`Upload failed for ${file.name}`);
+            throw new Error(responseData.message || `Upload failed for ${file.name}`);
         }
 
         if (responseData.success && responseData.document?.id) {
@@ -257,6 +250,12 @@ export const useMultiFileUpload = ({
                     }
                 } catch (fileError) {
                     console.error(`Failed to upload ${file.name}:`, fileError);
+                    
+                    // Completely abort the upload logic if it is a permissions issue
+                    if (fileError instanceof Error && fileError.message.includes("permission to upload")) {
+                        throw fileError;
+                    }
+                    
                     // Continue with other files even if one fails
                 }
             }
