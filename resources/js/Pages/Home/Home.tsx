@@ -84,7 +84,7 @@ export default function Home() {
     return (
         <>
             {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
-            <div className="min-h-screen flex flex-col relative overflow-hidden bg-gray-50/50">
+            <div className="min-h-screen flex flex-col relative bg-gray-50/50">
                 {/* Modern subtle background pattern */}
                 <div className="fixed inset-0 pointer-events-none -z-10 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#1b5e20 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }}></div>
 

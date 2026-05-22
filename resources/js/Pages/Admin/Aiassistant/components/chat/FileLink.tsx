@@ -63,6 +63,17 @@ export const FileLink: React.FC<FileLinkProps> = ({
             {document.folder_name}
           </p>
         )}
+        {document.physical_location && (
+          <p
+            className={`truncate text-[11px] mt-0.5 ${
+              isDashboardThemeEnabled
+                ? "text-base-content/40"
+                : "text-gray-400"
+            }`}
+          >
+            📍 {document.physical_location}
+          </p>
+        )}
       </div>
 
       <button

@@ -103,14 +103,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   >
                     Referenced Documents
                   </p>
-                  {message.documents.map((doc) => (
-                    <FileLink
-                      key={doc.doc_id}
-                      document={doc}
-                      onViewDocument={onViewDocument}
-                      onNavigate={onNavigate}
-                    />
-                  ))}
+                  <div className="space-y-2">
+                    {message.documents.map((doc) => (
+                      <FileLink
+                        key={doc.doc_id}
+                        document={doc}
+                        onViewDocument={onViewDocument}
+                        onNavigate={onNavigate}
+                      />
+                    ))}
+                  </div>
                   {message.more_documents_count &&
                     message.more_documents_count > 0 && (
                       <p

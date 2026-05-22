@@ -24,6 +24,7 @@ export interface ProfileMenuProps {
     userData: UserData;
     onViewProfile: () => void;
     onSettings: () => void;
+    onSecurity: () => void;
     onLogout: () => void;
 }
 

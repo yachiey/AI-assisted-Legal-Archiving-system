@@ -99,6 +99,13 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         throw new Error(data.message || 'Failed to update document');
       }
 
+      // Show success toast
+      const toast = window.document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl z-[99999] flex items-center gap-2';
+      toast.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg><span>Document updated successfully!</span>';
+      window.document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+
       onDocumentUpdated();
       onClose();
     } catch (err) {

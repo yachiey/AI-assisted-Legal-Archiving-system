@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FileText, Download, Loader2, Activity, Calendar, X, User } from "lucide-react";
 import axios from "axios";
 
@@ -34,6 +35,12 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
     const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('pdf');
     const [users, setUsers] = useState<UserOption[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     useEffect(() => {
         if (isOpen && showUserFilter) {
@@ -58,7 +65,19 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
         }
     };
 
-    if (!isOpen) return null;
+    // Prevent scrolling when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
+    if (!isOpen || !mounted) return null;
 
     const getDateRange = (): { start: string; end: string } => {
         const today = new Date();
@@ -105,8 +124,8 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    const modalContent = (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
                 {/* Header */}
                 <div className="p-5 border-b flex items-center justify-between" style={{
@@ -274,6 +293,8 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
             </div>
         </div>
     );
+
+    return createPortal(modalContent, document.body);
 };
 
 const ReportActionCards: React.FC = () => {

@@ -148,5 +148,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/conversations/{conversationId}', [AIAssistantController::class, 'deleteConversation']);
         Route::post('/conversations/{conversationId}/star', [AIAssistantController::class, 'starConversation']);
         Route::post('/conversations/{conversationId}/unstar', [AIAssistantController::class, 'unstarConversation']);
+        Route::post('/conversations/{conversationId}/move', [AIAssistantController::class, 'moveConversationToFolder']);
+
+        // AI chat folders (ChatGPT-style projects)
+        Route::get('/folders', [AIAssistantController::class, 'getFolders']);
+        Route::post('/folders', [AIAssistantController::class, 'createFolder']);
+        Route::put('/folders/{folderId}', [AIAssistantController::class, 'renameFolder']);
+        Route::delete('/folders/{folderId}', [AIAssistantController::class, 'deleteFolder']);
     });
 });

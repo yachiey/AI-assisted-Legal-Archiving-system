@@ -41,9 +41,9 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
     if (!isOpen) return null;
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("en-US", {
+        return new Date(dateString).toLocaleString("en-US", {
             year: "numeric",
-            month: "long",
+            month: "short",
             day: "numeric",
             hour: "2-digit",
             minute: "2-digit",
@@ -187,7 +187,13 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                         : "border-gray-200 bg-white"
                                 }`}
                             >
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm table-fixed">
+                                    <colgroup>
+                                        <col style={{ width: '40%' }} />
+                                        <col style={{ width: '22%' }} />
+                                        <col style={{ width: '24%' }} />
+                                        <col style={{ width: '14%' }} />
+                                    </colgroup>
                                     <thead
                                         className={`border-b ${
                                             isDashboardThemeEnabled
@@ -204,7 +210,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                             ].map((heading) => (
                                                 <th
                                                     key={heading}
-                                                    className={`px-6 py-3 font-semibold ${
+                                                    className={`px-4 py-3 font-semibold ${
                                                         isDashboardThemeEnabled
                                                             ? "text-base-content/65"
                                                             : "text-gray-700"
@@ -231,10 +237,10 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                         : "hover:bg-gray-50"
                                                 }`}
                                             >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
+                                                <td className="px-4 py-4 min-w-0">
+                                                    <div className="flex items-center gap-3 min-w-0">
                                                         <div
-                                                            className={`rounded-lg p-2 ${
+                                                            className={`flex-shrink-0 rounded-lg p-2 ${
                                                                 isDashboardThemeEnabled
                                                                     ? "bg-primary/10 text-primary"
                                                                     : "bg-blue-50 text-blue-600"
@@ -243,7 +249,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                             <FileText className="h-4 w-4" />
                                                         </div>
                                                         <span
-                                                            className={`line-clamp-1 font-medium ${
+                                                            className={`truncate font-medium ${
                                                                 isDashboardThemeEnabled
                                                                     ? "text-base-content"
                                                                     : "text-gray-900"
@@ -254,23 +260,23 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-4 min-w-0">
                                                     <div
-                                                        className={`flex items-center gap-2 ${
+                                                        className={`flex items-center gap-2 min-w-0 ${
                                                             isDashboardThemeEnabled
                                                                 ? "text-base-content/65"
                                                                 : "text-gray-600"
                                                         }`}
                                                     >
                                                         <Folder
-                                                            className={`h-4 w-4 ${
+                                                            className={`flex-shrink-0 h-4 w-4 ${
                                                                 isDashboardThemeEnabled
                                                                     ? "text-base-content/45"
                                                                     : "text-gray-400"
                                                             }`}
                                                         />
                                                         <span
-                                                            className="max-w-[200px] truncate"
+                                                            className="truncate"
                                                             title={doc.folder_path}
                                                         >
                                                             {doc.folder_name}
@@ -278,7 +284,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                     </div>
                                                 </td>
                                                 <td
-                                                    className={`px-6 py-4 ${
+                                                    className={`px-4 py-4 whitespace-nowrap ${
                                                         isDashboardThemeEnabled
                                                             ? "text-base-content/65"
                                                             : "text-gray-600"
@@ -286,7 +292,7 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <Calendar
-                                                            className={`h-4 w-4 ${
+                                                            className={`flex-shrink-0 h-4 w-4 ${
                                                                 isDashboardThemeEnabled
                                                                     ? "text-base-content/45"
                                                                     : "text-gray-400"
@@ -297,9 +303,9 @@ const UserDocumentsModal: React.FC<UserDocumentsModalProps> = ({
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-4">
                                                     <span
-                                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${
                                                             doc.status ===
                                                             "active"
                                                                 ? isDashboardThemeEnabled

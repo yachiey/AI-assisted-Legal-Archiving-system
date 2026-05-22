@@ -137,7 +137,7 @@ const DocumentPropertiesModal: React.FC<DocumentPropertiesModalProps> = ({
             {/* Folder */}
             <PropertyRow
               icon={<FolderOpen className="w-4 h-4" />}
-              label="Folder"
+              label={document.folder?.parent_folder_id ? "Subfolder" : "Folder"}
               value={document.folder?.folder_name || 'No folder assigned'}
             />
 

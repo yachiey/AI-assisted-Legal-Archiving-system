@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, FolderPlus } from "lucide-react";
 
 import { SidebarCollapsedIcon } from "./SidebarCollapsedIcon";
 import { SidebarHeader } from "./SidebarHeader";
 import { NewChatButton } from "./NewChatButton";
 import { ChatSessionItem } from "./ChatSessionItem";
+import { FolderGroup } from "./FolderGroup";
 import { SidebarFooter } from "./SidebarFooter";
-import { ChatSession } from "../../../types";
+import { AIFolder, ChatSession } from "../../../types";
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -14,12 +15,17 @@ import {
 
 interface SidebarProps {
   chatSessions: ChatSession[];
+  folders: AIFolder[];
   selectedSession: string | null;
   onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
   onDeleteSession: (sessionId: string) => void;
   onUnstarSession: (sessionId: string) => void;
   onStarSession?: (sessionId: string) => void;
+  onMoveSession: (sessionId: string, folderId: number | null) => void;
+  onCreateFolder: (name: string) => void;
+  onRenameFolder: (folderId: number, name: string) => void;
+  onDeleteFolder: (folderId: number) => void;
   onBack?: () => void;
   onCollapse?: (isCollapsed: boolean) => void;
   onExpand?: () => void;
@@ -28,12 +34,17 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   chatSessions,
+  folders,
   selectedSession,
   onSelectSession,
   onNewChat,
   onDeleteSession,
   onUnstarSession,
   onStarSession,
+  onMoveSession,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
   onBack,
   onCollapse,
   onExpand,
@@ -44,6 +55,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isRecentDragOver, setIsRecentDragOver] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const startResizing = useCallback((mouseDownEvent: React.MouseEvent) => {
@@ -77,7 +91,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [resize, stopResizing]);
 
   const starredSessions = chatSessions.filter((session) => session.starred);
-  const recentSessions = chatSessions.filter((session) => !session.starred);
+  const unstarredSessions = chatSessions.filter((session) => !session.starred);
+  const recentSessions = unstarredSessions.filter((s) => !s.folder_id);
+  const sessionsByFolder = (folderId: number) =>
+    unstarredSessions.filter((s) => s.folder_id === folderId);
 
   const handleCollapse = () => {
     setCollapsed(true);
@@ -88,6 +105,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setCollapsed(false);
     onCollapse?.(false);
     onExpand?.();
+  };
+
+  const submitCreateFolder = () => {
+    const trimmed = newFolderName.trim();
+    if (trimmed) {
+      onCreateFolder(trimmed);
+    }
+    setNewFolderName("");
+    setIsCreatingFolder(false);
+  };
+
+  const handleRecentDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("application/x-chat-session")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setIsRecentDragOver(true);
+    }
+  };
+
+  const handleRecentDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRecentDragOver(false);
+    const sessionId = e.dataTransfer.getData("application/x-chat-session");
+    if (sessionId) onMoveSession(sessionId, null);
   };
 
   if (collapsed) {
@@ -156,45 +197,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 Please wait a moment
               </p>
-              <div className="w-full mt-6 space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div
-                      className={`rounded-lg p-3 border-b ${
-                        isDashboardThemeEnabled
-                          ? "bg-primary-content/10 border-primary-content/10"
-                          : "bg-green-800/30 border-green-600/30"
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            isDashboardThemeEnabled
-                              ? "bg-primary-content/40"
-                              : "bg-green-500/50"
-                          }`}
-                        />
-                        <div className="flex-1 space-y-2">
-                          <div
-                            className={`h-3 rounded w-3/4 ${
-                              isDashboardThemeEnabled
-                                ? "bg-primary-content/20"
-                                : "bg-green-700/50"
-                            }`}
-                          />
-                          <div
-                            className={`h-2 rounded w-1/2 ${
-                              isDashboardThemeEnabled
-                                ? "bg-primary-content/12"
-                                : "bg-green-700/30"
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           ) : (
             <>
@@ -257,16 +259,128 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         session={session}
                         isSelected={selectedSession === session.id}
                         isStarred={true}
+                        folders={folders}
                         onSelect={() => onSelectSession(session.id)}
                         onUnstar={() => onUnstarSession(session.id)}
                         onDelete={() => onDeleteSession(session.id)}
+                        onMoveToFolder={(fid) => onMoveSession(session.id, fid)}
                       />
                     ))}
                   </div>
                 </div>
               )}
 
-              <div>
+              {/* Folders section */}
+              <div className="mb-6">
+                <div
+                  className={`flex items-center gap-2 mb-3 pb-2 border-b ${
+                    isDashboardThemeEnabled
+                      ? "border-primary-content/20"
+                      : "border-green-500/30"
+                  }`}
+                >
+                  <div
+                    className={`w-1 h-4 rounded-full ${
+                      isDashboardThemeEnabled ? "bg-accent" : "bg-yellow-300"
+                    }`}
+                  />
+                  <h3
+                    className={`text-xs uppercase tracking-wider font-bold truncate flex-1 ${
+                      isDashboardThemeEnabled
+                        ? "text-primary-content/85"
+                        : "text-green-100"
+                    }`}
+                  >
+                    Folders
+                  </h3>
+                  <button
+                    onClick={() => setIsCreatingFolder(true)}
+                    className={`p-1.5 rounded-md transition-all ${
+                      isDashboardThemeEnabled
+                        ? "hover:bg-primary-content/20 text-primary-content"
+                        : "hover:bg-white/20 text-white"
+                    }`}
+                    title="New folder"
+                    aria-label="New folder"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {isCreatingFolder && (
+                  <div
+                    className={`mb-3 p-2 rounded-xl ${
+                      isDashboardThemeEnabled
+                        ? "bg-primary-content/10 border border-primary-content/20"
+                        : "bg-white/10 border border-white/20"
+                    }`}
+                  >
+                    <input
+                      autoFocus
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onBlur={submitCreateFolder}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") submitCreateFolder();
+                        if (e.key === "Escape") {
+                          setNewFolderName("");
+                          setIsCreatingFolder(false);
+                        }
+                      }}
+                      placeholder="Folder name…"
+                      maxLength={100}
+                      className={`w-full bg-transparent outline-none text-sm font-semibold px-2 py-1.5 ${
+                        isDashboardThemeEnabled
+                          ? "text-primary-content placeholder:text-primary-content/40"
+                          : "text-white placeholder:text-white/40"
+                      }`}
+                    />
+                  </div>
+                )}
+
+                {folders.length === 0 && !isCreatingFolder ? (
+                  <div
+                    className={`text-xs italic px-2 py-3 ${
+                      isDashboardThemeEnabled
+                        ? "text-primary-content/55"
+                        : "text-green-200/60"
+                    }`}
+                  >
+                    No folders yet. Click the + icon above to create one.
+                  </div>
+                ) : (
+                  folders.map((folder) => (
+                    <FolderGroup
+                      key={folder.folder_id}
+                      folder={folder}
+                      sessions={sessionsByFolder(folder.folder_id)}
+                      selectedSession={selectedSession}
+                      allFolders={folders}
+                      onSelectSession={onSelectSession}
+                      onDeleteSession={onDeleteSession}
+                      onStarSession={onStarSession}
+                      onUnstarSession={onUnstarSession}
+                      onMoveSession={onMoveSession}
+                      onRenameFolder={onRenameFolder}
+                      onDeleteFolder={onDeleteFolder}
+                      onDropSession={(sid, fid) => onMoveSession(sid, fid)}
+                    />
+                  ))
+                )}
+              </div>
+
+              <div
+                onDragOver={handleRecentDragOver}
+                onDragLeave={() => setIsRecentDragOver(false)}
+                onDrop={handleRecentDrop}
+                className={`rounded-xl transition-all ${
+                  isRecentDragOver
+                    ? isDashboardThemeEnabled
+                      ? "ring-2 ring-accent bg-accent/10"
+                      : "ring-2 ring-[#FBEC5D] bg-yellow-400/10"
+                    : ""
+                }`}
+              >
                 <div
                   className={`flex items-center gap-2 mb-3 pb-2 border-b ${
                     isDashboardThemeEnabled
@@ -297,6 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         session={session}
                         isSelected={selectedSession === session.id}
                         isStarred={false}
+                        folders={folders}
                         onSelect={() => onSelectSession(session.id)}
                         onStar={
                           onStarSession
@@ -304,6 +419,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             : undefined
                         }
                         onDelete={() => onDeleteSession(session.id)}
+                        onMoveToFolder={(fid) => onMoveSession(session.id, fid)}
                       />
                     ))
                   ) : (
@@ -324,7 +440,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             : "text-green-100"
                         }`}
                       >
-                        No conversations yet
+                        No uncategorized chats
                       </p>
                       <p
                         className={`text-xs ${
@@ -333,7 +449,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             : "text-green-200/60"
                         }`}
                       >
-                        Start a new chat to begin!
+                        Drop chats here to remove from a folder.
                       </p>
                     </div>
                   )}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
+use App\Services\ActivityLogger;
 
 class AccountController extends Controller
 {
@@ -398,6 +399,16 @@ class AccountController extends Controller
                 ]);
             }
             
+            // Log the permission request
+            ActivityLogger::log(
+                ActivityLogger::PERMISSION_REQUESTED,
+                null,
+                $user->user_id,
+                $user->firstname . ' ' . $user->lastname . ' requested permissions: ' . $permissionsList
+                    . ($validated['reason'] ? ' — Reason: ' . $validated['reason'] : ''),
+                ['requested_permissions' => $requestedPermissions, 'reason' => $validated['reason'] ?? null]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Permission request submitted successfully',
@@ -516,6 +527,16 @@ class AccountController extends Controller
                 'is_read' => false,
             ]);
             
+            // Log the approval
+            ActivityLogger::log(
+                ActivityLogger::PERMISSION_APPROVED,
+                null,
+                auth()->id(),
+                'Admin approved permission request for ' . $user->firstname . ' ' . $user->lastname
+                    . ': ' . implode(', ', $grantedLabels),
+                ['target_user_id' => $user->user_id, 'granted_permissions' => $permissionRequest->permissions]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Permission request approved successfully',
@@ -582,6 +603,18 @@ class AccountController extends Controller
                 ]);
             }
             
+            // Log the denial
+            $deniedUserName = $user ? $user->firstname . ' ' . $user->lastname : 'Unknown User';
+            ActivityLogger::log(
+                ActivityLogger::PERMISSION_DENIED,
+                null,
+                auth()->id(),
+                'Admin denied permission request for ' . $deniedUserName
+                    . ': ' . implode(', ', $deniedLabels)
+                    . ($request->input('response') ? ' — Reason: ' . $request->input('response') : ''),
+                ['target_user_id' => $permissionRequest->user_id, 'denied_permissions' => $permissionRequest->permissions]
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Permission request declined',

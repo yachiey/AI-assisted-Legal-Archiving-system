@@ -9,7 +9,7 @@ import { ChatInterface } from './components/chat/ChatInterface';
 import { Modal } from './components/ui/Modal';
 import { apiService } from './services/api';
 import { useApi } from './hooks/useApi';
-import { ChatSession, ChatMessage, Document, DocumentReference } from './types';
+import { AIFolder, ChatSession, ChatMessage, Document, DocumentReference } from './types';
 import { Sidebar } from './components/layout/SidebarUi/Sidebar';
 import DocumentViewer from '../Document/components/DocumentViewer/DocumentViewer';
 import { Document as FullDocument } from '../Document/types/types';
@@ -69,6 +69,11 @@ function Aiassistant() {
   // API hooks
   const { data: chatSessions, loading: sessionsLoading, refetch: refetchSessions } = useApi<ChatSession[]>(
     () => apiService.getChatSessions(),
+    []
+  );
+
+  const { data: folders, refetch: refetchFolders } = useApi<AIFolder[]>(
+    () => apiService.getFolders(),
     []
   );
 
@@ -233,6 +238,43 @@ function Aiassistant() {
     }
   };
 
+  const handleCreateFolder = async (name: string) => {
+    try {
+      await apiService.createFolder(name);
+      refetchFolders();
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+    }
+  };
+
+  const handleRenameFolder = async (folderId: number, name: string) => {
+    try {
+      await apiService.renameFolder(folderId, name);
+      refetchFolders();
+    } catch (error) {
+      console.error('Failed to rename folder:', error);
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: number) => {
+    try {
+      await apiService.deleteFolder(folderId);
+      refetchFolders();
+      refetchSessions();
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+    }
+  };
+
+  const handleMoveSession = async (sessionId: string, folderId: number | null) => {
+    try {
+      await apiService.moveConversationToFolder(sessionId, folderId);
+      refetchSessions();
+    } catch (error) {
+      console.error('Failed to move conversation:', error);
+    }
+  };
+
   // COMMENTED OUT DOCUMENT HANDLERS
   /*
   const handleUploadFiles = async (files: File[]) => {
@@ -328,12 +370,17 @@ function Aiassistant() {
         <div className="flex-shrink-0">
           <Sidebar
             chatSessions={chatSessions || []}
+            folders={folders || []}
             selectedSession={selectedSessionId}
             onSelectSession={handleSelectSession}
             onNewChat={handleNewChat}
             onDeleteSession={handleDeleteSession}
             onUnstarSession={handleUnstarSession}
             onStarSession={handleStarSession}
+            onMoveSession={handleMoveSession}
+            onCreateFolder={handleCreateFolder}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
             onBack={() => window.history.back()}
             onCollapse={setIsSidebarCollapsed}
             onExpand={() => setIsSidebarCollapsed(false)}

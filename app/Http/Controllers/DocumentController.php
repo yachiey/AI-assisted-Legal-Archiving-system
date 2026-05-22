@@ -612,11 +612,12 @@ class DocumentController extends Controller
             $document = Document::findOrFail($id);
 
             $validated = $request->validate([
-                'title' => 'sometimes|string|max:255',
-                'description' => 'sometimes|string|max:1000',
-                'folder_id' => 'sometimes|integer|exists:folders,folder_id',
-                'remarks' => 'sometimes|string|max:1000',
-                'file_path' => 'sometimes|string|max:500',
+                'title'             => 'sometimes|string|max:255',
+                'description'       => 'sometimes|nullable|string|max:1000',
+                'folder_id'         => 'sometimes|nullable|integer|exists:folders,folder_id',
+                'remarks'           => 'sometimes|nullable|string|max:1000',
+                'physical_location' => 'sometimes|nullable|string|max:255',
+                'file_path'         => 'sometimes|string|max:500',
             ]);
 
             $user = $request->user();
@@ -625,6 +626,11 @@ class DocumentController extends Controller
                     'success' => false,
                     'message' => 'You do not have permission to edit documents'
                 ], 403);
+            }
+
+            // Explicitly include folder_id even when null so clearing a folder works
+            if ($request->has('folder_id')) {
+                $validated['folder_id'] = $request->input('folder_id');
             }
 
             $document->update($validated);

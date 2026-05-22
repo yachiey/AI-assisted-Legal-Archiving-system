@@ -10,6 +10,7 @@ use App\Http\Controllers\AIProcessController;
 use App\Http\Controllers\ManualProcessController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AccountController;
@@ -22,6 +23,8 @@ Route::get('/', [HomeController::class, 'index']);
 // Login route - return the main page with login modal capability
 Route::get('/login', [HomeController::class, 'index'])->name('login');
 Route::post('/login', [LoginController::class, 'login']); // Handle login submission
+Route::post('/login/two-factor-challenge', [LoginController::class, 'twoFactorChallenge']); // 2FA second step
+Route::post('/login/two-factor-resend', [LoginController::class, 'resendChallengeCode']); // resend email code
 Route::post('/contact', [ContactController::class, 'store']);
 
 Route::get('/ai-processing', [AIProcessController::class, 'show'])->name('ai.processing');
@@ -76,6 +79,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/update', [UserProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/upload-picture', [UserProfileController::class, 'uploadProfilePicture'])->name('profile.upload-picture');
     Route::post('/profile/delete', [UserProfileController::class, 'delete'])->name('profile.delete');
+
+    // Two-Factor Authentication (Google Authenticator / TOTP)
+    Route::get('/profile/two-factor/status', [TwoFactorController::class, 'status'])->name('profile.two-factor.status');
+    Route::post('/profile/two-factor/enable', [TwoFactorController::class, 'enable'])->name('profile.two-factor.enable');
+    Route::post('/profile/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('profile.two-factor.confirm');
+    Route::post('/profile/two-factor/resend', [TwoFactorController::class, 'resendSetupCode'])->name('profile.two-factor.resend');
+    Route::delete('/profile/two-factor', [TwoFactorController::class, 'disable'])->name('profile.two-factor.disable');
 });
 
 // Staff Routes (Protected) - Session authentication

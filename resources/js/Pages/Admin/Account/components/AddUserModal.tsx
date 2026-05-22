@@ -132,22 +132,12 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
 
     const inputClassName = (hasError = false) =>
         `w-full rounded-xl border-2 px-4 py-3 outline-none transition-colors focus:outline-none ${
-            isDashboardThemeEnabled
-                ? `${
-                      hasError ? "border-error" : "border-base-300"
-                  } bg-base-100 text-base-content focus:border-primary`
-                : `${
-                      hasError ? "border-red-500" : "border-gray-200"
-                  } focus:border-green-500`
-        }`;
+            hasError ? "border-error" : "border-base-300"
+        } bg-base-100 text-base-content focus:border-primary`;
 
-    const labelClassName = `mb-2 block text-sm font-semibold ${
-        isDashboardThemeEnabled ? "text-base-content/70" : "text-gray-700"
-    }`;
+    const labelClassName = `mb-2 block text-sm font-semibold text-base-content/70`;
 
-    const checkboxClassName = isDashboardThemeEnabled
-        ? "checkbox checkbox-sm checkbox-primary rounded-md"
-        : "h-4 w-4 rounded text-green-600 focus:ring-2 focus:ring-green-500";
+    const checkboxClassName = "checkbox checkbox-sm checkbox-primary rounded-md";
 
     const modalContent = (
         <div data-lenis-prevent
@@ -161,12 +151,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
             />
 
             <div
-                className={`pointer-events-auto relative w-full max-w-2xl overflow-hidden rounded-3xl shadow-2xl ${
-                    isDashboardThemeEnabled
-                        ? "border border-base-300 bg-base-100 text-base-content"
-                        : "bg-white"
-                }`}
-                style={{ maxHeight: "min(90vh, 960px)" }}
+                className={`pointer-events-auto relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl shadow-2xl border border-base-300 bg-base-100 text-base-content`}
+                style={{ maxHeight: "min(85dvh, 960px)" }}
             >
                 {/* Header */}
                 <div
@@ -224,7 +210,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <form data-lenis-prevent onSubmit={handleSubmit} className="overflow-y-auto px-8 py-6" style={{ maxHeight: "60vh" }}>
+                <form data-lenis-prevent onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300">
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -317,11 +303,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                                         onClick={() =>
                                             setShowPassword(!showPassword)
                                         }
-                                        className={`absolute right-3 top-[14px] ${
-                                            isDashboardThemeEnabled
-                                                ? "text-base-content/50 hover:text-base-content"
-                                                : "text-gray-500 hover:text-gray-700"
-                                        }`}
+                                        className={`absolute right-3 top-[14px] text-base-content/50 hover:text-base-content`}
                                     >
                                         {showPassword ? (
                                             <EyeOff className="h-5 w-5" />
@@ -363,11 +345,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                                                 !showConfirmPassword
                                             )
                                         }
-                                        className={`absolute right-3 top-[14px] ${
-                                            isDashboardThemeEnabled
-                                                ? "text-base-content/50 hover:text-base-content"
-                                                : "text-gray-500 hover:text-gray-700"
-                                        }`}
+                                        className={`absolute right-3 top-[14px] text-base-content/50 hover:text-base-content`}
                                     >
                                         {showConfirmPassword ? (
                                             <EyeOff className="h-5 w-5" />
@@ -397,18 +375,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                             </select>
                         </div>
 
-                        <div className={`my-6 border-t ${isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"}`}></div>
+                        <div className={`my-6 border-t border-base-300`}></div>
 
                         <div>
                             <label className={labelClassName}>
                                 Document Permissions
                             </label>
                             <div
-                                className={`rounded-xl border-2 p-4 ${
-                                    isDashboardThemeEnabled
-                                        ? "border-base-300 bg-base-200/40"
-                                        : "border-gray-200 bg-gray-50/60"
-                                }`}
+                                className={`rounded-xl border-2 p-4 border-base-300 bg-base-200/40`}
                             >
                                 <div className="grid grid-cols-2 gap-4">
                                     {[
@@ -432,11 +406,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                                             />
                                             <label
                                                 htmlFor={key}
-                                                className={`ml-3 cursor-pointer text-sm font-medium ${
-                                                    isDashboardThemeEnabled
-                                                        ? "text-base-content/75"
-                                                        : "text-gray-700"
-                                                }`}
+                                                className={`ml-3 cursor-pointer text-sm font-medium text-base-content/75`}
                                             >
                                                 {label}
                                             </label>
@@ -448,22 +418,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                     </div>
                 </form>
 
-                {/* Footer */}
                 <div
-                    className={`flex gap-3 border-t px-8 py-5 ${
-                        isDashboardThemeEnabled
-                            ? "border-base-300 bg-base-200/50"
-                            : "border-gray-200 bg-gray-50"
-                    }`}
+                    className={`flex gap-3 border-t px-8 pt-5 pb-12 border-base-300 bg-base-200/50`}
                 >
                     <button
                         type="button"
                         onClick={onClose}
-                        className={`flex-1 rounded-xl px-6 py-3 font-semibold transition-all duration-200 ${
-                            isDashboardThemeEnabled
-                                ? "border border-base-300 text-base-content hover:bg-base-300"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
+                        className={`flex-1 rounded-xl px-6 py-3 font-semibold transition-all duration-200 border border-base-300 text-base-content hover:bg-base-300`}
                     >
                         Cancel
                     </button>

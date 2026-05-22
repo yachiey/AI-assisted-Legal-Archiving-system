@@ -93,13 +93,19 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
             <PropertyRow
               icon={<FileText className="w-4 h-4" />}
               label="Type"
-              value={folder.folder_type?.charAt(0).toUpperCase() + folder.folder_type?.slice(1)}
+              value={
+                folder.parent_folder_id
+                  ? 'Subfolder'
+                  : folder.folder_type === 'regular'
+                    ? 'Folder'
+                    : folder.folder_type?.charAt(0).toUpperCase() + folder.folder_type?.slice(1)
+              }
             />
 
             {/* Document Count */}
             <PropertyRow
               icon={<FileText className="w-4 h-4" />}
-              label="Documents"
+              label={folder.parent_folder_id ? 'Documents in Subfolder' : 'Documents'}
               value={documentCount}
             />
 
@@ -107,7 +113,7 @@ const FolderPropertiesModal: React.FC<FolderPropertiesModalProps> = ({
             <PropertyRow
               icon={<FolderOpen className="w-4 h-4" />}
               label="Parent Folder"
-              value={folder.parent_folder_id ? `Folder ID: ${folder.parent_folder_id}` : 'Root Folder'}
+              value={folder.parent_folder_id ? ((folder as any).parent?.folder_name || `Folder ID: ${folder.parent_folder_id}`) : 'Root Folder'}
             />
 
             {/* Created By */}

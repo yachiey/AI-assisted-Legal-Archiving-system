@@ -20,6 +20,11 @@ class ActivityLogger
     const AUTH_LOGIN  = 'auth.login';
     const AUTH_LOGOUT = 'auth.logout';
 
+    // ─── Permission Requests ──────────────────────────────────────────
+    const PERMISSION_REQUESTED = 'permission.requested';
+    const PERMISSION_APPROVED  = 'permission.approved';
+    const PERMISSION_DENIED    = 'permission.denied';
+
     /**
      * Human-readable labels for each activity type.
      */
@@ -32,6 +37,9 @@ class ActivityLogger
         self::DOCUMENT_DELETED            => 'Document Deleted',
         self::AUTH_LOGIN                   => 'User Login',
         self::AUTH_LOGOUT                  => 'User Logout',
+        self::PERMISSION_REQUESTED         => 'Permission Requested',
+        self::PERMISSION_APPROVED          => 'Permission Approved',
+        self::PERMISSION_DENIED            => 'Permission Denied',
     ];
 
     /**

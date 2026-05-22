@@ -124,6 +124,8 @@ class ReportController extends Controller
      */
     private function isAuthActivity(string $type): bool
     {
+        // Only login/logout are auth-type — permission events are NOT auth events
+        // and should show their details normally in the log display.
         return in_array($type, [
             ActivityLogger::AUTH_LOGIN,
             ActivityLogger::AUTH_LOGOUT,
@@ -200,10 +202,7 @@ class ReportController extends Controller
         // Get report data with date filtering
         $stats = $this->getReportStats($startDate, $endDate);
         $documentsByCategory = $this->getDocumentsByCategory($startDate, $endDate);
-        
-        // For Excel, we might want to include recent activity or not, depending on requirements.
-        // The original code included it, so we keep it, but maybe filter it too if needed.
-        // For now, let's keep it simple and just filter stats/docs which are the main part.
+        $detailedDocuments = $this->getDetailedDocuments($startDate, $endDate);
         $recentActivity = $this->getRecentActivity();
 
         // Generate filename
@@ -214,7 +213,7 @@ class ReportController extends Controller
         $writerType = $format === 'csv' ? \Maatwebsite\Excel\Excel::CSV : \Maatwebsite\Excel\Excel::XLSX;
 
         return Excel::download(
-            new ReportExport($stats, $documentsByCategory, $recentActivity, $reportType),
+            new ReportExport($stats, $documentsByCategory, $detailedDocuments, $recentActivity, $reportType, $format),
             $filename,
             $writerType
         );
@@ -351,6 +350,35 @@ class ReportController extends Controller
     }
 
     /**
+     * Get detailed documents list
+     */
+    private function getDetailedDocuments($startDate = null, $endDate = null)
+    {
+        $query = Document::with(['folder', 'user'])
+            ->where('status', 'active')
+            ->orderBy('created_at', 'desc');
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ]);
+        }
+
+        return $query->get()->map(function ($doc) {
+            return [
+                'doc_id' => $doc->document_ref_id ?? $doc->doc_id,
+                'title' => $doc->title,
+                'folder' => $doc->folder ? $doc->folder->folder_name : 'No Folder',
+                'created_by' => $doc->user ? $doc->user->firstname . ' ' . $doc->user->lastname : 'Unknown',
+                'created_at' => Carbon::parse($doc->created_at)->format('Y-m-d H:i:s'),
+                'description' => $doc->description ?? 'No description',
+                'location' => $doc->physical_location ?? 'Digital Only',
+            ];
+        });
+    }
+
+    /**
      * Export activity logs as Excel (includes all activities including login/logout)
      */
     public function exportActivityLogs(Request $request)
@@ -419,7 +447,7 @@ class ReportController extends Controller
         $writerType = $format === 'csv' ? \Maatwebsite\Excel\Excel::CSV : \Maatwebsite\Excel\Excel::XLSX;
 
         return Excel::download(
-            new ActivityLogExport($activityLogs),
+            new ActivityLogExport($activityLogs, $format),
             $filename,
             $writerType
         );

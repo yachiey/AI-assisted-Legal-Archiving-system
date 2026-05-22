@@ -18,7 +18,6 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     folders = [],
     isHighlighted = false,
     onDocumentUpdated,
-    onViewDocument
 }) => {
     const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);

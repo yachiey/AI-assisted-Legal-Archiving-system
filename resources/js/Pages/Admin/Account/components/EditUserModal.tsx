@@ -160,22 +160,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
     const inputClassName = (hasError = false) =>
         `w-full rounded-xl border-2 px-4 py-3 outline-none transition-colors focus:outline-none ${
-            isDashboardThemeEnabled
-                ? `${
-                      hasError ? "border-error" : "border-base-300"
-                  } bg-base-100 text-base-content focus:border-primary`
-                : `${
-                      hasError ? "border-red-500" : "border-gray-200"
-                  } focus:border-green-500`
-        }`;
+            hasError ? "border-error" : "border-base-300"
+        } bg-base-100 text-base-content focus:border-primary`;
 
-    const labelClassName = `mb-2 block text-sm font-semibold ${
-        isDashboardThemeEnabled ? "text-base-content/70" : "text-gray-700"
-    }`;
+    const labelClassName = `mb-2 block text-sm font-semibold text-base-content/70`;
 
-    const checkboxClassName = isDashboardThemeEnabled
-        ? "checkbox checkbox-sm checkbox-primary rounded-md"
-        : "h-4 w-4 rounded text-green-600 focus:ring-2 focus:ring-green-500";
+    const checkboxClassName = "checkbox checkbox-sm checkbox-primary rounded-md";
 
     const modalContent = (
         <div
@@ -189,11 +179,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 onClick={onClose}
             />
             <div
-                className={`pointer-events-auto relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl shadow-2xl ${
-                    isDashboardThemeEnabled
-                        ? "border border-base-300 bg-base-100 text-base-content"
-                        : "bg-white"
-                }`}
+                className={`pointer-events-auto relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl shadow-2xl border border-base-300 bg-base-100 text-base-content`}
                 style={{ maxHeight: "min(90vh, 960px)" }}
             >
                 {/* Header */}
@@ -201,7 +187,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                     className={`relative px-8 py-8 ${
                         isDashboardThemeEnabled
                             ? "border-b border-base-300 bg-primary text-primary-content"
-                            : "bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-600"
+                            : "bg-gradient-to-r from-green-600 via-green-500 to-emerald-600"
                     }`}
                 >
                     <button
@@ -252,7 +238,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 </div>
 
                 {/* Form */}
-                <form data-lenis-prevent onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6">
+                <form data-lenis-prevent onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300">
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -329,18 +315,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                         <div className={`mt-6 border-t pt-6 ${isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"}`}></div>
 
                         <div
-                            className={`rounded-xl border-2 p-4 ${
-                                isDashboardThemeEnabled
-                                    ? "border-info/20 bg-info/10"
-                                    : "border-blue-200 bg-blue-50"
-                            }`}
+                            className={`rounded-xl border-2 p-4 border-info/20 bg-info/10`}
                         >
                             <p
-                                className={`text-sm font-medium ${
-                                    isDashboardThemeEnabled
-                                        ? "text-info"
-                                        : "text-blue-700"
-                                }`}
+                                className={`text-sm font-medium text-info`}
                             >
                                 Leave password fields empty to keep the current
                                 password
@@ -368,11 +346,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                         onClick={() =>
                                             setShowPassword(!showPassword)
                                         }
-                                        className={`absolute right-3 top-[14px] ${
-                                            isDashboardThemeEnabled
-                                                ? "text-base-content/50 hover:text-base-content"
-                                                : "text-gray-500 hover:text-gray-700"
-                                        }`}
+                                        className={`absolute right-3 top-[14px] text-base-content/50 hover:text-base-content`}
                                     >
                                         {showPassword ? (
                                             <EyeOff className="h-5 w-5" />
@@ -414,11 +388,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                                 !showConfirmPassword
                                             )
                                         }
-                                        className={`absolute right-3 top-[14px] ${
-                                            isDashboardThemeEnabled
-                                                ? "text-base-content/50 hover:text-base-content"
-                                                : "text-gray-500 hover:text-gray-700"
-                                        }`}
+                                        className={`absolute right-3 top-[14px] text-base-content/50 hover:text-base-content`}
                                     >
                                         {showConfirmPassword ? (
                                             <EyeOff className="h-5 w-5" />
@@ -435,7 +405,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                             </div>
                         </div>
 
-                        <div className={`mt-6 border-t pt-6 ${isDashboardThemeEnabled ? "border-base-300" : "border-gray-200"}`}></div>
+                        <div className={`mt-6 border-t pt-6 border-base-300`}></div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -470,11 +440,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                 Document Permissions
                             </label>
                             <div
-                                className={`rounded-xl border-2 p-4 ${
-                                    isDashboardThemeEnabled
-                                        ? "border-base-300 bg-base-200/40"
-                                        : "border-gray-200 bg-gray-50/60"
-                                }`}
+                                className={`rounded-xl border-2 p-4 border-base-300 bg-base-200/40`}
                             >
                                 <div className="grid grid-cols-2 gap-4">
                                     {[
@@ -498,11 +464,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                             />
                                             <label
                                                 htmlFor={key}
-                                                className={`ml-3 cursor-pointer text-sm font-medium ${
-                                                    isDashboardThemeEnabled
-                                                        ? "text-base-content/75"
-                                                        : "text-gray-700"
-                                                }`}
+                                                className={`ml-3 cursor-pointer text-sm font-medium text-base-content/75`}
                                             >
                                                 {label}
                                             </label>
@@ -516,20 +478,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 
                 {/* Footer */}
                 <div
-                    className={`flex gap-3 border-t px-8 py-5 ${
-                        isDashboardThemeEnabled
-                            ? "border-base-300 bg-base-200/50"
-                            : "border-gray-200 bg-gray-50"
-                    }`}
+                    className={`flex gap-3 border-t px-8 pt-5 pb-8 border-base-300 bg-base-200/50`}
                 >
                     <button
                         type="button"
                         onClick={onClose}
-                        className={`flex-1 rounded-xl px-6 py-3 font-semibold transition-all duration-200 ${
-                            isDashboardThemeEnabled
-                                ? "border border-base-300 text-base-content hover:bg-base-300"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
+                        className={`flex-1 rounded-xl px-6 py-3 font-semibold transition-all duration-200 border border-base-300 text-base-content hover:bg-base-300`}
                     >
                         Cancel
                     </button>
@@ -540,7 +494,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                         className={`flex flex-1 transform items-center justify-center gap-2 rounded-xl px-6 py-3 font-semibold shadow-lg transition-all duration-200 hover:scale-[1.02] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${
                             isDashboardThemeEnabled
                                 ? "bg-primary text-primary-content hover:bg-primary/90"
-                                : "bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700"
+                                : "bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700"
                         }`}
                     >
                         <UserCog className="h-4 w-4" />

@@ -6,7 +6,7 @@ import { Header } from './components/layout/Header';
 import { ChatInterface } from './components/chat/ChatInterface';
 import { apiService } from './services/api';
 import { useApi } from './hooks/useApi';
-import { ChatSession, ChatMessage, Document, DocumentReference } from './types';
+import { AIFolder, ChatSession, ChatMessage, Document, DocumentReference } from './types';
 import { Sidebar } from './components/layout/SidebarUi/Sidebar';
 import DocumentViewer from '../Documents/components/DocumentViewer/DocumentViewer';
 import { Document as FullDocument } from '../Documents/types/types';
@@ -63,6 +63,11 @@ function StaffAIAssistant() {
     // API hooks
     const { data: chatSessions, loading: sessionsLoading, refetch: refetchSessions } = useApi<ChatSession[]>(
         () => apiService.getChatSessions(),
+        []
+    );
+
+    const { data: folders, refetch: refetchFolders } = useApi<AIFolder[]>(
+        () => apiService.getFolders(),
         []
     );
 
@@ -204,6 +209,43 @@ function StaffAIAssistant() {
         }
     };
 
+    const handleCreateFolder = async (name: string) => {
+        try {
+            await apiService.createFolder(name);
+            refetchFolders();
+        } catch (error) {
+            console.error('Failed to create folder:', error);
+        }
+    };
+
+    const handleRenameFolder = async (folderId: number, name: string) => {
+        try {
+            await apiService.renameFolder(folderId, name);
+            refetchFolders();
+        } catch (error) {
+            console.error('Failed to rename folder:', error);
+        }
+    };
+
+    const handleDeleteFolder = async (folderId: number) => {
+        try {
+            await apiService.deleteFolder(folderId);
+            refetchFolders();
+            refetchSessions();
+        } catch (error) {
+            console.error('Failed to delete folder:', error);
+        }
+    };
+
+    const handleMoveSession = async (sessionId: string, folderId: number | null) => {
+        try {
+            await apiService.moveConversationToFolder(sessionId, folderId);
+            refetchSessions();
+        } catch (error) {
+            console.error('Failed to move conversation:', error);
+        }
+    };
+
     const currentSession = chatSessions?.find(s => s.id === selectedSessionId);
 
     // Handle viewing a document from AI chat
@@ -249,7 +291,7 @@ function StaffAIAssistant() {
     return (
         <div
             data-theme={isDashboardThemeEnabled ? theme : undefined}
-            className={`relative h-screen overflow-hidden ${
+            className={`relative h-dvh overflow-hidden ${
                 isDashboardThemeEnabled ? 'bg-base-200 text-base-content' : 'bg-gray-50'
             }`}
         >
@@ -267,12 +309,17 @@ function StaffAIAssistant() {
                 <div className="flex-shrink-0">
                     <Sidebar
                         chatSessions={chatSessions || []}
+                        folders={folders || []}
                         selectedSession={selectedSessionId}
                         onSelectSession={handleSelectSession}
                         onNewChat={handleNewChat}
                         onDeleteSession={handleDeleteSession}
                         onUnstarSession={handleUnstarSession}
                         onStarSession={handleStarSession}
+                        onMoveSession={handleMoveSession}
+                        onCreateFolder={handleCreateFolder}
+                        onRenameFolder={handleRenameFolder}
+                        onDeleteFolder={handleDeleteFolder}
                         onBack={() => window.history.back()}
                         isLoading={sessionsLoading}
                     />

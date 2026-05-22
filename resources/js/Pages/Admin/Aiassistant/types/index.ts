@@ -5,6 +5,7 @@ export interface DocumentReference {
   title: string;
   folder_id?: number;
   folder_name?: string;
+  physical_location?: string;
 }
 
 export interface ChatMessage {
@@ -25,6 +26,14 @@ export interface ChatSession {
   created_at: string;
   updated_at: string;
   starred?: boolean;
+  folder_id?: number | null;
+}
+
+export interface AIFolder {
+  folder_id: number;
+  name: string;
+  color?: string | null;
+  created_at?: string;
 }
 
 export interface Folder {

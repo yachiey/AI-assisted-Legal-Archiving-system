@@ -17,8 +17,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   document,
   folders = [],
   isHighlighted = false,
-  onDocumentUpdated,
-  onViewDocument
+  onDocumentUpdated
 }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

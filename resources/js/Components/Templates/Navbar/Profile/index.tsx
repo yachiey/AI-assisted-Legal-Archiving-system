@@ -6,6 +6,7 @@ import ProfileMenu from "./ProfileMenu";
 import ViewProfileModal from "./ViewProfileModal";
 import EditProfileModal from "./EditProfileModal";
 import DeleteAccountModal from "./DeleteAccountModal";
+import TwoFactorModal from "./TwoFactorModal";
 import Toast, { ToastType } from "../../../Common/Toast";
 import { UserData } from "../../../../Types/profile_types";
 
@@ -15,6 +16,7 @@ const ProfileDropdown: React.FC = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isTwoFactorModalOpen, setIsTwoFactorModalOpen] = useState(false);
     const [profileData, setProfileData] = useState<any>(null);
 
     // Toast notification state
@@ -165,6 +167,11 @@ const ProfileDropdown: React.FC = () => {
         } catch (error) {
             console.error("Error navigating to settings:", error);
         }
+    };
+
+    const handleSecurity = () => {
+        setIsOpen(false);
+        setIsTwoFactorModalOpen(true);
     };
 
     const handleLogout = () => {
@@ -355,6 +362,7 @@ const ProfileDropdown: React.FC = () => {
                         userData={userData}
                         onViewProfile={handleViewProfile}
                         onSettings={handleSettings}
+                        onSecurity={handleSecurity}
                         onLogout={handleLogout}
                     />
                 )}
@@ -389,6 +397,13 @@ const ProfileDropdown: React.FC = () => {
                     setIsProfileModalOpen(true);
                 }}
                 onConfirm={handleConfirmDelete}
+            />
+
+            {/* Two-Factor Authentication Modal */}
+            <TwoFactorModal
+                isOpen={isTwoFactorModalOpen}
+                onClose={() => setIsTwoFactorModalOpen(false)}
+                onResult={(type, message, title) => showToast(type, message, title)}
             />
 
             {/* Toast Notification */}

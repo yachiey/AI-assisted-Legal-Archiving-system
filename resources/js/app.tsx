@@ -46,13 +46,18 @@ const createLenis = () => {
             ? (element as HTMLElement).className
             : "";
 
+    const isLenisOptOut = (element: Element) =>
+        element.hasAttribute("data-lenis-prevent") ||
+        element.hasAttribute("data-lenis-prevent-wheel") ||
+        element.closest("[data-lenis-prevent], [data-lenis-prevent-wheel]") !== null;
+
     const findScrollWrapper = () => {
         const main = document.querySelector("main");
         if (!main) {
             return null;
         }
 
-        if (getClassName(main).includes("overflow-auto")) {
+        if (getClassName(main).includes("overflow-auto") && !isLenisOptOut(main)) {
             return main as HTMLElement;
         }
 
@@ -71,7 +76,8 @@ const createLenis = () => {
                     style.position === "fixed" ||
                     style.position === "absolute" ||
                     rect.width < 280 ||
-                    rect.height < 180;
+                    rect.height < 180 ||
+                    isLenisOptOut(element);
 
                 return looksScrollable && !shouldIgnore;
             })

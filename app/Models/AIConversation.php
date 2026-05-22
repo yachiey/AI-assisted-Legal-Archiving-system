@@ -15,6 +15,7 @@ class AIConversation extends Model
     protected $fillable = [
         'user_id',
         'doc_id',
+        'folder_id',
         'started_at',
         'ended_at',
     ];
@@ -32,6 +33,11 @@ class AIConversation extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'doc_id', 'doc_id');
+    }
+
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(AIFolder::class, 'folder_id', 'folder_id');
     }
 
     public function history(): HasMany

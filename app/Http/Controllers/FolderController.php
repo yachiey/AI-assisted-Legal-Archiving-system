@@ -18,7 +18,7 @@ class FolderController extends Controller
     public function index()
     {
         return response()->json(
-            Folder::with('creator')
+            Folder::with(['creator', 'parent'])
                 ->select('folder_id', 'folder_name', 'folder_path', 'folder_type', 'parent_folder_id', 'created_by', 'created_at', 'updated_at')
                 ->orderBy('updated_at', 'desc')
                 ->get()
@@ -89,7 +89,7 @@ class FolderController extends Controller
      */
     public function search(Request $request, $term)
     {
-        $folders = Folder::with('creator')
+        $folders = Folder::with(['creator', 'parent'])
             ->select('folder_id', 'folder_name', 'folder_path', 'folder_type', 'parent_folder_id', 'created_by', 'created_at', 'updated_at')
             ->where(DB::raw('LOWER(folder_name)'), 'LIKE', '%' . strtolower($term) . '%')
             ->orWhere(DB::raw('LOWER(folder_path)'), 'LIKE', '%' . strtolower($term) . '%')
@@ -121,7 +121,7 @@ class FolderController extends Controller
         $parentId = $request->input('parent_id');
         $search = $request->input('search');
 
-        $query = Folder::with('creator')
+        $query = Folder::with(['creator', 'parent'])
             ->select('folder_id', 'folder_name', 'folder_path', 'folder_type', 'parent_folder_id', 'created_by', 'created_at', 'updated_at');
 
         if ($parentId !== null && $parentId !== 'null' && $parentId !== '') {
@@ -270,7 +270,7 @@ class FolderController extends Controller
     {
         Log::info("Getting subfolders for parent_id: {$parentId}");
 
-        $subfolders = Folder::with('creator')
+        $subfolders = Folder::with(['creator', 'parent'])
             ->select('folder_id', 'folder_name', 'folder_path', 'folder_type', 'parent_folder_id', 'created_by', 'created_at', 'updated_at')
             ->where('parent_folder_id', $parentId)
             ->orderBy('folder_name')

@@ -53,7 +53,8 @@ class DocumentQueryService
                 // Search in document metadata
                 $q->whereRaw('LOWER(title) LIKE ?', [$lowerSearchTerm])
                   ->orWhereRaw('LOWER(COALESCE(description, \'\')) LIKE ?', [$lowerSearchTerm])
-                  ->orWhereRaw('LOWER(COALESCE(remarks, \'\')) LIKE ?', [$lowerSearchTerm]);
+                  ->orWhereRaw('LOWER(COALESCE(remarks, \'\')) LIKE ?', [$lowerSearchTerm])
+                  ->orWhereRaw('LOWER(COALESCE(physical_location, \'\')) LIKE ?', [$lowerSearchTerm]);
 
                 // Also include documents with matching content
                 if (!empty($contentMatchDocIds)) {
@@ -102,36 +103,47 @@ class DocumentQueryService
 
     /**
      * Get bulk folder document counts (optimized)
-     * Only counts active documents
+     * Includes documents in subfolders (recursive)
      */
     public function getBulkFolderCounts(array $folderIds): array
     {
-        $counts = Document::select('folder_id')
-            ->selectRaw('count(*) as count')
-            ->where('status', 'active')
-            ->whereIn('folder_id', $folderIds)
-            ->groupBy('folder_id')
-            ->pluck('count', 'folder_id')
-            ->toArray();
-
-        // Ensure all requested folders have a count (even if 0)
         $result = [];
         foreach ($folderIds as $folderId) {
-            $result[$folderId] = $counts[$folderId] ?? 0;
+            $result[$folderId] = $this->getFolderDocumentCount($folderId);
         }
-
         return $result;
     }
 
     /**
-     * Get single folder document count (optimized)
+     * Get single folder document count including all descendant subfolders
      * Only counts active documents
      */
     public function getFolderDocumentCount(int $folderId): int
     {
-        return Document::where('folder_id', $folderId)
+        // Collect this folder + all descendant subfolder IDs
+        $allFolderIds = $this->getAllDescendantFolderIds($folderId);
+
+        return Document::whereIn('folder_id', $allFolderIds)
             ->where('status', 'active')
             ->count();
+    }
+
+    /**
+     * Recursively collect a folder's ID and all its children's IDs
+     */
+    private function getAllDescendantFolderIds(int $folderId): array
+    {
+        $ids = [$folderId];
+
+        $children = \App\Models\Folder::where('parent_folder_id', $folderId)
+            ->pluck('folder_id')
+            ->toArray();
+
+        foreach ($children as $childId) {
+            $ids = array_merge($ids, $this->getAllDescendantFolderIds($childId));
+        }
+
+        return $ids;
     }
 
     /**

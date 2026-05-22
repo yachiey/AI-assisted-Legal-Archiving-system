@@ -1,4 +1,4 @@
-import { ChatMessage, ChatSession } from "../types";
+import { AIFolder, ChatMessage, ChatSession } from "../types";
 
 class ApiService {
   private baseUrl = '/api';
@@ -92,6 +92,67 @@ class ApiService {
 
     if (!response.ok) {
       throw new Error('Failed to unstar session');
+    }
+  }
+
+  async getFolders(): Promise<AIFolder[]> {
+    const response = await fetch(`${this.baseUrl}/ai/folders`, {
+      headers: this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch folders');
+    }
+
+    return response.json();
+  }
+
+  async createFolder(name: string, color?: string | null): Promise<AIFolder> {
+    const response = await fetch(`${this.baseUrl}/ai/folders`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name, color }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create folder');
+    }
+
+    return response.json();
+  }
+
+  async renameFolder(folderId: number, name: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/ai/folders/${folderId}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to rename folder');
+    }
+  }
+
+  async deleteFolder(folderId: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/ai/folders/${folderId}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete folder');
+    }
+  }
+
+  async moveConversationToFolder(sessionId: string, folderId: number | null): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/ai/conversations/${sessionId}/move`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ folder_id: folderId }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to move conversation');
     }
   }
 

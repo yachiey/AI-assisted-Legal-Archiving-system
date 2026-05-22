@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\AIConversation;
+use App\Models\AIFolder;
 use App\Models\AIHistory;
 use App\Models\Document;
 use App\Models\DocumentEmbedding;
@@ -172,24 +173,33 @@ class AIAssistantController extends Controller
                 Log::info('Folder list context added');
             }
 
-            // Carry over documents from the previous message in this conversation
-            // This allows the user to say "compare it" referring to documents found in the previous turn
+            // Carry over documents from earlier messages in this conversation.
+            // This allows follow-ups like "summarize", "elaborate", "compare it" to keep
+            // referring to documents surfaced in a prior turn.
+            // Walk back through recent history (not just the last turn) so the chain
+            // survives intermediate turns that produced no fresh search hits.
             // BUT NOT when the user has explicitly selected documents (those override everything)
             if (!$hasExplicitDocuments && $conversationId) {
-                $lastHistory = AIHistory::where('conversation_id', $conversationId)
+                $recentHistory = AIHistory::where('conversation_id', $conversationId)
                     ->where('user_id', $userId)
                     ->orderBy('created_at', 'desc')
-                    ->first();
+                    ->limit(5)
+                    ->get();
 
-                if ($lastHistory && $lastHistory->document_references) {
-                    $prevDocs = json_decode($lastHistory->document_references, true);
-                    if (is_array($prevDocs)) {
-                        foreach ($prevDocs as $prevDoc) {
-                            if (isset($prevDoc['doc_id'])) {
-                                $allDocumentIds[] = $prevDoc['doc_id'];
-                            }
+                foreach ($recentHistory as $historyItem) {
+                    if (!$historyItem->document_references) {
+                        continue;
+                    }
+                    $prevDocs = json_decode($historyItem->document_references, true);
+                    if (!is_array($prevDocs) || empty($prevDocs)) {
+                        continue;
+                    }
+                    foreach ($prevDocs as $prevDoc) {
+                        if (isset($prevDoc['doc_id'])) {
+                            $allDocumentIds[] = $prevDoc['doc_id'];
                         }
                     }
+                    break; // Use the most recent turn that still has refs
                 }
             }
 
@@ -237,7 +247,7 @@ class AIAssistantController extends Controller
                         
                         if ($foundDocs->isEmpty()) {
                             // Try searching with individual significant words from the pattern
-                            $nameWords = array_filter(preg_split('/[-\s]+/', $namePattern), fn($w) => strlen($w) >= 3 && !is_numeric($w));
+                            $nameWords = array_filter(preg_split('/[-\s]+/', $namePattern), fn($w) => strlen($w) >= 3 && !is_numeric($w) && !$this->isFillerWord($w));
                             if (!empty($nameWords)) {
                                 $subQuery = Document::where('status', 'active');
                                 foreach ($nameWords as $w) {
@@ -360,7 +370,7 @@ class AIAssistantController extends Controller
             if ($request->document_ids && count($request->document_ids) > 0) {
                 $documents = Document::whereIn('doc_id', $request->document_ids)
                     ->with('folder:folder_id,folder_name')
-                    ->get(['doc_id', 'title', 'folder_id']);
+                    ->get(['doc_id', 'title', 'folder_id', 'physical_location']);
 
                 $manualRefs = $documents->map(function($doc) {
                     return [
@@ -368,6 +378,7 @@ class AIAssistantController extends Controller
                         'title' => $doc->title,
                         'folder_id' => $doc->folder_id,
                         'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
+                        'physical_location' => $doc->physical_location,
                     ];
                 });
                 $allRefs = $allRefs->merge($manualRefs);
@@ -405,6 +416,7 @@ class AIAssistantController extends Controller
                             'title' => $doc->title,
                             'folder_id' => $doc->folder_id,
                             'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
+                            'physical_location' => $doc->physical_location,
                             'matches' => $semanticDoc['matches'] ?? 1
                         ];
                     }
@@ -586,10 +598,141 @@ class AIAssistantController extends Controller
                     'created_at' => $conv->started_at,
                     'updated_at' => $conv->started_at,
                     'starred' => (bool)$conv->starred,
+                    'folder_id' => $conv->folder_id ? (int)$conv->folder_id : null,
                 ];
             });
 
         return response()->json($conversations);
+    }
+
+    public function getFolders()
+    {
+        $folders = AIFolder::where('user_id', Auth::id())
+            ->orderBy('name', 'asc')
+            ->get()
+            ->map(function ($folder) {
+                return [
+                    'folder_id' => (int)$folder->folder_id,
+                    'name' => $folder->name,
+                    'color' => $folder->color,
+                    'created_at' => $folder->created_at,
+                ];
+            });
+
+        return response()->json($folders);
+    }
+
+    public function createFolder(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+            'color' => 'nullable|string|max:20',
+        ]);
+
+        try {
+            $folder = AIFolder::create([
+                'user_id' => Auth::id(),
+                'name' => trim($validated['name']),
+                'color' => $validated['color'] ?? null,
+            ]);
+
+            return response()->json([
+                'folder_id' => (int)$folder->folder_id,
+                'name' => $folder->name,
+                'color' => $folder->color,
+                'created_at' => $folder->created_at,
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Create AI folder failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Failed to create folder'], 500);
+        }
+    }
+
+    public function renameFolder(Request $request, $folderId)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100',
+        ]);
+
+        try {
+            $folder = AIFolder::where('folder_id', $folderId)
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            $folder->name = trim($validated['name']);
+            $folder->save();
+
+            return response()->json(['message' => 'Folder renamed']);
+        } catch (\Exception $e) {
+            Log::error('Rename AI folder failed', [
+                'folder_id' => $folderId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Folder not found'], 404);
+        }
+    }
+
+    public function deleteFolder($folderId)
+    {
+        try {
+            $folder = AIFolder::where('folder_id', $folderId)
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            $folder->delete();
+
+            return response()->json(['message' => 'Folder deleted']);
+        } catch (\Exception $e) {
+            Log::error('Delete AI folder failed', [
+                'folder_id' => $folderId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Folder not found'], 404);
+        }
+    }
+
+    public function moveConversationToFolder(Request $request, $conversationId)
+    {
+        $validated = $request->validate([
+            'folder_id' => 'nullable|integer',
+        ]);
+
+        try {
+            $conversation = AIConversation::where('conversation_id', $conversationId)
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+
+            if (!empty($validated['folder_id'])) {
+                $folderExists = AIFolder::where('folder_id', $validated['folder_id'])
+                    ->where('user_id', Auth::id())
+                    ->exists();
+                if (!$folderExists) {
+                    return response()->json(['error' => 'Folder not found'], 404);
+                }
+                $conversation->folder_id = $validated['folder_id'];
+            } else {
+                $conversation->folder_id = null;
+            }
+
+            $conversation->save();
+
+            return response()->json([
+                'message' => 'Conversation moved',
+                'folder_id' => $conversation->folder_id ? (int)$conversation->folder_id : null,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Move conversation to folder failed', [
+                'conversation_id' => $conversationId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Failed to move conversation'], 500);
+        }
     }
 
     public function getChatHistory($sessionId)
@@ -741,7 +884,7 @@ class AIAssistantController extends Controller
             // Get document embeddings/chunks for accessible documents
             // We fetch ALL chunks first, then select them in a round-robin fashion
             $embeddings = DocumentEmbedding::whereIn('doc_id', $accessibleDocuments)
-                ->with(['document:doc_id,title,folder_id', 'document.folder:folder_id,folder_name'])
+                ->with(['document:doc_id,title,folder_id,physical_location', 'document.folder:folder_id,folder_name'])
                 ->orderBy('doc_id')
                 ->orderBy('chunk_index')
                 ->get();
@@ -797,9 +940,10 @@ class AIAssistantController extends Controller
 
                 $docTitle = $embedding->document?->title ?? 'Document ' . $embedding->doc_id;
                 $folderName = $embedding->document?->folder?->folder_name ?? 'Uncategorized';
+                $physicalLoc = $embedding->document?->physical_location ?? 'Not specified';
                 
                 // Content with clear attribution and folder context
-                $chunkContent = "--- Excerpt from Document: \"{$docTitle}\" (Folder: {$folderName}) ---\n{$embedding->chunk_text}\n";
+                $chunkContent = "--- Excerpt from Document: \"{$docTitle}\" (Folder: {$folderName}, Physical Location: {$physicalLoc}) ---\n{$embedding->chunk_text}\n";
 
                 // Check if adding this chunk would exceed our length limit
                 if (strlen($context . $chunkContent) > $maxContextLength) {
@@ -1117,6 +1261,23 @@ class AIAssistantController extends Controller
     }
 
     /**
+     * Detect filler/spam tokens such as "plssssssss", "pleaseeee", or chat shorthand
+     * like "pls"/"plz"/"thx". These are never real search terms — if treated as one
+     * they zero out the SQL AND-search and the AI ends up with no document context.
+     */
+    private function isFillerWord(string $word): bool
+    {
+        $wordLower = strtolower($word);
+
+        $chatFillers = ['pls', 'plz', 'plss', 'plzz', 'plsss', 'plzzz', 'thx', 'thnx', 'tnx', 'ty', 'tyvm', 'omg', 'lol', 'lmao', 'btw'];
+        if (in_array($wordLower, $chatFillers, true)) {
+            return true;
+        }
+
+        return (bool) preg_match('/(.)\1{2,}/', $wordLower);
+    }
+
+    /**
      * Search documents by metadata (title, description) - Fast SQL search
      */
     private function searchDocumentsMetadata(string $message, int $userId, array $dateParams = []): array
@@ -1140,9 +1301,15 @@ class AIAssistantController extends Controller
             // Filter out folder name from search terms if it was found via direct string match (not alias)
             $searchTerms = array_filter($words, function($word) use ($stopWords, $detectedFolder) {
                 $wordLower = strtolower($word);
-                
+
                 // If we detected a folder and this word is part of the folder name (and not an alias match), skip it
                 if ($detectedFolder && !$detectedFolder['is_alias'] && stripos($detectedFolder['name'], $word) !== false) {
+                    return false;
+                }
+
+                // Filler/spam tokens (e.g. "plssssssss", "pleaseeee", "pls", "thx") must never become
+                // mandatory AND-terms in the SQL search — they would zero out otherwise valid results.
+                if ($this->isFillerWord($word)) {
                     return false;
                 }
 
@@ -1256,6 +1423,9 @@ class AIAssistantController extends Controller
                 $folderPath = $this->buildFolderPath($doc->folder);
                 $context .= "Document: \"{$doc->title}\"\n";
                 $context .= "  └─ Folder: {$folderPath}\n";
+                if ($doc->physical_location) {
+                    $context .= "  └─ Physical Location: {$doc->physical_location}\n";
+                }
                 if ($doc->description) {
                     $context .= "  └─ Description: {$doc->description}\n";
                 }
@@ -1266,6 +1436,7 @@ class AIAssistantController extends Controller
                     'title' => $doc->title,
                     'folder_id' => $doc->folder_id,
                     'folder_name' => $doc->folder ? $doc->folder->folder_name : null,
+                    'physical_location' => $doc->physical_location,
                 ];
             }
 

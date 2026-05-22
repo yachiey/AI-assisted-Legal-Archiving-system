@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import { UserIcon } from "lucide-react";
+import { UserIcon, ShieldCheck } from "lucide-react";
 import UserInfoHeader from "./UserInfoHeader";
 import MenuItem from "./MenuItem";
 import { LogoutIcon } from "./Icons";
@@ -16,6 +16,7 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
     userData,
     onViewProfile,
     onSettings,
+    onSecurity,
     onLogout,
 }) => {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -86,6 +87,12 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
         }
     };
 
+    const handleSecurity = () => {
+        if (!isLoggingOut) {
+            onSecurity();
+        }
+    };
+
     return (
         <div
             data-theme={isDashboardThemeEnabled ? theme : undefined}
@@ -105,6 +112,14 @@ const ProfileMenu: React.FC<ProfileMenuProps> = ({
                         icon={<UserIcon />}
                         label="View Profile"
                         onClick={handleViewProfile}
+                    />
+                </li>
+
+                <li>
+                    <MenuItem
+                        icon={<ShieldCheck />}
+                        label="Security (2FA)"
+                        onClick={handleSecurity}
                     />
                 </li>
 

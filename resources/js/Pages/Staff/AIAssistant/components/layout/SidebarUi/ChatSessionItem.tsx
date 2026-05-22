@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 import { ChatSessionDropdown } from "./ChatSessionDropdown";
+import { AIFolder } from "../../../types";
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -11,31 +12,37 @@ interface ChatSession {
   id: string;
   title: string;
   lastMessage?: string;
+  folder_id?: number | null;
 }
 
 interface ChatSessionItemProps {
   session: ChatSession;
   isSelected: boolean;
   isStarred: boolean;
+  folders?: AIFolder[];
   onSelect: () => void;
   onStar?: () => void;
   onUnstar?: () => void;
   onDelete: () => void;
+  onMoveToFolder?: (folderId: number | null) => void;
 }
 
 export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
   session,
   isSelected,
   isStarred,
+  folders,
   onSelect,
   onStar,
   onUnstar,
   onDelete,
+  onMoveToFolder,
 }) => {
   const { theme } = useDashboardTheme("staff");
   const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
   const [showDropdown, setShowDropdown] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const handleToggleDropdown = (e: React.MouseEvent) => {
@@ -48,13 +55,13 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
 
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      const menuHeight = 110;
+      const menuHeight = 220;
       const viewportHeight = window.innerHeight;
       const spaceBelow = viewportHeight - rect.bottom;
 
       setDropdownPos({
         top: spaceBelow < menuHeight ? rect.top - menuHeight : rect.bottom + 4,
-        left: rect.right - 130,
+        left: rect.right - 180,
       });
       setShowDropdown(true);
     }
@@ -74,8 +81,22 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
     };
   }, [showDropdown]);
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("application/x-chat-session", session.id);
+    e.dataTransfer.effectAllowed = "move";
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => setIsDragging(false);
+
   return (
-    <div className="relative mb-3 group" onClick={onSelect}>
+    <div
+      className={`relative mb-3 group ${isDragging ? "opacity-50" : ""}`}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={onSelect}
+    >
       {isSelected && (
         <div
           className={`absolute -inset-0.5 rounded-2xl blur-md ${
@@ -202,9 +223,12 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
           >
             <ChatSessionDropdown
               isStarred={isStarred}
+              folders={folders}
+              currentFolderId={session.folder_id ?? null}
               onStar={onStar}
               onUnstar={onUnstar}
               onDelete={onDelete}
+              onMoveToFolder={onMoveToFolder}
               onClose={() => setShowDropdown(false)}
             />
           </div>,
