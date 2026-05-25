@@ -59,6 +59,7 @@ export const THEMED_ADMIN_COMPONENTS = [
     "Admin/Document/index",
     "Admin/ActivityLogs/index",
     "Admin/Account/index",
+    "Admin/Settings/index",
 ] as const;
 export const THEMED_STAFF_COMPONENTS = [
     "Staff/Dashboard/index",

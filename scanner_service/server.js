@@ -14,6 +14,9 @@ const PORT = 3000;
 // Note: We use the raw string here, and will add quotes when building the command string
 const NAPS2_PATH = 'C:\\Program Files\\NAPS2\\NAPS2.Console.exe';
 const OUTPUT_DIR = path.join(__dirname, 'scans');
+const CONFIG_PATH = path.join(__dirname, 'scanner_config.json');
+const DEFAULT_DEVICE = 'HP AIO Scanner';
+const DEFAULT_DRIVER = 'wia';
 
 // Middleware
 app.use(cors());
@@ -22,6 +25,29 @@ app.use(express.json());
 // Ensure output directory exists
 if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
+// ---------------------------------------------------------
+// Helpers: read/write the selected-scanner config file
+// ---------------------------------------------------------
+function readScannerConfig() {
+    try {
+        if (fs.existsSync(CONFIG_PATH)) {
+            const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
+            const parsed = JSON.parse(raw);
+            return {
+                device: typeof parsed.device === 'string' && parsed.device ? parsed.device : DEFAULT_DEVICE,
+                driver: typeof parsed.driver === 'string' && parsed.driver ? parsed.driver : DEFAULT_DRIVER,
+            };
+        }
+    } catch (e) {
+        console.warn('Failed to read scanner_config.json, using defaults:', e.message);
+    }
+    return { device: DEFAULT_DEVICE, driver: DEFAULT_DRIVER };
+}
+
+function writeScannerConfig(cfg) {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
 }
 
 // Startup Check
@@ -59,7 +85,10 @@ app.post('/scan', async (req, res) => {
     // -f           : Force overwrite
     // -v           : Verbose output
     // Note: We wrap paths in quotes to handle spaces
-    const command = `"${NAPS2_PATH}" --driver wia --device "HP AIO Scanner" --source Feeder -o "${outputPath}" -f -v`;
+    const { device, driver } = readScannerConfig();
+    // Escape any double-quotes in the device name to keep the shell command well-formed.
+    const safeDevice = device.replace(/"/g, '\\"');
+    const command = `"${NAPS2_PATH}" --driver ${driver} --device "${safeDevice}" --source Feeder -o "${outputPath}" -f -v`;
 
     console.log(`Executing: ${command}`);
 
@@ -133,6 +162,84 @@ app.post('/scan', async (req, res) => {
             });
         }
     });
+});
+
+// ---------------------------------------------------------
+// GET /devices
+// List scanners connected to this PC via NAPS2 --listdevices.
+// Accepts an optional ?driver=wia|twain query (default: wia).
+// ---------------------------------------------------------
+app.get('/devices', (req, res) => {
+    if (!fs.existsSync(NAPS2_PATH)) {
+        return res.status(500).json({
+            success: false,
+            message: 'NAPS2 software not detected.',
+            details: `Executable missing at: ${NAPS2_PATH}. Please install NAPS2.`,
+        });
+    }
+
+    const driver = (req.query.driver && /^[a-zA-Z]+$/.test(req.query.driver))
+        ? req.query.driver
+        : DEFAULT_DRIVER;
+
+    const command = `"${NAPS2_PATH}" --driver ${driver} --listdevices`;
+    console.log(`Executing: ${command}`);
+
+    exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
+        if (error) {
+            console.error('NAPS2 listdevices error:', error.message);
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to enumerate scanners.',
+                details: stderr || error.message,
+            });
+        }
+
+        const devices = (stdout || '')
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        res.json({
+            success: true,
+            driver,
+            devices,
+            current: readScannerConfig(),
+        });
+    });
+});
+
+// ---------------------------------------------------------
+// GET /config
+// Return the currently selected scanner.
+// ---------------------------------------------------------
+app.get('/config', (req, res) => {
+    res.json({ success: true, config: readScannerConfig() });
+});
+
+// ---------------------------------------------------------
+// POST /config
+// Persist the selected scanner. Body: { device: string, driver?: string }
+// ---------------------------------------------------------
+app.post('/config', (req, res) => {
+    const { device, driver } = req.body || {};
+
+    if (typeof device !== 'string' || !device.trim()) {
+        return res.status(400).json({ success: false, message: 'device is required.' });
+    }
+
+    const cfg = {
+        device: device.trim(),
+        driver: (typeof driver === 'string' && /^[a-zA-Z]+$/.test(driver)) ? driver : DEFAULT_DRIVER,
+    };
+
+    try {
+        writeScannerConfig(cfg);
+        res.json({ success: true, config: cfg });
+    } catch (e) {
+        console.error('Failed to write scanner_config.json:', e.message);
+        res.status(500).json({ success: false, message: 'Failed to save scanner config.', details: e.message });
+    }
 });
 
 // Root Route for friendly verification

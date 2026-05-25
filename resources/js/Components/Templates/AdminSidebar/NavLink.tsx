@@ -1,5 +1,5 @@
 
-import { Home, Bot, FileText, Users2, LogOut, Activity, User } from "lucide-react";
+import { Home, Bot, FileText, Users2, LogOut, Activity, User, Settings } from "lucide-react";
 import React from "react";
 
 
@@ -30,5 +30,10 @@ export const navLinksData = [
         title: "Account Management",
         path: "/admin/account",
         icon: <User size={18} />,
+    },
+    {
+        title: "Settings",
+        path: "/admin/settings",
+        icon: <Settings size={18} />,
     },
 ];

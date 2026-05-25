@@ -15,6 +15,7 @@ use App\Http\Controllers\UserProfileController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\SettingsController;
 use Inertia\Inertia;
 use App\Http\Controllers\Controller;
 
@@ -66,6 +67,10 @@ Route::get('/admin/documents/counts', [DocumentController::class, 'getDocumentCo
     Route::get('/notifications', [AdminController::class, 'getNotifications'])->name('admin.notifications.list');
     Route::put('/notifications/{id}/read', [AdminController::class, 'markNotificationRead'])->name('admin.notifications.read');
     Route::put('/notifications/read-all', [AdminController::class, 'markAllNotificationsRead'])->name('admin.notifications.read-all');
+
+    // Settings Routes (Groq API keys)
+    Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings');
+    Route::post('/settings/groq', [SettingsController::class, 'update'])->name('admin.settings.update');
 
     // Permission Request Management Routes
     Route::get('/permission-requests/pending', [AccountController::class, 'getPendingRequests'])->name('admin.permission-requests.pending');
