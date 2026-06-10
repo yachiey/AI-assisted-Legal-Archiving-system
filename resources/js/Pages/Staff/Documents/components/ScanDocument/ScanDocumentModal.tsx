@@ -100,7 +100,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
     : "text-white";
   const primaryTileStyle = isDashboardThemeEnabled
     ? undefined
-    : { background: "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)" };
+    : { background: "linear-gradient(135deg, #00491e 0%, #003a18 100%)" };
 
   const modalContent = (
     <div
@@ -176,7 +176,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
                 ></div>
                 <ScanLine
                   className={`relative z-10 h-10 w-10 ${
-                    isDashboardThemeEnabled ? "text-primary" : "text-[#228B22]"
+                    isDashboardThemeEnabled ? "text-primary" : "text-[#00491e]"
                   }`}
                 />
               </div>
@@ -208,7 +208,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
                     ? undefined
                     : {
                         background:
-                          "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                          "linear-gradient(135deg, #00491e 0%, #003a18 100%)",
                       }
                 }
               >
@@ -232,12 +232,12 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
                   className={`absolute inset-0 rounded-full border-4 border-t-transparent animate-spin ${
                     isDashboardThemeEnabled
                       ? "border-primary"
-                      : "border-[#228B22]"
+                      : "border-[#00491e]"
                   }`}
                 ></div>
                 <ScanLine
                   className={`absolute inset-0 m-auto h-10 w-10 animate-pulse ${
-                    isDashboardThemeEnabled ? "text-primary" : "text-[#228B22]"
+                    isDashboardThemeEnabled ? "text-primary" : "text-[#00491e]"
                   }`}
                 />
               </div>
@@ -261,7 +261,7 @@ const ScanDocumentModal: React.FC<ScanDocumentModalProps> = ({
               >
                 <CheckCircle2
                   className={`h-10 w-10 ${
-                    isDashboardThemeEnabled ? "text-success" : "text-[#228B22]"
+                    isDashboardThemeEnabled ? "text-success" : "text-[#00491e]"
                   }`}
                 />
               </div>

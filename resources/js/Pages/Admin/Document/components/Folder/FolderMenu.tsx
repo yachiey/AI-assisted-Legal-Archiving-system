@@ -48,7 +48,7 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
             className={`flex w-full items-center gap-2 px-4 py-2 text-left font-medium transition-all ${
               isDashboardThemeEnabled
                 ? "text-base-content hover:bg-base-200/90 hover:text-primary"
-                : "text-gray-900 hover:bg-white/30 hover:text-[#228B22]"
+                : "text-gray-900 hover:bg-white/30 hover:text-[#00491e]"
             }`}
           >
             <Info className="w-4 h-4" />
@@ -61,7 +61,7 @@ const FolderMenu: React.FC<FolderMenuProps> = ({ onRename, onDelete, onPropertie
             className={`flex w-full items-center gap-2 px-4 py-2 text-left font-medium transition-all ${
               isDashboardThemeEnabled
                 ? "text-base-content hover:bg-base-200/90 hover:text-primary"
-                : "text-gray-900 hover:bg-white/30 hover:text-[#228B22]"
+                : "text-gray-900 hover:bg-white/30 hover:text-[#00491e]"
             }`}
           >
             <Edit2 className="w-4 h-4" />

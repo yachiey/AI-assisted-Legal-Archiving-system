@@ -49,11 +49,11 @@ const DocumentQueueNavigation: React.FC<DocumentQueueNavigationProps> = ({
                                     i < currentPosition
                                         ? isDashboardThemeEnabled
                                             ? "bg-primary"
-                                            : "bg-[#228B22]"
+                                            : "bg-[#00491e]"
                                         : i === currentPosition - 1
                                           ? isDashboardThemeEnabled
                                               ? "bg-primary ring-2 ring-primary/30"
-                                              : "bg-[#228B22] ring-2 ring-green-300"
+                                              : "bg-[#00491e] ring-2 ring-green-300"
                                           : isDashboardThemeEnabled
                                             ? "bg-base-300"
                                             : "bg-gray-300"

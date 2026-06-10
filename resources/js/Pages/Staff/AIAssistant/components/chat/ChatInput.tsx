@@ -58,13 +58,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               className={`p-4 rounded-2xl border ${
                 isDashboardThemeEnabled
                   ? "bg-base-100 border-base-300"
-                  : "bg-gradient-to-br from-[#FBEC5D]/10 to-[#F4D03F]/10 border-[#FBEC5D]/30"
+                  : "bg-gradient-to-br from-[#ffc600]/10 to-[#F4D03F]/10 border-[#ffc600]/30"
               }`}
             >
               <div className="relative flex items-center justify-between mb-3">
                 <h4
                   className={`text-sm font-bold ${
-                    isDashboardThemeEnabled ? "text-primary" : "text-[#228B22]"
+                    isDashboardThemeEnabled ? "text-primary" : "text-[#00491e]"
                   }`}
                 >
                   Attached Documents ({attachedDocuments.length})
@@ -82,7 +82,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   >
                     <svg
                       className={`w-4 h-4 mr-2 ${
-                        isDashboardThemeEnabled ? "text-primary" : "text-[#228B22]"
+                        isDashboardThemeEnabled ? "text-primary" : "text-[#00491e]"
                       }`}
                       fill="none"
                       stroke="currentColor"
@@ -140,7 +140,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               className={`relative h-14 rounded-2xl transition-all flex items-center shadow-sm ${
                 isDashboardThemeEnabled
                   ? "bg-base-100 border border-base-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                  : "bg-white border border-gray-300 focus-within:border-[#228B22] focus-within:ring-2 focus-within:ring-[#228B22]/20"
+                  : "bg-white border border-gray-300 focus-within:border-[#00491e] focus-within:ring-2 focus-within:ring-[#00491e]/20"
               }`}
             >
               <input
@@ -163,7 +163,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   attachedDocuments.length > 0
                     ? isDashboardThemeEnabled
                       ? "bg-primary text-primary-content shadow-sm"
-                      : "bg-[#228B22] text-white shadow-sm"
+                      : "bg-[#00491e] text-white shadow-sm"
                     : isDashboardThemeEnabled
                       ? "text-base-content/45 hover:bg-base-200 hover:text-primary"
                       : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -194,7 +194,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               className={`w-full h-full flex items-center justify-center rounded-2xl transition-all shadow-md hover:shadow-lg disabled:shadow-none ${
                 isDashboardThemeEnabled
                   ? "bg-primary hover:bg-secondary disabled:bg-base-300 disabled:text-base-content/45 text-primary-content"
-                  : "bg-[#228B22] hover:bg-[#1a6b1a] disabled:bg-gray-300 disabled:text-gray-500 text-white"
+                  : "bg-[#00491e] hover:bg-[#003a18] disabled:bg-gray-300 disabled:text-gray-500 text-white"
               }`}
               title="Send message"
             >

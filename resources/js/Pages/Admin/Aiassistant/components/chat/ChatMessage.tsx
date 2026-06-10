@@ -25,7 +25,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const bubbleClass = isUser
     ? isDashboardThemeEnabled
       ? "bg-gradient-to-br from-primary to-secondary text-primary-content shadow-lg shadow-primary/20"
-      : "bg-gradient-to-br from-[#228B22] to-[#1a6b1a] text-white shadow-lg shadow-green-900/10"
+      : "bg-gradient-to-br from-[#00491e] to-[#003a18] text-white shadow-lg shadow-green-900/10"
     : isDashboardThemeEnabled
       ? "border border-base-300 bg-base-100 text-base-content shadow-xl shadow-base-content/5"
       : "border border-gray-200 bg-white text-gray-900 shadow-md shadow-gray-200/70";
@@ -44,7 +44,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
               isDashboardThemeEnabled
                 ? "border-primary/20 bg-primary/10 text-primary"
-                : "border-green-100 bg-green-50 text-[#228B22]"
+                : "border-green-100 bg-green-50 text-[#00491e]"
             }`}
           >
             <Bot className="h-5 w-5" />
@@ -58,7 +58,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 className={`pointer-events-none absolute inset-x-0 top-0 h-16 ${
                   isDashboardThemeEnabled
                     ? "bg-gradient-to-r from-primary/12 via-secondary/8 to-transparent"
-                    : "bg-gradient-to-r from-[#228B22]/10 via-[#FBEC5D]/10 to-transparent"
+                    : "bg-gradient-to-r from-[#00491e]/10 via-[#ffc600]/10 to-transparent"
                 }`}
               />
             )}
@@ -69,7 +69,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   className={`mb-2 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] ${
                     isDashboardThemeEnabled
                       ? "bg-primary/10 text-primary"
-                      : "bg-green-50 text-[#228B22]"
+                      : "bg-green-50 text-[#00491e]"
                   }`}
                 >
                   AI Assistant

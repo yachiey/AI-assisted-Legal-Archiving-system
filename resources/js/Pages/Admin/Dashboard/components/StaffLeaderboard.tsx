@@ -64,7 +64,7 @@ const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({
           >
             <Users
               className={`h-5 w-5 ${
-                isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
               }`}
             />
           </div>
@@ -89,7 +89,7 @@ const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({
         </div>
         <Trophy
           className={`h-5 w-5 opacity-50 transition-all duration-500 group-hover:scale-110 group-hover:opacity-100 ${
-            isDashboardThemeEnabled ? "text-secondary" : "text-[#FBEC5D]"
+            isDashboardThemeEnabled ? "text-secondary" : "text-[#ffc600]"
           }`}
         />
       </div>
@@ -111,7 +111,7 @@ const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({
                   className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-xs font-black transition-colors duration-300 ${
                     isDashboardThemeEnabled
                       ? "border border-base-300 bg-base-200 text-base-content group-hover/item:bg-primary group-hover/item:text-primary-content"
-                      : "border border-white/20 bg-white/10 text-white group-hover/item:bg-[#FBEC5D] group-hover/item:text-gray-900"
+                      : "border border-white/20 bg-white/10 text-white group-hover/item:bg-[#ffc600] group-hover/item:text-gray-900"
                   }`}
                 >
                   {staff.profile_picture ? (
@@ -154,14 +154,14 @@ const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({
                 <div className="flex items-center justify-end gap-1.5">
                   <span
                     className={`text-sm font-black ${
-                      isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                      isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
                     }`}
                   >
                     {staff.count}
                   </span>
                   <TrendingUp
                     className={`h-3 w-3 ${
-                      isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                      isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
                     }`}
                   />
                 </div>
@@ -237,7 +237,7 @@ const StaffLeaderboard: React.FC<StaffLeaderboardProps> = ({
         className={`h-1 w-full ${
           isDashboardThemeEnabled
             ? "bg-gradient-to-r from-transparent via-primary/30 to-transparent"
-            : "bg-gradient-to-r from-transparent via-[#FBEC5D]/30 to-transparent"
+            : "bg-gradient-to-r from-transparent via-[#ffc600]/30 to-transparent"
         }`}
       ></div>
     </div>

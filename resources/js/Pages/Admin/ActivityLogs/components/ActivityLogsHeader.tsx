@@ -160,7 +160,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 >
                     <div className="flex items-center gap-3">
                         <Calendar className={`w-5 h-5 ${
-                            isDashboardThemeEnabled ? 'text-primary-content' : 'text-[#FBEC5D]'
+                            isDashboardThemeEnabled ? 'text-primary-content' : 'text-[#ffc600]'
                         }`} />
                         <h3 className="text-lg font-bold text-white">{title}</h3>
                     </div>
@@ -199,7 +199,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                                 }`}
                                 style={
                                     rangeType === type && !isDashboardThemeEnabled
-                                        ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                                        ? { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
                                         : {}
                                 }
                             >
@@ -225,7 +225,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                             }`}
                             style={
                                 rangeType === 'custom' && !isDashboardThemeEnabled
-                                    ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                                    ? { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
                                     : {}
                             }
                         >
@@ -393,7 +393,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                         style={
                             isDashboardThemeEnabled
                                 ? undefined
-                                : { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                                : { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
                         }
                     >
                         {isLoading ? (
@@ -448,7 +448,7 @@ const ActivityLogsHeader: React.FC<ActivityLogsHeaderProps> = ({
                 style={
                     isDashboardThemeEnabled
                         ? undefined
-                        : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                        : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
                 }
             >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -466,7 +466,7 @@ const ActivityLogsHeader: React.FC<ActivityLogsHeaderProps> = ({
                             style={{
                                 background: isDashboardThemeEnabled
                                     ? 'linear-gradient(90deg, oklch(var(--a)), transparent)'
-                                    : 'linear-gradient(90deg, #facc15, transparent)',
+                                    : 'linear-gradient(90deg, #ffc600, transparent)',
                             }}
                         ></div>
                         <p className={`text-lg font-medium tracking-wide ${

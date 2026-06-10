@@ -33,7 +33,7 @@ export default function MonthlyUploads({ data }: MonthlyUploadsProps) {
         style={
           isDashboardThemeEnabled
             ? undefined
-            : { background: "linear-gradient(135deg, #228B22 0%, #355105ff 100%)" }
+            : { background: "linear-gradient(135deg, #00491e 0%, #355105ff 100%)" }
         }
       >
         <div className="space-y-1.5 p-6">

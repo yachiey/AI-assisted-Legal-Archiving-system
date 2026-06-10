@@ -14,18 +14,18 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #228B22;
+    background: #00491e;
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #1a6b1a;
+    background: #003a18;
 }
 
 /* Firefox */
 * {
     scrollbar-width: thin;
-    scrollbar-color: #228B22 #f1f1f1;
+    scrollbar-color: #00491e #f1f1f1;
 }
 
 /* ==============================

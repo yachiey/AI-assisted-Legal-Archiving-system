@@ -30,6 +30,28 @@ class DocumentQueryService
             $query->where('folder_id', $request->folder_id);
         }
 
+        // Apply physical location (cabinet) filter
+        if ($request->has('physical_location') && $request->physical_location !== null && $request->physical_location !== '') {
+            if ($request->physical_location === '__none__') {
+                // Documents with no assigned physical location
+                $query->where(function ($q) {
+                    $q->whereNull('physical_location')->orWhere('physical_location', '');
+                });
+            } else {
+                $query->where('physical_location', $request->physical_location);
+            }
+        }
+
+        // Apply managed location filter (includes the whole subtree of that location)
+        if ($request->filled('location_id')) {
+            if ($request->location_id === 'none') {
+                $query->whereNull('location_id');
+            } else {
+                $ids = $this->descendantLocationIds((int) $request->location_id);
+                $query->whereIn('location_id', $ids);
+            }
+        }
+
         // Apply year filter
         if ($request->has('year') && $request->year) {
             $query->whereYear('created_at', $request->year);
@@ -81,6 +103,24 @@ class DocumentQueryService
         }
 
         return $query->get();
+    }
+
+    /**
+     * Collect a location's ID plus all descendant location IDs (recursive subtree).
+     */
+    private function descendantLocationIds(int $locationId): array
+    {
+        $ids = [$locationId];
+
+        $children = \App\Models\Location::where('parent_id', $locationId)
+            ->pluck('id')
+            ->toArray();
+
+        foreach ($children as $childId) {
+            $ids = array_merge($ids, $this->descendantLocationIds($childId));
+        }
+
+        return $ids;
     }
 
     /**

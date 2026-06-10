@@ -7,6 +7,7 @@ import {
 } from '../../../../../hooks/useDashboardTheme';
 import { router } from '@inertiajs/react';
 import { folderService } from '../../services/folderService';
+import LocationSelect from '../Location/LocationSelect';
 
 interface EditDocumentModalProps {
   isOpen: boolean;
@@ -28,7 +29,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
     description: '',
     folder_id: null as number | null,
     remarks: '',
-    physical_location: ''
+    physical_location: '',
+    location_id: null as number | null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +62,8 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
         description: document.description || '',
         folder_id: document.folder_id || null,
         remarks: document.remarks || '',
-        physical_location: document.physical_location || ''
+        physical_location: document.physical_location || '',
+        location_id: document.location_id ?? null
       });
       setError(null);
     }
@@ -223,19 +226,16 @@ const EditDocumentModal: React.FC<EditDocumentModalProps> = ({
               </select>
             </div>
 
-            {/* Physical Location */}
+            {/* Physical Location (managed cabinets) */}
             <div>
-              <label htmlFor="physical_location" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
+              <label htmlFor="location_id" className={`mb-2 block text-sm font-medium ${isDashboardThemeEnabled ? 'text-base-content/80' : 'text-gray-700'}`}>
                 Physical Location
               </label>
-              <input
-                type="text"
-                id="physical_location"
-                name="physical_location"
-                value={formData.physical_location}
-                onChange={handleInputChange}
-                className={`w-full rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content placeholder-base-content/40 focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500'}`}
-                placeholder="e.g., Cabinet A, Shelf 3, Box 12"
+              <LocationSelect
+                id="location_id"
+                value={formData.location_id}
+                onChange={(loc) => setFormData(prev => ({ ...prev, location_id: loc }))}
+                className={`w-full rounded-lg border px-4 py-2 transition-all focus:outline-none focus:ring-2 ${isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content focus:border-primary focus:ring-primary' : 'border-gray-300 bg-white text-gray-900 focus:border-green-500 focus:ring-green-500'}`}
               />
             </div>
 

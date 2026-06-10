@@ -22,12 +22,20 @@ class Document extends Model
         'ai_suggested_folder',
         'remarks',
         'physical_location',
+        'location_id',
+        'tracking_status',
+        'checked_out_to',
+        'checked_out_at',
+        'tracking_due_date',
         'document_ref_id',
     ];
 
     protected $casts = [
         'folder_id' => 'integer',
         'created_by' => 'integer',
+        'location_id' => 'integer',
+        'checked_out_at' => 'datetime',
+        'tracking_due_date' => 'date',
     ];
 
     public function user()
@@ -58,5 +66,15 @@ class Document extends Model
     public function activityLogs()
     {
         return $this->hasMany(ActivityLog::class, 'doc_id', 'doc_id');
+    }
+
+    public function trackings()
+    {
+        return $this->hasMany(DocumentTracking::class, 'doc_id', 'doc_id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'location_id');
     }
 }

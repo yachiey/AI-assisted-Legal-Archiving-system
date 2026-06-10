@@ -23,7 +23,7 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         className={`absolute inset-0 ${
           isDashboardThemeEnabled
             ? "bg-primary/90 border-b border-primary-content/10"
-            : "bg-[#144a18] border-b border-green-700"
+            : "bg-[#003a18] border-b border-green-700"
         }`}
       />
 

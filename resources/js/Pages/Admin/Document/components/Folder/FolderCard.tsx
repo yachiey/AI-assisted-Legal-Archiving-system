@@ -159,7 +159,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         style={{
           background: isDashboardThemeEnabled
             ? "linear-gradient(90deg, oklch(var(--p) / 0.55), oklch(var(--s) / 0.4), oklch(var(--p) / 0.55))"
-            : "linear-gradient(90deg, #228B22, #FBEC5D, #228B22)",
+            : "linear-gradient(90deg, #00491e, #ffc600, #00491e)",
         }}
       ></div>
 
@@ -167,7 +167,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
         className={`relative h-full rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 ${
           isDashboardThemeEnabled
             ? "border border-base-300/80 bg-base-100/95 shadow-xl shadow-base-content/5 hover:border-primary/35 hover:shadow-2xl hover:shadow-primary/10"
-            : "border border-transparent bg-gradient-to-br from-[#228B22] to-[#1a6b1a] shadow-lg hover:border-white/20 hover:shadow-2xl"
+            : "border border-transparent bg-gradient-to-br from-[#00491e] to-[#003a18] shadow-lg hover:border-white/20 hover:shadow-2xl"
         } ${isExpanded ? 'shadow-2xl scale-[1.02]' : ''}`}
       >
         {/* Folder Header - Click to navigate */}
@@ -189,14 +189,14 @@ const FolderCard: React.FC<FolderCardProps> = ({
               <div className="relative flex-shrink-0">
                 <div
                   className={`absolute inset-0 rounded-2xl blur-md transition-all group-hover:blur-lg ${
-                    isDashboardThemeEnabled ? "bg-primary/20" : "bg-[#FBEC5D]/30"
+                    isDashboardThemeEnabled ? "bg-primary/20" : "bg-[#ffc600]/30"
                   }`}
                 ></div>
                 <div
                   className={`relative rounded-2xl border p-3 backdrop-blur-sm transition-all transform group-hover:scale-110 group-hover:rotate-3 ${
                     isDashboardThemeEnabled
                       ? "border-base-300/80 bg-base-200/85 group-hover:border-primary/35"
-                      : "border-white/10 bg-gradient-to-br from-white/20 to-white/5 group-hover:border-[#FBEC5D]/50"
+                      : "border-white/10 bg-gradient-to-br from-white/20 to-white/5 group-hover:border-[#ffc600]/50"
                   }`}
                 >
                   {/* Inner shine effect */}
@@ -209,7 +209,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                   ></div>
                   <Folder
                     className={`relative z-10 h-7 w-7 drop-shadow-lg ${
-                      isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                      isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
                     }`}
                     strokeWidth={2.5}
                   />
@@ -220,7 +220,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                 <h3 className={`text-base font-bold transition-all break-words leading-snug ${
                   isDashboardThemeEnabled
                     ? "text-base-content group-hover:text-primary"
-                    : "text-white group-hover:text-[#FBEC5D]"
+                    : "text-white group-hover:text-[#ffc600]"
                 }`} style={{
                   wordBreak: 'break-word',
                   display: '-webkit-box',
@@ -254,7 +254,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
               title={isExpanded ? "Hide contents" : "Show contents"}
             >
               {isExpanded ? (
-                <ChevronUp className="w-4 h-4 text-[#FBEC5D]" strokeWidth={2.5} />
+                <ChevronUp className="w-4 h-4 text-[#ffc600]" strokeWidth={2.5} />
               ) : (
                 <ChevronDown className="w-4 h-4 text-white" strokeWidth={2.5} />
               )}
@@ -297,7 +297,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
               : "border-white/10 bg-white/10"
           }`}>
             <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${
-              isDashboardThemeEnabled ? "bg-primary" : "bg-[#FBEC5D]"
+              isDashboardThemeEnabled ? "bg-primary" : "bg-[#ffc600]"
             }`}></div>
             <span className={`text-xs font-bold ${
               isDashboardThemeEnabled ? "text-base-content" : "text-white/90"
@@ -337,10 +337,10 @@ const FolderCard: React.FC<FolderCardProps> = ({
                   isDashboardThemeEnabled ? "text-base-content" : "text-white"
                 }`}>
                   <div className={`rounded-lg p-1.5 ${
-                    isDashboardThemeEnabled ? "bg-primary/10" : "bg-[#FBEC5D]/20"
+                    isDashboardThemeEnabled ? "bg-primary/10" : "bg-[#ffc600]/20"
                   }`}>
                     <FileText className={`h-4 w-4 ${
-                      isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                      isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
                     }`} strokeWidth={2.5} />
                   </div>
                   Documents
@@ -385,7 +385,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                           className={`relative flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all transform hover:scale-[1.02] hover:shadow-md ${
                             isDashboardThemeEnabled
                               ? "border-base-300/75 bg-base-100/85 hover:border-primary/35 hover:bg-base-100"
-                              : "border-white/10 bg-white/5 hover:border-[#FBEC5D]/30 hover:bg-white/15"
+                              : "border-white/10 bg-white/5 hover:border-[#ffc600]/30 hover:bg-white/15"
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -394,10 +394,10 @@ const FolderCard: React.FC<FolderCardProps> = ({
                         >
                           {/* Document icon with background */}
                           <div className={`shrink-0 rounded-lg p-2 ${
-                            isDashboardThemeEnabled ? "bg-primary/10" : "bg-[#FBEC5D]/10"
+                            isDashboardThemeEnabled ? "bg-primary/10" : "bg-[#ffc600]/10"
                           }`}>
                             <FileText className={`h-4 w-4 ${
-                              isDashboardThemeEnabled ? "text-primary" : "text-[#FBEC5D]"
+                              isDashboardThemeEnabled ? "text-primary" : "text-[#ffc600]"
                             }`} strokeWidth={2.5} />
                           </div>
 
@@ -405,7 +405,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                             <p className={`truncate text-sm font-bold transition-colors ${
                               isDashboardThemeEnabled
                                 ? "text-base-content group-hover/doc:text-primary"
-                                : "text-white group-hover/doc:text-[#FBEC5D]"
+                                : "text-white group-hover/doc:text-[#ffc600]"
                             }`}>
                               {document.title}
                             </p>
@@ -416,7 +416,7 @@ const FolderCard: React.FC<FolderCardProps> = ({
                                 document.status === 'active'
                                   ? isDashboardThemeEnabled
                                     ? 'bg-success/15 text-success'
-                                    : 'bg-[#FBEC5D]/20 text-[#FBEC5D]'
+                                    : 'bg-[#ffc600]/20 text-[#ffc600]'
                                   : document.status === 'draft'
                                     ? isDashboardThemeEnabled
                                       ? 'bg-warning/15 text-warning'

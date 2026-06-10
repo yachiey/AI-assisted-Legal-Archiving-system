@@ -33,7 +33,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
                         ? undefined
                         : {
                               background:
-                                  "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                                  "linear-gradient(135deg, #00491e 0%, #003a18 100%)",
                           }
                 }
             >
@@ -60,7 +60,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
                             style={{
                                 background: isDashboardThemeEnabled
                                     ? "linear-gradient(90deg, oklch(var(--a)), transparent)"
-                                    : "linear-gradient(90deg, #facc15, transparent)",
+                                    : "linear-gradient(90deg, #ffc600, transparent)",
                             }}
                         ></div>
                         <p
@@ -102,7 +102,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
                             ? undefined
                             : {
                                   background:
-                                      "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)",
+                                      "linear-gradient(135deg, #00491e 0%, #003a18 100%)",
                               }
                     }
                 >
@@ -156,7 +156,7 @@ const AccountHeader: React.FC<AccountHeaderProps> = ({
                             ? undefined
                             : {
                                   background:
-                                      "linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)",
+                                      "linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)",
                               }
                     }
                 >

@@ -7,6 +7,7 @@ import { router } from '@inertiajs/react';
 import UploadDocumentViewer from './UploadDocumentViewer';
 import DocumentQueueNavigation from './DocumentQueueNavigation';
 import { useDocumentQueue } from '../../hooks/useDocumentQueue';
+import LocationSelect from '../Location/LocationSelect';
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -48,6 +49,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'analyzing' | 'processing' | 'completed' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [physicalLocation, setPhysicalLocation] = useState<string>(documentData?.physicalLocation || '');
+  const [locationId, setLocationId] = useState<number | null>((documentData as any)?.location_id ?? null);
   const [documentRefId, setDocumentRefId] = useState<string>(documentData?.document_ref_id || '');
   const [errors, setErrors] = useState({ documentRefId: '' });
   const docRefIdInputRef = React.useRef<HTMLInputElement>(null);
@@ -391,7 +393,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
           folder_id: selectedFolderId || document.folder_id,
           description: document.description,
           remarks: document.remarks,
-          physical_location: physicalLocation,
+          location_id: locationId,
           document_ref_id: documentRefId
         }, {
           headers: {
@@ -577,7 +579,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
     : 'rounded-lg shadow-md';
   const accentIconStyle = isDashboardThemeEnabled
     ? undefined
-    : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' };
+    : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' };
   const accentIconTextClass = isDashboardThemeEnabled ? 'text-primary' : 'text-white';
 
   return (
@@ -609,7 +611,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
             style={
               isDashboardThemeEnabled
                 ? undefined
-                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
             }
           ></div>
 
@@ -621,7 +623,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
               className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                 isDashboardThemeEnabled
                   ? 'border-primary/20 bg-primary/10 text-primary'
-                  : 'border-green-200 bg-green-100 text-[#228B22]'
+                  : 'border-green-200 bg-green-100 text-[#00491e]'
               }`}
             >
               Groq AI Analysis
@@ -776,7 +778,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
             <p className={`rounded-lg border-l-4 p-5 text-base font-normal leading-relaxed ${
               isDashboardThemeEnabled
                 ? 'border-primary bg-primary/10 text-base-content/80'
-                : 'border-[#228B22] bg-green-50 text-gray-700'
+                : 'border-[#00491e] bg-green-50 text-gray-700'
             }`}>
               {document.description || "Document has been processed and is ready for review."}
             </p>
@@ -856,7 +858,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                               style={{ paddingLeft: isSubfolder ? '2rem' : '1rem' }}
                             >
                               <div className={`font-semibold flex items-center gap-2 tracking-wide ${titleTextClass}`}>
-                                {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#228B22]'}>└─</span>}
+                                {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#00491e]'}>└─</span>}
                                 {folder.folder_name}
                               </div>
                               <div className={`mt-1 text-xs tracking-wide ${mutedTextClass}`}>{folder.folder_path}</div>
@@ -875,7 +877,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                         className={`flex w-full items-center gap-2 border-t px-4 py-3 text-left font-bold transition-all duration-200 ${
                           isDashboardThemeEnabled
                             ? 'border-base-300 text-primary hover:bg-base-200'
-                            : 'border-gray-100 text-[#228B22] hover:bg-green-50'
+                            : 'border-gray-100 text-[#00491e] hover:bg-green-50'
                         }`}
                       >
                         <Plus className="w-4 h-4" />
@@ -889,7 +891,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
               {/* Selected folder display */}
               {selectedFolderId && (
                 <div className={`mt-2 flex items-center text-xs font-medium ${
-                  isDashboardThemeEnabled ? 'text-success' : 'text-[#228B22]'
+                  isDashboardThemeEnabled ? 'text-success' : 'text-[#00491e]'
                 }`}>
                   <CheckCircle className="w-4 h-4 mr-1" />
                   Folder selected
@@ -912,19 +914,15 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                 <span className={`text-sm font-semibold ${titleTextClass}`}>{document.createdAt}</span>
               </div>
 
-              {/* Physical Location Input */}
+              {/* Physical Location (managed cabinets) */}
               <div className="pt-3">
                 <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Physical Location (Optional)</label>
                 <div className={fieldSurfaceClass}>
-                  <input
-                    type="text"
-                    value={physicalLocation}
-                    onChange={(e) => setPhysicalLocation(e.target.value)}
-                    placeholder="Enter physical location of document (e.g., Cabinet A, Shelf 3)..."
-                    className={`w-full border-none bg-transparent leading-relaxed focus:outline-none focus:ring-0 ${
-                      isDashboardThemeEnabled
-                        ? 'text-base-content placeholder:text-base-content/40'
-                        : 'text-gray-900 placeholder-gray-400'
+                  <LocationSelect
+                    value={locationId}
+                    onChange={setLocationId}
+                    className={`w-full cursor-pointer border-none bg-transparent leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'
                     }`}
                   />
                 </div>
@@ -943,7 +941,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
               style={
                 isDashboardThemeEnabled
                   ? undefined
-                  : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                  : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
               }
             >
               {isProcessing ? (
@@ -1100,7 +1098,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
 
             <div className="px-6 py-5 space-y-4">
               <p className={`text-sm leading-relaxed ${bodyTextClass}`}>
-                The AI suggested folder <span className={`font-bold ${isDashboardThemeEnabled ? 'text-primary' : 'text-[#228B22]'}`}>"{aiSuggestedFolder}"</span> does not exist yet. Would you like to create it now?
+                The AI suggested folder <span className={`font-bold ${isDashboardThemeEnabled ? 'text-primary' : 'text-[#00491e]'}`}>"{aiSuggestedFolder}"</span> does not exist yet. Would you like to create it now?
               </p>
 
               <div>
@@ -1130,7 +1128,7 @@ const AIProcessing: React.FC<AIProcessingProps> = ({ documentData = null }) => {
                   style={
                     isDashboardThemeEnabled
                       ? undefined
-                      : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                      : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
                   }
                 >
                   {isCreatingFolder ? 'Creating...' : 'Create Folder'}

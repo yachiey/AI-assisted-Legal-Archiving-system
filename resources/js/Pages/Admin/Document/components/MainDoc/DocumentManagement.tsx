@@ -2,7 +2,7 @@ import React, { useState, useEffect, JSX } from 'react';
 import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { router } from '@inertiajs/react';
-import { Plus, FileText, FolderPlus, Folder as FolderIcon, ScanLine, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
+import { Plus, FileText, FolderPlus, Folder as FolderIcon, ScanLine, ArrowUpDown, LayoutGrid, List, MapPin, X, CheckSquare, Square, FolderInput } from 'lucide-react';
 
 
 import SearchBar from '../SearhBar/SearchBar';
@@ -16,6 +16,7 @@ import MultiFileUploadUI from '../FileUpload/MultiFileUploadUI';
 import FilterModal from '../Filter/FilterModal';
 import ScanDocumentModal from '../ScanDocument/ScanDocumentModal';
 import DocumentSidebar from '../DocumentSidebar/DocumentSidebar';
+import MoveToLocationModal from '../Location/MoveToLocationModal';
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -270,15 +271,15 @@ const DocumentManagement: React.FC = () => {
   const justOpenedFolder = React.useRef(false);
 
   // Check if any document-level filters are active (year)
-  const hasDocumentFilters = filters.year !== undefined;
+  const hasDocumentFilters = filters.year !== undefined || filters.location_id !== undefined;
 
   // Load data when search term or filters change (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (state.viewMode === 'folders') {
         setState(prev => ({ ...prev, loading: true }));
-        if (state.filters.year !== undefined) {
-          loadDocuments(); // Load documents when year filter is active
+        if (state.filters.year !== undefined || state.filters.location_id !== undefined) {
+          loadDocuments(); // Load documents when a document-level filter (year/location) is active
         } else {
           loadFolders(); // Load folders by default
         }
@@ -409,6 +410,7 @@ const DocumentManagement: React.FC = () => {
 
   const handleFolderClick = async (folder: Folder): Promise<void> => {
     justOpenedFolder.current = true;
+    setLocationCrumb(null);
 
     // Update state synchronously - React 18 batches automatically
     setIsTransitioning(true);
@@ -492,6 +494,7 @@ const DocumentManagement: React.FC = () => {
 
   const handleBackToFolders = async (): Promise<void> => {
     justOpenedFolder.current = false;
+    setLocationCrumb(null);
 
     if (currentFolder?.parent_folder_id) {
       const parentFolder = await folderService.getFolderById(currentFolder.parent_folder_id);
@@ -521,6 +524,94 @@ const DocumentManagement: React.FC = () => {
 
   const handleFilterClick = (): void => {
     setIsFilterModalOpen(true);
+  };
+
+  // Bulk selection + move
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkMoveOpen, setIsBulkMoveOpen] = useState(false);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const allLoadedSelected = documents.length > 0 && documents.every((d) => selectedIds.has(d.doc_id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allLoadedSelected ? new Set() : new Set(documents.map((d) => d.doc_id)));
+  };
+
+  // When dragging, drag the whole selection if the dragged doc is part of it
+  const getDragIds = (docId: number): number[] =>
+    (selectedIds.has(docId) && selectedIds.size > 0) ? Array.from(selectedIds) : [docId];
+
+  // Handle a drag-and-drop onto a sidebar cabinet / sub-location / folder
+  const handleDocumentsDropped = async (
+    target: import('../../types/types').LocationDropTarget,
+    ids: number[]
+  ): Promise<void> => {
+    try {
+      if (target.type === 'location') {
+        await realDocumentService.moveDocuments(ids, target.locationId);
+      } else if (target.type === 'folder') {
+        await realDocumentService.assignFolder(ids, target.folderId);
+      } else if (target.type === 'location-folder') {
+        await realDocumentService.moveDocuments(ids, target.locationId);
+        await realDocumentService.assignFolder(ids, target.folderId);
+      }
+      setSelectedIds(new Set());
+      setSidebarRefreshKey(prev => prev + 1);
+      loadDocuments();
+      refreshCounts();
+    } catch (error) {
+      console.error('Error moving documents:', error);
+    }
+  };
+
+  // Location navigation from the sidebar: show documents in a location subtree
+  const [locationCrumb, setLocationCrumb] = useState<string | null>(null);
+
+  const handleLocationSelect = (locationId: number | 'none', label: string, folderId?: number | null): void => {
+    const newFilters: DocumentFilters = { location_id: locationId };
+    if (folderId != null) newFilters.folder_id = folderId;
+    setLocationCrumb(label);
+    setState(prev => ({
+      ...prev,
+      currentFolder: null,
+      viewMode: 'folders',
+      searchTerm: '',
+      filters: newFilters,
+      documents: [],
+      subfolders: [],
+      loading: true,
+      currentPage: 1,
+    }));
+    setIsMobileSidebarOpen(false);
+  };
+
+  const clearLocationFilter = (): void => {
+    setLocationCrumb(null);
+    setState(prev => ({
+      ...prev,
+      currentFolder: null,
+      viewMode: 'folders',
+      searchTerm: '',
+      filters: {},
+      documents: [],
+      subfolders: [],
+      loading: true,
+      currentPage: 1,
+    }));
+    loadFolders(null);
   };
 
   const handleApplyFilters = (newFilters: DocumentFilters): void => {
@@ -790,6 +881,7 @@ const DocumentManagement: React.FC = () => {
                   handleFolderClick(folder);
                   setIsMobileSidebarOpen(false);
                 } else {
+                  setLocationCrumb(null);
                   setState(prev => ({
                     ...prev,
                     currentFolder: null,
@@ -808,6 +900,11 @@ const DocumentManagement: React.FC = () => {
               collapsed={sidebarCollapsed}
               onToggleCollapse={setSidebarCollapsed}
               refreshTrigger={sidebarRefreshKey}
+              selectedLocationId={(filters.location_id ?? null) as number | 'none' | null}
+              selectedFolderId={filters.folder_id ?? null}
+              onLocationSelect={handleLocationSelect}
+              onLocationsChanged={() => { if (filters.location_id !== undefined) loadDocuments(); }}
+              onDocumentsDropped={handleDocumentsDropped}
             />
           </div>
         </>,
@@ -850,7 +947,7 @@ const DocumentManagement: React.FC = () => {
                     boxShadow:
                       '0 24px 60px oklch(var(--bc) / 0.06), inset 0 1px 0 oklch(var(--b1) / 0.4)',
                   }
-                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
             }
           >
             <div className="relative z-10 flex flex-col items-stretch justify-between gap-4 sm:gap-6 xl:flex-row xl:items-center">
@@ -886,7 +983,7 @@ const DocumentManagement: React.FC = () => {
                   style={{
                     background: isDashboardThemeEnabled
                       ? 'linear-gradient(90deg, oklch(var(--p)), transparent)'
-                      : 'linear-gradient(90deg, #facc15, transparent)',
+                      : 'linear-gradient(90deg, #ffc600, transparent)',
                   }}
                 ></div>
 
@@ -1086,6 +1183,22 @@ const DocumentManagement: React.FC = () => {
                   )}
                 </div>
 
+                <button
+                  onClick={() => { if (selectionMode) { exitSelection(); } else { setSelectionMode(true); } }}
+                  className={`flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-2.5 font-medium transition-all sm:px-4 ${
+                    selectionMode
+                      ? (isDashboardThemeEnabled ? 'bg-primary text-primary-content' : 'bg-white text-green-700 shadow-sm')
+                      : isDashboardThemeEnabled
+                        ? 'border border-base-300 bg-base-100 text-base-content shadow-sm hover:border-primary/40 hover:bg-base-200 hover:text-primary'
+                        : 'border border-white/20 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/20'
+                  }`}
+                  type="button"
+                  title="Select multiple documents"
+                >
+                  <CheckSquare className="w-5 h-5" />
+                  <span className="hidden sm:inline">{selectionMode ? 'Cancel' : 'Select'}</span>
+                </button>
+
                 <div className={`flex rounded-lg border p-1 ${
                   isDashboardThemeEnabled
                     ? 'border-base-300 bg-base-200/70'
@@ -1139,6 +1252,27 @@ const DocumentManagement: React.FC = () => {
             onSearchChange={handleSearchChange}
             onFilterClick={handleFilterClick}
           />
+
+          {/* Active location filter */}
+          {filters.location_id !== undefined && locationCrumb && (
+            <div className="mt-4 flex items-center gap-2">
+              <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                isDashboardThemeEnabled
+                  ? 'border-secondary/30 bg-secondary/10 text-base-content'
+                  : 'border-yellow-200 bg-yellow-50 text-gray-700'
+              }`}>
+                <MapPin className={`h-3.5 w-3.5 ${isDashboardThemeEnabled ? 'text-secondary' : 'text-yellow-600'}`} />
+                <span className="font-bold">{locationCrumb}</span>
+                <button
+                  onClick={clearLocationFilter}
+                  className={`ml-1 rounded-full p-0.5 transition-all ${isDashboardThemeEnabled ? 'hover:bg-base-300' : 'hover:bg-yellow-100'}`}
+                  title="Clear location filter"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Navigation */}
           {viewMode === 'documents' && (
@@ -1269,7 +1403,7 @@ const DocumentManagement: React.FC = () => {
                       )}
                     </div>
                     {/* Render Folders Pagination */}
-                    {state.viewMode === 'folders' && !state.filters.year && renderPagination(state.currentFolderPage, state.lastFolderPage, handleFolderPageChange, state.loading)}
+                    {state.viewMode === 'folders' && !state.filters.year && !state.filters.location_id && renderPagination(state.currentFolderPage, state.lastFolderPage, handleFolderPageChange, state.loading)}
                     </>
                   ) : (
                     // Show documents grid/list when filters are active
@@ -1308,6 +1442,10 @@ const DocumentManagement: React.FC = () => {
                               document={doc}
                               isHighlighted={highlightedDocId === doc.doc_id}
                               onDocumentUpdated={loadDocuments}
+                              selectionMode={selectionMode}
+                              selected={selectedIds.has(doc.doc_id)}
+                              onToggleSelect={toggleSelect}
+                              getDragIds={getDragIds}
                             />
                           ) : (
                             <DocumentListItem
@@ -1315,6 +1453,10 @@ const DocumentManagement: React.FC = () => {
                               document={doc}
                               isHighlighted={highlightedDocId === doc.doc_id}
                               onDocumentUpdated={loadDocuments}
+                              selectionMode={selectionMode}
+                              selected={selectedIds.has(doc.doc_id)}
+                              onToggleSelect={toggleSelect}
+                              getDragIds={getDragIds}
                             />
                           )
                         ))
@@ -1436,6 +1578,10 @@ const DocumentManagement: React.FC = () => {
                                     document={doc}
                                     isHighlighted={highlightedDocId === doc.doc_id}
                                     onDocumentUpdated={loadDocuments}
+                                    selectionMode={selectionMode}
+                                    selected={selectedIds.has(doc.doc_id)}
+                                    onToggleSelect={toggleSelect}
+                                    getDragIds={getDragIds}
                                   />
                                 ) : (
                                   <DocumentListItem
@@ -1443,6 +1589,10 @@ const DocumentManagement: React.FC = () => {
                                     document={doc}
                                     isHighlighted={highlightedDocId === doc.doc_id}
                                     onDocumentUpdated={loadDocuments}
+                                    selectionMode={selectionMode}
+                                    selected={selectedIds.has(doc.doc_id)}
+                                    onToggleSelect={toggleSelect}
+                                    getDragIds={getDragIds}
                                   />
                                 )
                               ))}
@@ -1536,6 +1686,58 @@ const DocumentManagement: React.FC = () => {
         onClose={() => setIsScanModalOpen(false)}
       />
 
+      {/* Bulk selection action bar */}
+      {selectionMode && createPortal(
+        <div
+          data-theme={isDashboardThemeEnabled ? theme : undefined}
+          className="fixed bottom-6 left-1/2 z-[10000] -translate-x-1/2"
+        >
+          <div className={`flex items-center gap-2 rounded-2xl border px-3 py-3 shadow-2xl ${
+            isDashboardThemeEnabled ? 'border-base-300 bg-base-100 text-base-content' : 'border-gray-200 bg-white'
+          }`}>
+            <button
+              onClick={toggleSelectAll}
+              disabled={documents.length === 0}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all disabled:opacity-50 ${
+                isDashboardThemeEnabled ? 'border-base-300 hover:bg-base-200' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {allLoadedSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+              {allLoadedSelected ? 'Deselect all' : 'Select all'}
+            </button>
+            <span className="px-1 text-sm font-semibold">{selectedIds.size} selected</span>
+            <button
+              onClick={() => setIsBulkMoveOpen(true)}
+              disabled={selectedIds.size === 0}
+              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all disabled:opacity-50 ${isDashboardThemeEnabled ? 'bg-primary hover:bg-primary/90' : 'bg-green-700 hover:bg-green-800'}`}
+            >
+              <FolderInput className="h-4 w-4" /> Move to location
+            </button>
+            <button
+              onClick={exitSelection}
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${isDashboardThemeEnabled ? 'hover:bg-base-200' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {isBulkMoveOpen && (
+        <MoveToLocationModal
+          isOpen={isBulkMoveOpen}
+          documentIds={Array.from(selectedIds)}
+          onMoved={() => {
+            setIsBulkMoveOpen(false);
+            exitSelection();
+            loadDocuments();
+            setSidebarRefreshKey(prev => prev + 1);
+          }}
+          onClose={() => setIsBulkMoveOpen(false)}
+        />
+      )}
+
       {/* Global Document Viewer */}
       {viewingDocument && (
         <DocumentViewer
@@ -1562,7 +1764,7 @@ const DocumentManagement: React.FC = () => {
               style={
                 isDashboardThemeEnabled
                   ? undefined
-                  : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                  : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
               }
             >
               <h3 className="text-lg font-bold text-white">Cancel Upload?</h3>

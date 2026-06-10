@@ -102,6 +102,7 @@ class ManualProcessController extends Controller
                 'folder_id' => $latestDocument->folder_id,
                 'remarks' => $latestDocument->remarks,
                 'physical_location' => $latestDocument->physical_location,
+                'location_id' => $latestDocument->location_id,
                 'document_ref_id' => $latestDocument->document_ref_id,
                 'suggestedLocation' => $latestDocument->ai_suggested_folder, // Added missing field
             ];
@@ -164,6 +165,7 @@ class ManualProcessController extends Controller
                 'description' => 'nullable|string',
                 'remarks' => 'nullable|string|max:1000',
                 'physical_location' => 'nullable|string|max:255',
+                'location_id' => 'nullable|integer|exists:locations,id',
                 'document_ref_id' => 'nullable|string|max:255|unique:documents,document_ref_id,' . $request->doc_id . ',doc_id',
             ]);
 
@@ -262,11 +264,19 @@ class ManualProcessController extends Controller
                 'title' => $request->title,
                 'description' => $request->description,
                 'remarks' => $request->remarks,
-                'physical_location' => $request->physical_location,
                 'document_ref_id' => $request->document_ref_id,
                 'file_path' => $newFilePath,
                 'status' => 'active',
             ];
+
+            // Physical location: prefer a managed location (dropdown), else free text
+            if ($request->has('location_id')) {
+                $location = $request->location_id ? \App\Models\Location::find($request->location_id) : null;
+                $updateData['location_id'] = $location?->id;
+                $updateData['physical_location'] = $location?->path;
+            } else {
+                $updateData['physical_location'] = $request->physical_location;
+            }
 
             // Only update folder_id if it's explicitly provided (not null)
             if ($request->has('folder_id') && $request->folder_id !== null) {

@@ -156,7 +156,7 @@ html {
 }
 
 .text-green-700 {
-    color: #047857 !important;
+    color: #00491e !important;
 }
 
 /* Background utilities */
@@ -165,11 +165,11 @@ html {
 }
 
 .bg-green-700 {
-    background-color: #047857 !important;
+    background-color: #00491e !important;
 }
 
 .bg-green-600 {
-    background-color: #059669 !important;
+    background-color: #0a5c2e !important;
 }
 
 /* Border radius */
@@ -242,8 +242,8 @@ html {
 }
 
 .active-link {
-    color: #eab308;
-    /* Tailwind's text-yellow-500 */
+    color: #ffc600;
+    /* Brand golden yellow */
     text-decoration: underline;
     text-underline-offset: 8px;
 }
@@ -361,19 +361,19 @@ html {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.6) 0%, rgba(34, 197, 94, 0.4) 100%);
+    background: linear-gradient(135deg, rgba(0, 73, 30, 0.6) 0%, rgba(0, 73, 30, 0.4) 100%);
     border-radius: 10px;
     transition: all 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(34, 197, 94, 0.6) 100%);
+    background: linear-gradient(135deg, rgba(0, 73, 30, 0.8) 0%, rgba(0, 73, 30, 0.6) 100%);
 }
 
 /* Firefox scrollbar */
 .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(34, 197, 94, 0.5) rgba(229, 231, 235, 0.3);
+    scrollbar-color: rgba(0, 73, 30, 0.5) rgba(229, 231, 235, 0.3);
 }
 
 /* Green Scrollbar for AI Assistant Sidebar */
@@ -382,22 +382,22 @@ html {
 }
 
 .green-scrollbar::-webkit-scrollbar-track {
-    background: rgba(20, 74, 24, 0.3);
+    background: rgba(0, 73, 30, 0.3);
     border-radius: 10px;
 }
 
 .green-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(34, 139, 34, 0.6);
+    background: rgba(0, 73, 30, 0.6);
     border-radius: 10px;
     transition: all 0.3s ease;
 }
 
 .green-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(34, 139, 34, 0.8);
+    background: rgba(0, 73, 30, 0.8);
 }
 
 /* Firefox scrollbar */
 .green-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgba(34, 139, 34, 0.6) rgba(20, 74, 24, 0.3);
+    scrollbar-color: rgba(0, 73, 30, 0.6) rgba(0, 73, 30, 0.3);
 }

@@ -41,7 +41,7 @@ const StaffHeader: FC = () => {
         isDashboardThemeEnabled
           ? undefined
           : {
-              background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)',
+              background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)',
             }
       }
     >

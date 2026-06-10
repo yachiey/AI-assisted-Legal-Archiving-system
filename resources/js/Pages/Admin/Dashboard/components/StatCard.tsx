@@ -26,7 +26,7 @@ const StatCard: React.FC<StatCardProps> = ({ icon, title, value, subtitle }) => 
                 </div>
                 <h3 className="text-white/70 text-xs font-semibold mb-2 uppercase tracking-wider">{title}</h3>
                 <p className="text-3xl font-bold text-white mb-1">{value}</p>
-                <p className="text-sm font-medium" style={{ color: '#FBEC5D' }}>{subtitle}</p>
+                <p className="text-sm font-medium" style={{ color: '#ffc600' }}>{subtitle}</p>
             </div>
         </div>
     );

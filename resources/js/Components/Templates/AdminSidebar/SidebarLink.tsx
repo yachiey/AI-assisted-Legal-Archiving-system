@@ -46,7 +46,7 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
                     }
                 `}
                 style={isActive && !isDashboardThemeEnabled ? {
-                    background: 'linear-gradient(135deg, #FBEC5D 0%, #E6D700 100%)',
+                    background: 'linear-gradient(135deg, #ffc600 0%, #E6D700 100%)',
                     boxShadow: '0 4px 12px rgba(251, 236, 93, 0.3)'
                 } : undefined}
                 title={collapsed ? item.title : undefined}
@@ -89,7 +89,7 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
 
                 {/* Badge */}
                 {item.badge && !collapsed && (
-                    <span className={`ml-auto relative z-10 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm ${isDashboardThemeEnabled ? "bg-secondary text-secondary-content" : "bg-[#FBEC5D] text-green-900"}`}>
+                    <span className={`ml-auto relative z-10 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm ${isDashboardThemeEnabled ? "bg-secondary text-secondary-content" : "bg-[#ffc600] text-green-900"}`}>
                         {item.badge}
                     </span>
                 )}

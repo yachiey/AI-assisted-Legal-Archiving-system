@@ -15,7 +15,7 @@ const StatsCard: FC<StatsCardProps> = ({ title, value, change, icon }) => {
         <div
             className="rounded-xl shadow-md p-6 hover:shadow-lg transition-all hover:scale-105"
             style={{
-                background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)'
+                background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)'
             }}
         >
             <div className="flex items-start justify-between mb-4">

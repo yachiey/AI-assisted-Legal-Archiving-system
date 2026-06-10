@@ -100,7 +100,7 @@ export default function AdminDashboard() {
                 ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-primary/10'
                 : ''
             }`}
-            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }}
           >
             <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-primary/10 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
             <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-primary/10' : 'bg-white/10'}`}></div>
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                 ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-secondary/10'
                 : ''
             }`}
-            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)' }}
           >
             <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-secondary/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
             <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-secondary/10' : 'bg-white/10'}`}></div>
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
                 ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-accent/10'
                 : ''
             }`}
-            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }}
           >
             <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-accent/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
             <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-accent/10' : 'bg-white/10'}`}></div>
@@ -205,7 +205,7 @@ export default function AdminDashboard() {
                 ? 'border border-base-300/70 bg-gradient-to-br from-base-100 via-base-100 to-warning/10'
                 : ''
             }`}
-            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }}
+            style={isDashboardThemeEnabled ? undefined : { background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)' }}
           >
             <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${isDashboardThemeEnabled ? 'bg-gradient-to-br from-warning/12 via-transparent to-transparent' : 'bg-gradient-to-br from-white/20 via-transparent to-transparent'}`}></div>
             <div className={`absolute -top-8 -right-8 w-32 h-32 rounded-full group-hover:scale-150 transition-transform duration-700 ${isDashboardThemeEnabled ? 'bg-warning/10' : 'bg-white/10'}`}></div>

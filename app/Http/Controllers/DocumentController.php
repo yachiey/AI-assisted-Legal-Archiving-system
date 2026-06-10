@@ -390,6 +390,8 @@ class DocumentController extends Controller
                 'createdAt' => $latestDocument->created_at->format('Y-m-d'),
                 'createdBy' => $latestDocument->created_by,
                 'filePath' => $latestDocument->file_path,
+                'physical_location' => $latestDocument->physical_location,
+                'location_id' => $latestDocument->location_id,
                 'suggestedLocation' => $latestDocument->ai_suggested_folder, // Added missing field
             ];
         } else {
@@ -617,6 +619,7 @@ class DocumentController extends Controller
                 'folder_id'         => 'sometimes|nullable|integer|exists:folders,folder_id',
                 'remarks'           => 'sometimes|nullable|string|max:1000',
                 'physical_location' => 'sometimes|nullable|string|max:255',
+                'location_id'       => 'sometimes|nullable|integer|exists:locations,id',
                 'file_path'         => 'sometimes|string|max:500',
             ]);
 
@@ -631,6 +634,15 @@ class DocumentController extends Controller
             // Explicitly include folder_id even when null so clearing a folder works
             if ($request->has('folder_id')) {
                 $validated['folder_id'] = $request->input('folder_id');
+            }
+
+            // When a managed location is chosen, sync the physical_location path
+            if ($request->has('location_id')) {
+                $location = $request->input('location_id')
+                    ? \App\Models\Location::find($request->input('location_id'))
+                    : null;
+                $validated['location_id'] = $location?->id;
+                $validated['physical_location'] = $location?->path;
             }
 
             $document->update($validated);

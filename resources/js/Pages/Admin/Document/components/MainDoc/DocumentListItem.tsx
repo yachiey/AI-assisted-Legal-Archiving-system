@@ -1,13 +1,16 @@
 // DocumentListItem.tsx - Individual document row in list view with TypeScript
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, MapPin, PackageOpen } from 'lucide-react';
 import { DocumentListItemProps } from '../../types/types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import DocumentMenu from './DocumentMenu';
 import DocumentPropertiesModal from './DocumentPropertiesModal';
 import EditDocumentModal from './EditDocumentModal';
 import DeleteDocumentDialog from './DeleteDocumentDialog';
+import DocumentTrackingModal from './DocumentTrackingModal';
+import MoveToLocationModal from '../Location/MoveToLocationModal';
+import { setDraggedDocIds, clearDraggedDocIds } from '../../utils/dragState';
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -17,7 +20,11 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   document,
   folders = [],
   isHighlighted = false,
-  onDocumentUpdated
+  onDocumentUpdated,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
+  getDragIds,
 }) => {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -25,12 +32,18 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isTrackOpen, setIsTrackOpen] = useState(false);
+  const [isMoveOpen, setIsMoveOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const { theme } = useDashboardTheme();
   const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
   const handleDocumentClick = (): void => {
+    if (selectionMode) {
+      onToggleSelect?.(document.doc_id);
+      return;
+    }
     setIsViewerOpen(true);
   };
 
@@ -67,6 +80,12 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
         break;
       case 'download':
         handleDownload();
+        break;
+      case 'track':
+        setIsTrackOpen(true);
+        break;
+      case 'move':
+        setIsMoveOpen(true);
         break;
     }
   };
@@ -170,6 +189,14 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
               }`
         }`}
         onClick={handleDocumentClick}
+        draggable
+        onDragStart={(e) => {
+          const ids = getDragIds ? getDragIds(document.doc_id) : [document.doc_id];
+          setDraggedDocIds(ids);
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(document.doc_id));
+        }}
+        onDragEnd={() => clearDraggedDocIds()}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -185,6 +212,16 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
         }}
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
+          {selectionMode && (
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect?.(document.doc_id)}
+              onClick={(e) => e.stopPropagation()}
+              className={`h-4 w-4 shrink-0 cursor-pointer rounded ${isDashboardThemeEnabled ? 'accent-primary' : 'accent-green-700'}`}
+              aria-label={`Select ${document.title}`}
+            />
+          )}
           <div
             className={`shrink-0 rounded-lg p-2 transition-all ${
               isDashboardThemeEnabled
@@ -208,6 +245,26 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
 
             </div>
 
+            {/* Physical location + tracking status */}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span
+                className={`flex items-center gap-1 text-xs ${
+                  document.physical_location
+                    ? isDashboardThemeEnabled ? 'text-base-content/65' : 'text-gray-500'
+                    : isDashboardThemeEnabled ? 'text-base-content/40' : 'text-gray-400'
+                }`}
+                title="Physical location"
+              >
+                <MapPin className="h-3 w-3 shrink-0" />
+                {document.physical_location || 'No location'}
+              </span>
+              {document.tracking_status === 'checked_out' && (
+                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                  <PackageOpen className="h-3 w-3" />
+                  {document.checked_out_to ? `Out: ${document.checked_out_to}` : 'Checked out'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -265,6 +322,8 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             onEdit={() => handleMenuAction('edit')}
             onDelete={() => handleMenuAction('delete')}
             onDownload={() => handleMenuAction('download')}
+            onTrack={() => handleMenuAction('track')}
+            onMove={() => handleMenuAction('move')}
           />
         </div>,
         window.document.body
@@ -308,6 +367,28 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
           onDocumentDeleted={handleDocumentDeleted}
         />,
         window.document.body
+      )}
+
+      {/* Tracking Modal - Using Portal */}
+      {typeof window !== 'undefined' && isTrackOpen && createPortal(
+        <DocumentTrackingModal
+          isOpen={isTrackOpen}
+          onClose={() => setIsTrackOpen(false)}
+          document={document}
+          onUpdated={handleDocumentUpdated}
+        />,
+        window.document.body
+      )}
+
+      {/* Move to location modal */}
+      {isMoveOpen && (
+        <MoveToLocationModal
+          isOpen={isMoveOpen}
+          documentIds={[document.doc_id]}
+          subtitle={document.title}
+          onMoved={handleDocumentUpdated}
+          onClose={() => setIsMoveOpen(false)}
+        />
       )}
 
       {/* Modern Forest Green Toast Notification - Using Portal */}

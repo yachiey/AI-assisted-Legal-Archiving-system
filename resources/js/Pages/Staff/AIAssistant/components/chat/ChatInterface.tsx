@@ -54,7 +54,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 className={`w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg ${
                   isDashboardThemeEnabled
                     ? "bg-gradient-to-br from-primary to-secondary text-primary-content"
-                    : "bg-gradient-to-br from-[#228B22] to-[#1a6b1a] text-white"
+                    : "bg-gradient-to-br from-[#00491e] to-[#003a18] text-white"
                 }`}
               >
                 <svg
@@ -108,7 +108,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
                   isDashboardThemeEnabled
                     ? "border-primary/20 bg-primary/10 text-primary"
-                    : "border-green-100 bg-green-50 text-[#228B22]"
+                    : "border-green-100 bg-green-50 text-[#00491e]"
                 }`}
               >
                 <Bot className="h-5 w-5" />
@@ -124,25 +124,25 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   className={`pointer-events-none absolute inset-x-0 top-0 h-14 ${
                     isDashboardThemeEnabled
                       ? "bg-gradient-to-r from-primary/12 via-secondary/8 to-transparent"
-                      : "bg-gradient-to-r from-[#228B22]/10 via-[#FBEC5D]/10 to-transparent"
+                      : "bg-gradient-to-r from-[#00491e]/10 via-[#ffc600]/10 to-transparent"
                   }`}
                 />
                 <div className="flex items-center space-x-3">
                   <div className="flex space-x-1.5">
                     <div
                       className={`w-2.5 h-2.5 rounded-full animate-bounce ${
-                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#228B22]"
+                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#00491e]"
                       }`}
                     />
                     <div
                       className={`w-2.5 h-2.5 rounded-full animate-bounce ${
-                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#228B22]"
+                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#00491e]"
                       }`}
                       style={{ animationDelay: "0.1s" }}
                     />
                     <div
                       className={`w-2.5 h-2.5 rounded-full animate-bounce ${
-                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#228B22]"
+                        isDashboardThemeEnabled ? "bg-primary" : "bg-[#00491e]"
                       }`}
                       style={{ animationDelay: "0.2s" }}
                     />

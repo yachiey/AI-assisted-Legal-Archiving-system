@@ -39,7 +39,7 @@ const StaffSidebar: FC = () => {
                 isDashboardThemeEnabled
                     ? undefined
                     : {
-                          background: '#228B22',
+                          background: '#00491e',
                       }
             }
         >

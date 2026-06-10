@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ currentSessionTitle, onUpload })
               className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md ${
                 isDashboardThemeEnabled
                   ? 'bg-gradient-to-br from-primary to-secondary text-primary-content'
-                  : 'bg-gradient-to-br from-[#228B22] to-[#1a6b1a] text-white'
+                  : 'bg-gradient-to-br from-[#00491e] to-[#003a18] text-white'
               }`}
             >
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,12 +63,12 @@ export const Header: React.FC<HeaderProps> = ({ currentSessionTitle, onUpload })
               <div className="relative">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
-                    isDashboardThemeEnabled ? 'bg-primary' : 'bg-[#228B22]'
+                    isDashboardThemeEnabled ? 'bg-primary' : 'bg-[#00491e]'
                   }`}
                 ></div>
                 <div
                   className={`absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-75 ${
-                    isDashboardThemeEnabled ? 'bg-primary' : 'bg-[#228B22]'
+                    isDashboardThemeEnabled ? 'bg-primary' : 'bg-[#00491e]'
                   }`}
                 ></div>
               </div>

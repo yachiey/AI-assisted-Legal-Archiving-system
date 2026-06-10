@@ -91,7 +91,7 @@ const ActivityLogsCard: React.FC<ActivityLogsCardProps> = ({
                                 className={`text-sm font-medium ${
                                     isDashboardThemeEnabled ? 'text-primary' : ''
                                 }`}
-                                style={isDashboardThemeEnabled ? undefined : { color: '#FBEC5D' }}
+                                style={isDashboardThemeEnabled ? undefined : { color: '#ffc600' }}
                             >
                                 {activities.length} {activities.length === 1 ? 'log' : 'logs'}
                             </p>

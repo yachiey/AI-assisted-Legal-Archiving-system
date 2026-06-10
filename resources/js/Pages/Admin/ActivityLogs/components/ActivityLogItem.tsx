@@ -32,7 +32,7 @@ const ActivityLogItem: React.FC<ActivityLogItemProps> = ({ activity }) => {
                         className={`mt-2 h-2 w-2 rounded-full shadow-sm ${
                             isDashboardThemeEnabled ? 'bg-primary' : ''
                         }`}
-                        style={isDashboardThemeEnabled ? undefined : { background: '#FBEC5D' }}
+                        style={isDashboardThemeEnabled ? undefined : { background: '#ffc600' }}
                     ></div>
                 </div>
                 <div className="flex-1 min-w-0">

@@ -132,7 +132,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                     background: 'linear-gradient(135deg, #0c3b0cff 0%, #645a0aff 100%)'
                 }}>
                     <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-[#FBEC5D]" />
+                        <Calendar className="w-5 h-5 text-[#ffc600]" />
                         <h3 className="text-lg font-bold text-white">{title}</h3>
                     </div>
                     <button
@@ -158,7 +158,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                                 style={rangeType === type ? {
-                                    background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
+                                    background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)',
                                 } : {}}
                             >
                                 {type === 'today' ? 'Today' : type === 'week' ? 'This Week' : 'This Month'}
@@ -175,7 +175,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                 }`}
                             style={rangeType === 'custom' ? {
-                                background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
+                                background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)',
                             } : {}}
                         >
                             Custom Date Range
@@ -274,7 +274,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                         disabled={isLoading || (rangeType === 'custom' && (!customStartDate || !customEndDate))}
                         className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-900 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg"
                         style={{
-                            background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)',
+                            background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)',
                         }}
                     >
                         {isLoading ? (
@@ -462,7 +462,7 @@ const ReportActionCards: React.FC = () => {
                     <div className="relative z-10 space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2.5 bg-white/20 rounded-xl shadow-inner group-hover:rotate-6 transition-transform">
-                                <FileText className="w-5 h-5 text-[#FBEC5D]" />
+                                <FileText className="w-5 h-5 text-[#ffc600]" />
                             </div>
                             <h3 className="text-lg font-bold text-white tracking-tight uppercase leading-tight">
                                 Generate Report
@@ -476,7 +476,7 @@ const ReportActionCards: React.FC = () => {
                         <button
                             onClick={() => setShowReportModal(true)}
                             disabled={isGenerating}
-                            className="w-full bg-[#FBEC5D] hover:bg-[#f5e042] px-5 py-3 rounded-2xl transition-all duration-300 text-xs font-black flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.03] shadow-xl text-gray-900 uppercase tracking-wider"
+                            className="w-full bg-[#ffc600] hover:bg-[#f5e042] px-5 py-3 rounded-2xl transition-all duration-300 text-xs font-black flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.03] shadow-xl text-gray-900 uppercase tracking-wider"
                         >
                             {isGenerating ? (
                                 <>
@@ -503,7 +503,7 @@ const ReportActionCards: React.FC = () => {
                     <div className="relative z-10 space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2.5 bg-white/20 rounded-xl shadow-inner group-hover:rotate-6 transition-transform">
-                                <Activity className="w-5 h-5 text-[#FBEC5D]" />
+                                <Activity className="w-5 h-5 text-[#ffc600]" />
                             </div>
                             <h3 className="text-lg font-bold text-white tracking-tight uppercase leading-tight">
                                 Export Logs
@@ -517,7 +517,7 @@ const ReportActionCards: React.FC = () => {
                         <button
                             onClick={() => setShowLogsModal(true)}
                             disabled={isExportingActivityLogs}
-                            className="w-full bg-[#FBEC5D] hover:bg-[#f5e042] px-5 py-3 rounded-2xl transition-all duration-300 text-xs font-black flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.03] shadow-xl text-gray-900 uppercase tracking-wider"
+                            className="w-full bg-[#ffc600] hover:bg-[#f5e042] px-5 py-3 rounded-2xl transition-all duration-300 text-xs font-black flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.03] shadow-xl text-gray-900 uppercase tracking-wider"
                         >
                             {isExportingActivityLogs ? (
                                 <>

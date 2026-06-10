@@ -78,7 +78,7 @@ const DashboardActionButtons: React.FC = () => {
                 <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
                 <div className="relative">
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#FBEC5D' }}>
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#ffc600' }}>
                         <div className="p-2 bg-white/20 rounded-lg">
                             <Upload className="w-5 h-5" />
                         </div>
@@ -104,7 +104,7 @@ const DashboardActionButtons: React.FC = () => {
                 <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
                 <div className="relative">
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#FBEC5D' }}>
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#ffc600' }}>
                         <div className="p-2 bg-white/20 rounded-lg">
                             <FileText className="w-5 h-5" />
                         </div>
@@ -140,7 +140,7 @@ const DashboardActionButtons: React.FC = () => {
                 <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
                 <div className="relative">
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#FBEC5D' }}>
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2" style={{ color: '#ffc600' }}>
                         <div className="p-2 bg-white/20 rounded-lg">
                             <Download className="w-5 h-5" />
                         </div>

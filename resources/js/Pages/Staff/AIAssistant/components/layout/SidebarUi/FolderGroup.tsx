@@ -119,7 +119,7 @@ export const FolderGroup: React.FC<FolderGroupProps> = ({
           isDragOver
             ? isDashboardThemeEnabled
               ? "bg-accent/20 ring-2 ring-accent"
-              : "bg-yellow-400/30 ring-2 ring-[#FBEC5D]"
+              : "bg-yellow-400/30 ring-2 ring-[#ffc600]"
             : isDashboardThemeEnabled
               ? "bg-primary-content/8 hover:bg-primary-content/14 border border-primary-content/15"
               : "bg-white/5 hover:bg-white/10 border border-white/15"

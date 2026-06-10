@@ -15,6 +15,9 @@ class ActivityLogger
     const DOCUMENT_METADATA_UPDATED   = 'document.metadata_updated';
     const DOCUMENT_DOWNLOADED         = 'document.downloaded';
     const DOCUMENT_DELETED            = 'document.deleted';
+    const DOCUMENT_MOVED              = 'document.moved';
+    const DOCUMENT_CHECKED_OUT        = 'document.checked_out';
+    const DOCUMENT_CHECKED_IN         = 'document.checked_in';
 
     // ─── Authentication ───────────────────────────────────────────────
     const AUTH_LOGIN  = 'auth.login';
@@ -35,6 +38,9 @@ class ActivityLogger
         self::DOCUMENT_METADATA_UPDATED   => 'Document Updated',
         self::DOCUMENT_DOWNLOADED         => 'Document Downloaded',
         self::DOCUMENT_DELETED            => 'Document Deleted',
+        self::DOCUMENT_MOVED              => 'Document Moved',
+        self::DOCUMENT_CHECKED_OUT        => 'Document Checked Out',
+        self::DOCUMENT_CHECKED_IN         => 'Document Checked In',
         self::AUTH_LOGIN                   => 'User Login',
         self::AUTH_LOGOUT                  => 'User Logout',
         self::PERMISSION_REQUESTED         => 'Permission Requested',

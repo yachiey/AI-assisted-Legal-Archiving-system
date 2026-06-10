@@ -102,7 +102,7 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
           className={`absolute -inset-0.5 rounded-2xl blur-md ${
             isDashboardThemeEnabled
               ? "bg-gradient-to-r from-secondary/30 to-accent/30"
-              : "bg-gradient-to-r from-[#FBEC5D]/30 to-[#F4D03F]/30"
+              : "bg-gradient-to-r from-[#ffc600]/30 to-[#F4D03F]/30"
           }`}
         />
       )}
@@ -133,7 +133,7 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
                 {isSelected && (
                   <div
                     className={`absolute inset-0 rounded-full blur-sm ${
-                      isDashboardThemeEnabled ? "bg-secondary/50" : "bg-[#FBEC5D]/50"
+                      isDashboardThemeEnabled ? "bg-secondary/50" : "bg-[#ffc600]/50"
                     }`}
                   />
                 )}
@@ -142,7 +142,7 @@ export const ChatSessionItem: React.FC<ChatSessionItemProps> = ({
                     isSelected
                       ? isDashboardThemeEnabled
                         ? "bg-secondary shadow-lg"
-                        : "bg-[#FBEC5D] shadow-lg"
+                        : "bg-[#ffc600] shadow-lg"
                       : isDashboardThemeEnabled
                         ? "bg-primary-content/60"
                         : "bg-white/60"

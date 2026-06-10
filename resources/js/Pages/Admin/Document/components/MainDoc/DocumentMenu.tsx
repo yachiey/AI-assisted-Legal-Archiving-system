@@ -1,5 +1,5 @@
 import React from "react";
-import { Edit, Trash2, Info, Download } from "lucide-react";
+import { Edit, Trash2, Info, Download, MapPin, FolderInput } from "lucide-react";
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -10,6 +10,8 @@ interface DocumentMenuProps {
   onDelete: () => void;
   onProperties: () => void;
   onDownload: () => void;
+  onTrack?: () => void;
+  onMove?: () => void;
 }
 
 const DocumentMenu: React.FC<DocumentMenuProps> = ({
@@ -17,6 +19,8 @@ const DocumentMenu: React.FC<DocumentMenuProps> = ({
   onDelete,
   onProperties,
   onDownload,
+  onTrack,
+  onMove,
 }) => {
   const { theme } = useDashboardTheme();
   const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
@@ -53,7 +57,7 @@ const DocumentMenu: React.FC<DocumentMenuProps> = ({
             className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all font-medium ${
               isDashboardThemeEnabled
                 ? "text-base-content hover:bg-base-200 hover:text-primary"
-                : "hover:bg-white/30 text-gray-900 hover:text-[#228B22]"
+                : "hover:bg-white/30 text-gray-900 hover:text-[#00491e]"
             }`}
           >
             <Info className="w-4 h-4" />
@@ -61,13 +65,45 @@ const DocumentMenu: React.FC<DocumentMenuProps> = ({
           </button>
         </li>
 
+        {onTrack && (
+          <li>
+            <button
+              onClick={(e) => handleMenuClick(e, onTrack)}
+              className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all font-medium ${
+                isDashboardThemeEnabled
+                  ? "text-base-content hover:bg-base-200 hover:text-primary"
+                  : "hover:bg-white/30 text-gray-900 hover:text-[#00491e]"
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              Track
+            </button>
+          </li>
+        )}
+
+        {onMove && (
+          <li>
+            <button
+              onClick={(e) => handleMenuClick(e, onMove)}
+              className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all font-medium ${
+                isDashboardThemeEnabled
+                  ? "text-base-content hover:bg-base-200 hover:text-primary"
+                  : "hover:bg-white/30 text-gray-900 hover:text-[#00491e]"
+              }`}
+            >
+              <FolderInput className="w-4 h-4" />
+              Move to…
+            </button>
+          </li>
+        )}
+
         <li>
           <button
             onClick={(e) => handleMenuClick(e, onEdit)}
             className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all font-medium ${
               isDashboardThemeEnabled
                 ? "text-base-content hover:bg-base-200 hover:text-primary"
-                : "hover:bg-white/30 text-gray-900 hover:text-[#228B22]"
+                : "hover:bg-white/30 text-gray-900 hover:text-[#00491e]"
             }`}
           >
             <Edit className="w-4 h-4" />
@@ -80,7 +116,7 @@ const DocumentMenu: React.FC<DocumentMenuProps> = ({
             className={`w-full text-left px-4 py-2 flex items-center gap-2 transition-all font-medium ${
               isDashboardThemeEnabled
                 ? "text-base-content hover:bg-base-200 hover:text-primary"
-                : "hover:bg-white/30 text-gray-900 hover:text-[#228B22]"
+                : "hover:bg-white/30 text-gray-900 hover:text-[#00491e]"
             }`}
           >
             <Download className="w-4 h-4" />

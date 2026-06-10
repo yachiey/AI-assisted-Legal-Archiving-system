@@ -38,11 +38,81 @@ export interface Document {
   folder?: Folder;
   remarks?: string;
   physical_location?: string;
+  location_id?: number | null;
+  tracking_status?: 'in_storage' | 'checked_out';
+  checked_out_to?: string | null;
+  checked_out_at?: string | null;
+  tracking_due_date?: string | null;
   ai_suggested_folder?: string;
   document_ref_id?: string;
   user?: User;
   created_at: string;
   updated_at: string;
+}
+
+// Physical location tracking
+export interface Cabinet {
+  name: string;
+  total: number;
+  checked_out: number;
+}
+
+export interface CabinetFolder {
+  folder_id: number;
+  folder_name: string;
+  total: number;
+}
+
+export interface CabinetTreeNode {
+  key: string;            // physical_location filter value ('__none__' for unassigned)
+  name: string | null;    // null => "No location"
+  total: number;
+  checked_out: number;
+  folders: CabinetFolder[];
+}
+
+// Managed hierarchical physical locations (Cabinet > Tray > Partition)
+export interface LocationNode {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  path: string;
+  total: number;
+  checked_out: number;
+  folders: CabinetFolder[];
+  children: LocationNode[];
+}
+
+export interface LocationTree {
+  tree: LocationNode[];
+  no_location: number;
+}
+
+export type LocationDropTarget =
+  | { type: 'location'; locationId: number }
+  | { type: 'location-folder'; locationId: number; folderId: number }
+  | { type: 'folder'; folderId: number };
+
+export interface DocumentTrackingEntry {
+  id: number;
+  action: 'moved' | 'checked_out' | 'checked_in';
+  from_location?: string | null;
+  to_location?: string | null;
+  borrower?: string | null;
+  due_date?: string | null;
+  note?: string | null;
+  performed_by: string;
+  created_at: string;
+}
+
+export interface DocumentTrackingState {
+  doc_id: number;
+  title?: string;
+  physical_location?: string | null;
+  tracking_status: 'in_storage' | 'checked_out';
+  checked_out_to?: string | null;
+  checked_out_at?: string | null;
+  due_date?: string | null;
 }
 
 export interface DocumentEmbedding {
@@ -100,6 +170,10 @@ export interface DocumentListItemProps {
   folders?: Array<{ folder_id: number; folder_name: string }>;
   isHighlighted?: boolean;
   onDocumentUpdated?: () => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  getDragIds?: (docId: number) => number[];
 }
 
 export interface BreadcrumbNavProps {
@@ -113,6 +187,8 @@ export interface DocumentFilters {
   year?: number;
   search_term?: string;
   status?: string;
+  physical_location?: string;
+  location_id?: number | string; // number, or 'none' for unassigned
 }
 
 export interface SortOptions {

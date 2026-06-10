@@ -77,7 +77,7 @@ export default function StaffDashboard() {
                         style={
                             isDashboardThemeEnabled
                                 ? undefined
-                                : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }
+                                : { background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)' }
                         }
                     >
                         {/* Animated gradient overlay */}
@@ -155,7 +155,7 @@ export default function StaffDashboard() {
                         style={
                             isDashboardThemeEnabled
                                 ? undefined
-                                : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }
+                                : { background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)' }
                         }
                     >
                         <div
@@ -231,7 +231,7 @@ export default function StaffDashboard() {
                         style={
                             isDashboardThemeEnabled
                                 ? undefined
-                                : { background: 'linear-gradient(135deg, #FBEC5D 0%, #F4D03F 100%)' }
+                                : { background: 'linear-gradient(135deg, #ffc600 0%, #F4D03F 100%)' }
                         }
                     >
                         <div

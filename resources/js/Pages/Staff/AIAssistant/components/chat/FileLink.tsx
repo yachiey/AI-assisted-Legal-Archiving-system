@@ -43,7 +43,7 @@ export const FileLink: React.FC<FileLinkProps> = ({
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
           isDashboardThemeEnabled
             ? "bg-base-100 text-primary hover:bg-base-300"
-            : "bg-white text-[#228B22] hover:bg-green-100"
+            : "bg-white text-[#00491e] hover:bg-green-100"
         }`}
         title="Go to document location"
       >
@@ -81,7 +81,7 @@ export const FileLink: React.FC<FileLinkProps> = ({
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
           isDashboardThemeEnabled
             ? "bg-primary text-primary-content hover:bg-secondary"
-            : "bg-[#228B22] text-white hover:bg-[#1a6b1a]"
+            : "bg-[#00491e] text-white hover:bg-[#003a18]"
         }`}
         title={`View "${document.title}"`}
       >

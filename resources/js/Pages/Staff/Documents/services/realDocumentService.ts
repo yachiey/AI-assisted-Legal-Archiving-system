@@ -1,4 +1,4 @@
-import { Document, DocumentFilters, PaginatedResponse } from '../types/types';
+import { Document, DocumentFilters, PaginatedResponse, Cabinet, CabinetTreeNode, LocationTree, LocationNode, DocumentTrackingEntry, DocumentTrackingState } from '../types/types';
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
@@ -140,6 +140,12 @@ class RealDocumentService {
       if (filters.status) {
         params.append('status', filters.status);
       }
+      if (filters.physical_location) {
+        params.append('physical_location', filters.physical_location);
+      }
+      if (filters.location_id !== undefined && filters.location_id !== null) {
+        params.append('location_id', String(filters.location_id));
+      }
     }
 
     const endpoint = params.toString() ? `/documents?${params.toString()}` : '/documents';
@@ -239,6 +245,118 @@ class RealDocumentService {
       await Promise.all(promises);
       return counts;
     }
+  }
+
+  // ─── Physical location tracking ──────────────────────────────────
+
+  // List cabinets (distinct physical locations) for the sidebar, optionally scoped to a folder
+  async getCabinets(folderId?: number): Promise<Cabinet[]> {
+    const endpoint = folderId !== undefined && folderId !== null
+      ? `/documents/cabinets?folder_id=${folderId}`
+      : '/documents/cabinets';
+    const result = await this.apiCall<{ success: boolean; cabinets: Cabinet[] }>(endpoint, {}, false);
+    return result?.cabinets || [];
+  }
+
+  // Cabinet-first tree: each physical location with the folders that have documents there
+  async getCabinetTree(): Promise<CabinetTreeNode[]> {
+    const result = await this.apiCall<{ success: boolean; cabinets: CabinetTreeNode[] }>('/documents/cabinets/tree', {}, false);
+    return result?.cabinets || [];
+  }
+
+  // ─── Managed physical locations (Cabinet > Tray > Partition) ──────
+
+  async getLocationTree(): Promise<LocationTree> {
+    const result = await this.apiCall<{ success: boolean; tree: LocationNode[]; no_location: number }>('/locations/tree', {}, false);
+    return { tree: result?.tree || [], no_location: result?.no_location || 0 };
+  }
+
+  async createLocation(name: string, parentId?: number | null): Promise<LocationNode> {
+    const result = await this.apiCall<{ success: boolean; location: LocationNode }>(
+      '/locations',
+      { method: 'POST', body: JSON.stringify({ name, parent_id: parentId ?? null }) },
+      false
+    );
+    this.clearCache();
+    return result.location;
+  }
+
+  async renameLocation(id: number, name: string): Promise<LocationNode> {
+    const result = await this.apiCall<{ success: boolean; location: LocationNode }>(
+      `/locations/${id}`,
+      { method: 'PUT', body: JSON.stringify({ name }) },
+      false
+    );
+    this.clearCache();
+    return result.location;
+  }
+
+  async deleteLocation(id: number): Promise<void> {
+    await this.apiCall<void>(`/locations/${id}`, { method: 'DELETE' }, false);
+    this.clearCache();
+  }
+
+  async moveDocuments(documentIds: number[], locationId: number | null): Promise<number> {
+    const result = await this.apiCall<{ success: boolean; moved: number }>(
+      '/locations/move',
+      { method: 'POST', body: JSON.stringify({ document_ids: documentIds, location_id: locationId }) },
+      false
+    );
+    this.clearCache();
+    return result.moved;
+  }
+
+  async assignFolder(documentIds: number[], folderId: number | null): Promise<number> {
+    const result = await this.apiCall<{ success: boolean; moved: number }>(
+      '/locations/assign-folder',
+      { method: 'POST', body: JSON.stringify({ document_ids: documentIds, folder_id: folderId }) },
+      false
+    );
+    this.clearCache();
+    return result.moved;
+  }
+
+  // Get a document's current tracking state + movement history
+  async getTracking(docId: number): Promise<{ current: DocumentTrackingState; history: DocumentTrackingEntry[] }> {
+    const result = await this.apiCall<{ success: boolean; current: DocumentTrackingState; history: DocumentTrackingEntry[] }>(
+      `/documents/${docId}/tracking`,
+      {},
+      false
+    );
+    return { current: result.current, history: result.history };
+  }
+
+  // Move a document to a new physical location
+  async moveDocument(docId: number, toLocation: string, note?: string): Promise<DocumentTrackingState> {
+    const result = await this.apiCall<{ success: boolean; document: DocumentTrackingState }>(
+      `/documents/${docId}/tracking/move`,
+      { method: 'POST', body: JSON.stringify({ to_location: toLocation, note }) },
+      false
+    );
+    this.clearCache();
+    return result.document;
+  }
+
+  // Check out a document to a borrower
+  async checkOutDocument(docId: number, borrower: string, dueDate?: string, note?: string): Promise<DocumentTrackingState> {
+    const result = await this.apiCall<{ success: boolean; document: DocumentTrackingState }>(
+      `/documents/${docId}/tracking/check-out`,
+      { method: 'POST', body: JSON.stringify({ borrower, due_date: dueDate || null, note }) },
+      false
+    );
+    this.clearCache();
+    return result.document;
+  }
+
+  // Check a document back in (return to storage)
+  async checkInDocument(docId: number, note?: string): Promise<DocumentTrackingState> {
+    const result = await this.apiCall<{ success: boolean; document: DocumentTrackingState }>(
+      `/documents/${docId}/tracking/check-in`,
+      { method: 'POST', body: JSON.stringify({ note }) },
+      false
+    );
+    this.clearCache();
+    return result.document;
   }
 
   // Check if user is authenticated

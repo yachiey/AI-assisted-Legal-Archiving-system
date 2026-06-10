@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentTrackingController;
+use App\Http\Controllers\LocationController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\AIAssistantController;
 use App\Http\Controllers\AIProcessController;
@@ -72,6 +74,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Bulk document operations
     Route::post('/documents/bulk-delete', [DocumentController::class, 'bulkDelete']);
+
+    // Physical location tracking - specific routes BEFORE wildcard {id} routes
+    Route::get('/documents/cabinets', [DocumentTrackingController::class, 'cabinets']);
+    Route::get('/documents/cabinets/tree', [DocumentTrackingController::class, 'cabinetTree']);
+    Route::get('/documents/{id}/tracking', [DocumentTrackingController::class, 'history']);
+    Route::post('/documents/{id}/tracking/move', [DocumentTrackingController::class, 'move']);
+    Route::post('/documents/{id}/tracking/check-out', [DocumentTrackingController::class, 'checkOut']);
+    Route::post('/documents/{id}/tracking/check-in', [DocumentTrackingController::class, 'checkIn']);
+
+    // Physical location management (hierarchical: Cabinet > Tray > Partition)
+    Route::get('/locations/tree', [LocationController::class, 'tree']);
+    Route::post('/locations', [LocationController::class, 'store']);
+    Route::post('/locations/move', [LocationController::class, 'moveDocuments']);
+    Route::post('/locations/assign-folder', [LocationController::class, 'assignFolder']);
+    Route::put('/locations/{id}', [LocationController::class, 'update']);
+    Route::delete('/locations/{id}', [LocationController::class, 'destroy']);
 
     // Manual Processing routes
     Route::get('/manual-process/folders', [ManualProcessController::class, 'getFolders']);

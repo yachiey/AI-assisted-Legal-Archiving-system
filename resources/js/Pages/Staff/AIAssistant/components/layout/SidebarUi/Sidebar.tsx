@@ -149,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`absolute inset-0 ${
           isDashboardThemeEnabled
             ? "bg-gradient-to-b from-primary via-primary to-secondary"
-            : "bg-[#1b5e20]"
+            : "bg-[#00491e]"
         }`}
       />
       {isDashboardThemeEnabled && (
@@ -206,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`relative mb-4 overflow-hidden rounded-2xl ${
                       isDashboardThemeEnabled
                         ? "bg-base-100/95 border border-base-300/70 shadow-lg"
-                        : "bg-[#F4D03F] border border-[#FBEC5D]"
+                        : "bg-[#F4D03F] border border-[#ffc600]"
                     }`}
                   >
                     <div className="relative px-4 py-3 flex items-center gap-3">
@@ -377,7 +377,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   isRecentDragOver
                     ? isDashboardThemeEnabled
                       ? "ring-2 ring-accent bg-accent/10"
-                      : "ring-2 ring-[#FBEC5D] bg-yellow-400/10"
+                      : "ring-2 ring-[#ffc600] bg-yellow-400/10"
                     : ""
                 }`}
               >

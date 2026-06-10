@@ -188,7 +188,7 @@ const Settings = () => {
                 style={
                     isDashboardThemeEnabled
                         ? undefined
-                        : { background: "linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)" }
+                        : { background: "linear-gradient(135deg, #00491e 0%, #003a18 100%)" }
                 }
             >
                 <h1
@@ -204,7 +204,7 @@ const Settings = () => {
                     style={{
                         background: isDashboardThemeEnabled
                             ? "linear-gradient(90deg, oklch(var(--a)), transparent)"
-                            : "linear-gradient(90deg, #facc15, transparent)",
+                            : "linear-gradient(90deg, #ffc600, transparent)",
                     }}
                 />
                 <p

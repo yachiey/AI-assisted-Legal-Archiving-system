@@ -96,7 +96,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                   style={
                     isDashboardThemeEnabled
                       ? undefined
-                      : { color: "#FBEC5D" }
+                      : { color: "#ffc600" }
                   }
                 >
                   {item.count} docs
@@ -113,7 +113,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                     width: `${item.percentage}%`,
                     background: isDashboardThemeEnabled
                       ? "linear-gradient(90deg, oklch(var(--p) / 0.95) 0%, oklch(var(--s) / 0.85) 100%)"
-                      : "linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)",
+                      : "linear-gradient(90deg, #ffc600 0%, #f5e042 100%)",
                   }}
                 ></div>
               </div>

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, MapPin, PackageOpen } from 'lucide-react';
 import { DocumentListItemProps } from '../../types/types';
 import DocumentViewer from '../DocumentViewer/DocumentViewer';
 import DocumentMenu from './DocumentMenu';
 import DocumentPropertiesModal from './DocumentPropertiesModal';
 import EditDocumentModal from './EditDocumentModal';
 import DeleteDocumentDialog from './DeleteDocumentDialog';
+import DocumentTrackingModal from './DocumentTrackingModal';
+import MoveToLocationModal from '../Location/MoveToLocationModal';
+import { setDraggedDocIds, clearDraggedDocIds } from '../../utils/dragState';
 import {
     DEFAULT_DASHBOARD_THEME,
     useDashboardTheme,
@@ -18,6 +21,10 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     folders = [],
     isHighlighted = false,
     onDocumentUpdated,
+    selectionMode = false,
+    selected = false,
+    onToggleSelect,
+    getDragIds,
 }) => {
     const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -25,12 +32,18 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
     const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isTrackOpen, setIsTrackOpen] = useState(false);
+    const [isMoveOpen, setIsMoveOpen] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const { theme } = useDashboardTheme("staff");
     const isDashboardThemeEnabled = theme !== DEFAULT_DASHBOARD_THEME;
 
     const handleDocumentClick = (): void => {
+        if (selectionMode) {
+            onToggleSelect?.(document.doc_id);
+            return;
+        }
         setIsViewerOpen(true);
     };
 
@@ -67,6 +80,12 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                 break;
             case 'download':
                 handleDownload();
+                break;
+            case 'track':
+                setIsTrackOpen(true);
+                break;
+            case 'move':
+                setIsMoveOpen(true);
                 break;
         }
     };
@@ -137,8 +156,29 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                           }`
                     }`}
                 onClick={handleDocumentClick}
+                draggable
+                onDragStart={(e) => {
+                    const ids = getDragIds ? getDragIds(document.doc_id) : [document.doc_id];
+                    setDraggedDocIds(ids);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(document.doc_id));
+                }}
+                onDragEnd={() => clearDraggedDocIds()}
                 title={document.title}
             >
+                {selectionMode && (
+                    <div className="absolute top-3 left-3 z-20">
+                        <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => onToggleSelect?.(document.doc_id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`h-4 w-4 cursor-pointer rounded ${isDashboardThemeEnabled ? 'accent-primary' : 'accent-green-700'}`}
+                            aria-label={`Select ${document.title}`}
+                        />
+                    </div>
+                )}
+
                 {/* Modern Hover Glow Effect */}
                 <div
                     className="absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
@@ -227,6 +267,27 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                             </div>
                         ) : null;
                     })()}
+
+                    {/* Physical location + tracking status */}
+                    <div className="flex flex-shrink-0 flex-wrap items-center justify-center gap-1.5">
+                        <span
+                            className={`flex max-w-full items-center gap-1 truncate text-[10px] ${
+                                document.physical_location
+                                    ? isDashboardThemeEnabled ? 'text-base-content/60' : 'text-gray-500'
+                                    : isDashboardThemeEnabled ? 'text-base-content/40' : 'text-gray-400'
+                            }`}
+                            title={document.physical_location || 'No location'}
+                        >
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{document.physical_location || 'No location'}</span>
+                        </span>
+                        {document.tracking_status === 'checked_out' && (
+                            <span className="flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                                <PackageOpen className="h-2.5 w-2.5" />
+                                Out
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div >
 
@@ -247,6 +308,8 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                             onEdit={() => handleMenuAction('edit')}
                             onDelete={() => handleMenuAction('delete')}
                             onDownload={() => handleMenuAction('download')}
+                            onTrack={() => handleMenuAction('track')}
+                            onMove={() => handleMenuAction('move')}
                         />
                     </div>,
                     window.document.body
@@ -290,6 +353,28 @@ const DocumentGridItem: React.FC<DocumentListItemProps> = ({
                     window.document.body
                 )
             }
+
+            {
+                typeof window !== 'undefined' && isTrackOpen && createPortal(
+                    <DocumentTrackingModal
+                        isOpen={isTrackOpen}
+                        onClose={() => setIsTrackOpen(false)}
+                        document={document}
+                        onUpdated={handleDocumentUpdated}
+                    />,
+                    window.document.body
+                )
+            }
+
+            {isMoveOpen && (
+                <MoveToLocationModal
+                    isOpen={isMoveOpen}
+                    documentIds={[document.doc_id]}
+                    subtitle={document.title}
+                    onMoved={handleDocumentUpdated}
+                    onClose={() => setIsMoveOpen(false)}
+                />
+            )}
 
             <DocumentViewer
                 isOpen={isViewerOpen}

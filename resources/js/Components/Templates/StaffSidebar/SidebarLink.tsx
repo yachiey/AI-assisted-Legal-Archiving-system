@@ -51,7 +51,7 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
                     isActive && !isDashboardThemeEnabled
                         ? {
                               background:
-                                  "linear-gradient(135deg, #FBEC5D 0%, #E6D700 100%)",
+                                  "linear-gradient(135deg, #ffc600 0%, #E6D700 100%)",
                               boxShadow: "0 4px 12px rgba(251, 236, 93, 0.3)",
                           }
                         : {}
@@ -114,7 +114,7 @@ const SidebarLink: FC<SidebarLinkProps> = ({ item, isActive, collapsed, isFirst 
                         className={`relative z-10 ml-auto rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
                             isDashboardThemeEnabled
                                 ? "bg-secondary text-secondary-content"
-                                : "bg-[#FBEC5D] text-green-900"
+                                : "bg-[#ffc600] text-green-900"
                         }`}
                     >
                         {item.badge}

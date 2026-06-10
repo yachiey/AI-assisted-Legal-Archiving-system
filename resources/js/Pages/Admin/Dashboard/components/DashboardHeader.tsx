@@ -175,12 +175,12 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
           style={
             isDashboardThemeEnabled
               ? undefined
-              : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+              : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
           }
         >
           <div className="flex items-center gap-3">
             <Calendar className={`w-5 h-5 ${
-              isDashboardThemeEnabled ? 'text-primary-content' : 'text-[#FBEC5D]'
+              isDashboardThemeEnabled ? 'text-primary-content' : 'text-[#ffc600]'
             }`} />
             <h3 className={`text-lg font-bold ${
               isDashboardThemeEnabled ? 'text-primary-content' : 'text-white'
@@ -221,7 +221,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 }`}
                 style={
                   rangeType === type && !isDashboardThemeEnabled
-                    ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                    ? { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
                     : {}
                 }
               >
@@ -247,7 +247,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
               }`}
               style={
                 rangeType === 'custom' && !isDashboardThemeEnabled
-                  ? { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                  ? { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
                   : {}
               }
             >
@@ -416,7 +416,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
             style={
               isDashboardThemeEnabled
                 ? undefined
-                : { background: 'linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)' }
+                : { background: 'linear-gradient(90deg, #ffc600 0%, #f5e042 100%)' }
             }
           >
             {isLoading ? (
@@ -610,7 +610,7 @@ export default function DashboardHeader({ onUploadClick }: DashboardHeaderProps)
           : ''
           }`}
         style={isDashboardThemeEnabled ? undefined : {
-          background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)'
+          background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)'
         }}
       >
         <div className={`transition-all duration-300 ${collapsed ? 'px-4 py-5' : 'px-8 py-6'

@@ -19,7 +19,7 @@ const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="bg-gradient-to-r from-[#228B22] to-[#1a6b1a] rounded-2xl shadow-2xl border border-white/20 p-4">
+      <div className="bg-gradient-to-r from-[#00491e] to-[#003a18] rounded-2xl shadow-2xl border border-white/20 p-4">
         <div className="flex items-center gap-4">
           {/* Selected count */}
           <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm">

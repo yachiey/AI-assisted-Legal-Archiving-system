@@ -98,7 +98,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
                 selectedPeriod === period && !isDashboardThemeEnabled
                   ? {
                       background:
-                        "linear-gradient(90deg, #FBEC5D 0%, #f5e042 100%)",
+                        "linear-gradient(90deg, #ffc600 0%, #f5e042 100%)",
                     }
                   : undefined
               }
@@ -115,7 +115,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({
             className={`w-full cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 focus:outline-none ${
               isDashboardThemeEnabled
                 ? "border border-base-300 bg-base-100 text-base-content hover:bg-base-200 focus:ring-2 focus:ring-primary"
-                : "border-none bg-white/10 text-white hover:bg-white/20 focus:ring-2 focus:ring-[#FBEC5D]"
+                : "border-none bg-white/10 text-white hover:bg-white/20 focus:ring-2 focus:ring-[#ffc600]"
             }`}
             disabled={loading}
             style={isDashboardThemeEnabled ? undefined : { color: "white" }}

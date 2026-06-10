@@ -5,6 +5,7 @@ import axios from 'axios';
 import DocumentQueueNavigation from './DocumentQueueNavigation';
 import { useDocumentQueue } from '../../hooks/useDocumentQueue';
 import UploadDocumentViewer from './UploadDocumentViewer';
+import LocationSelect from '../Location/LocationSelect';
 import {
   DEFAULT_DASHBOARD_THEME,
   useDashboardTheme,
@@ -23,6 +24,7 @@ interface FormData {
   description: string;
   remarks: string;
   physicalLocation: string;
+  location_id: number | null;
   documentRefId: string;
 }
 
@@ -46,6 +48,7 @@ const ManualProcessing = ({
     description: documentData?.description || documentData?.analysis || '',
     remarks: documentData?.remarks || '',
     physicalLocation: documentData?.physical_location || '',
+    location_id: (documentData as any)?.location_id ?? null,
     documentRefId: documentData?.document_ref_id || ''
   });
 
@@ -72,6 +75,7 @@ const ManualProcessing = ({
         description: documentData.description || documentData.analysis || (documentData as any).suggested_description || '',
         remarks: documentData.remarks || (documentData as any).ai_remarks || '',
         physicalLocation: documentData.physical_location || '',
+        location_id: (documentData as any).location_id ?? null,
         documentRefId: documentData.document_ref_id || ''
       });
 
@@ -268,7 +272,7 @@ const ManualProcessing = ({
         folder_id: formData.selectedFolderId,
         description: formData.description,
         remarks: formData.remarks,
-        physical_location: formData.physicalLocation,
+        location_id: formData.location_id,
         document_ref_id: formData.documentRefId
       };
 
@@ -331,7 +335,7 @@ const ManualProcessing = ({
     : 'rounded-lg shadow-md';
   const accentIconStyle = isDashboardThemeEnabled
     ? undefined
-    : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' };
+    : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' };
   const accentIconTextClass = isDashboardThemeEnabled ? 'text-primary' : 'text-white';
 
   return (
@@ -352,18 +356,18 @@ const ManualProcessing = ({
             style={
               isDashboardThemeEnabled
                 ? undefined
-                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
             }
           ></div>
 
           {/* Status Indicator */}
           <div className="mt-5 flex items-center space-x-3">
-            <CheckCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-success' : 'text-[#228B22]'}`} />
+            <CheckCircle className={`w-5 h-5 ${isDashboardThemeEnabled ? 'text-success' : 'text-[#00491e]'}`} />
             <span className={`text-sm font-medium tracking-wide ${bodyTextClass}`}>Manual Review Mode</span>
             <span className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
               isDashboardThemeEnabled
                 ? 'border-primary/20 bg-primary/10 text-primary'
-                : 'border-green-200 bg-green-100 text-[#228B22]'
+                : 'border-green-200 bg-green-100 text-[#00491e]'
             }`}>
               Human-Verified Entry
             </span>
@@ -521,19 +525,15 @@ const ManualProcessing = ({
                 </div>
               </div>
 
-              {/* Physical Location */}
+              {/* Physical Location (managed cabinets) */}
               <div>
                 <label className={`mb-2.5 block text-xs font-bold uppercase tracking-wider ${mutedTextClass}`}>Physical Location (Optional)</label>
                 <div className={fieldSurfaceClass}>
-                  <input
-                    type="text"
-                    value={formData.physicalLocation}
-                    onChange={(e) => handleInputChange('physicalLocation', e.target.value)}
-                    placeholder="Enter physical location of document (e.g., Cabinet A, Shelf 3)..."
-                    className={`w-full border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
-                      isDashboardThemeEnabled
-                        ? 'text-base-content placeholder:text-base-content/40'
-                        : 'text-gray-900 placeholder-gray-400'
+                  <LocationSelect
+                    value={formData.location_id}
+                    onChange={(id) => setFormData(prev => ({ ...prev, location_id: id }))}
+                    className={`w-full cursor-pointer border-none bg-transparent font-medium leading-relaxed focus:outline-none focus:ring-0 ${
+                      isDashboardThemeEnabled ? 'text-base-content' : 'text-gray-900'
                     }`}
                   />
                 </div>
@@ -596,7 +596,7 @@ const ManualProcessing = ({
                             style={{ paddingLeft: isSubfolder ? '2rem' : '1rem' }}
                           >
                             <div className={`font-semibold flex items-center gap-2 tracking-wide ${titleTextClass}`}>
-                              {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#228B22]'}>|-</span>}
+                              {isSubfolder && <span className={isDashboardThemeEnabled ? 'text-primary' : 'text-[#00491e]'}>|-</span>}
                               {folder.folder_name}
                             </div>
                             <div className={`mt-1 text-xs tracking-wide ${mutedTextClass}`}>{folder.folder_path}</div>
@@ -640,7 +640,7 @@ const ManualProcessing = ({
             style={
               isDashboardThemeEnabled
                 ? undefined
-                : { background: 'linear-gradient(135deg, #228B22 0%, #1a6b1a 100%)' }
+                : { background: 'linear-gradient(135deg, #00491e 0%, #003a18 100%)' }
             }
           >
             {saving ? (
